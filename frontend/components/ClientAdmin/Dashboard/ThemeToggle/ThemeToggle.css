@@ -1,6 +1,4 @@
-/* ===================================
-   Theme Toggle Button Styles
-   =================================== */
+/* Theme Toggle Refined - Premium Capsule Design */
 
 .theme-toggle {
     display: flex;
@@ -10,47 +8,64 @@
     background: transparent;
     border: none;
     cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.05);
 }
 
 .theme-toggle__track {
     position: relative;
-    width: 52px;
-    height: 28px;
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-full);
-    border: 1px solid var(--border-color);
-    transition: all var(--transition-normal);
+    width: 48px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] .theme-toggle__track {
+    background: #e4e4e7;
+    border-color: #d4d4d8;
 }
 
 .theme-toggle__track--dark {
-    background: var(--brand-primary);
-    border-color: var(--brand-primary);
+    background: #000;
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .theme-toggle__thumb {
     position: absolute;
     top: 2px;
     left: 2px;
-    width: 22px;
-    height: 22px;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-full);
-    box-shadow: var(--shadow-sm);
+    width: 18px;
+    height: 18px;
+    background: #1a1a1a;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform var(--transition-normal);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .theme-toggle__thumb {
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .theme-toggle__track--dark .theme-toggle__thumb {
     transform: translateX(24px);
-    background: var(--bg-secondary);
+    background: #111;
 }
 
 .theme-toggle__icon {
-    color: var(--color-warning);
+    color: #f59e0b;
+    /* Amber 500 */
 }
 
-.theme-toggle__track--dark .theme-toggle__icon {
-    color: var(--brand-primary);
+[data-theme="light"] .theme-toggle__icon {
+    color: #d97706;
+    /* Amber 600 */
 }

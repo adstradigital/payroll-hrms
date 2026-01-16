@@ -1,0 +1,168 @@
+/* Floating Quick Actions Styling - Premium Draggable Widget */
+
+.floating-actions {
+    position: fixed;
+    z-index: var(--z-toast);
+    /* Above almost everything */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    transition: transform var(--transition-fast);
+}
+
+.floating-actions.dragging {
+    cursor: grabbing;
+    transition: none;
+    /* Smooth drag requires no transition on the position */
+}
+
+/* Action Menu Stack */
+.floating-actions__menu {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all var(--transition-normal);
+}
+
+.floating-actions.open .floating-actions__menu {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Action Item */
+.floating-actions__item {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--brand-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+    transition: all var(--transition-fast);
+    position: relative;
+    /* Cascade animation Delay */
+    transition-delay: calc(var(--index) * 50ms);
+}
+
+[data-theme="dark"] .floating-actions__item {
+    background: var(--bg-tertiary);
+    color: var(--brand-primary);
+    border-color: var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.floating-actions__item:hover {
+    transform: scale(1.15);
+    background: var(--bg-primary);
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 15px var(--brand-primary-light);
+}
+
+.floating-actions__item.item--success {
+    color: var(--color-success);
+}
+
+.floating-actions__item.item--warning {
+    color: var(--color-warning);
+}
+
+.floating-actions__item.item--info {
+    color: var(--color-info);
+}
+
+/* Tooltip */
+.floating-actions__tooltip {
+    position: absolute;
+    right: 64px;
+    background: var(--text-primary);
+    color: var(--text-inverse);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(10px);
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-md);
+}
+
+.floating-actions__item:hover .floating-actions__tooltip {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Trigger Button */
+.floating-actions__trigger {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-hover));
+    color: var(--text-inverse);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    border: none;
+    box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4);
+    transition: all var(--transition-normal);
+    position: relative;
+}
+
+[data-theme="dark"] .floating-actions__trigger {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #000;
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+}
+
+.floating-actions.dragging .floating-actions__trigger {
+    cursor: grabbing;
+    transform: scale(1.1);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.floating-actions.open .floating-actions__trigger {
+    transform: rotate(45deg);
+    background: var(--text-primary);
+    color: var(--text-inverse);
+    box-shadow: var(--shadow-lg);
+}
+
+.trigger-icon {
+    transition: transform var(--transition-normal);
+}
+
+/* Hint & Label */
+.trigger-hint {
+    position: absolute;
+    bottom: -24px;
+    white-space: nowrap;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: var(--font-weight-medium);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    pointer-events: none;
+}
+
+.floating-actions:not(.open):hover .trigger-hint {
+    opacity: 1;
+}
+
+/* Animations - Staircase Effect for menu items */
+.floating-actions.open .floating-actions__item {
+    /* Different transition values when opening vs closing for a nice effect */
+    transition-delay: calc(var(--index) * 40ms);
+}

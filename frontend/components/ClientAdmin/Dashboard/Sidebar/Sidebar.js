@@ -116,7 +116,7 @@ export default function Sidebar() {
             {/* Logo */}
             <div className="sidebar__logo">
                 <div className="sidebar__logo-icon">H</div>
-                <span className="sidebar__logo-text">HR Nexus</span>
+                <span className="sidebar__logo-text">HRMS Payroll</span>
             </div>
 
             {/* Main Menu */}

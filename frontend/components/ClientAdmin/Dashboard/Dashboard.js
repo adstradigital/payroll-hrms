@@ -2,9 +2,14 @@
 
 import Sidebar from '@/components/ClientAdmin/Dashboard/Sidebar/Sidebar';
 import Header from '@/components/ClientAdmin/Dashboard/Header/Header';
+import FloatingQuickActions from '@/components/ClientAdmin/Dashboard/FloatingQuickActions';
+import ClockAttendanceWidget from '@/components/ClientAdmin/Dashboard/ClockAttendanceWidget';
+import { useAuth } from '@/context/AuthContext';
 import './Dashboard.css';
 
-export default function Dashboard({ children, title, subtitle, breadcrumbs }) {
+export default function Dashboard({ children, title, subtitle, breadcrumbs, hideGreeting = false }) {
+    const { user } = useAuth();
+
     return (
         <div className="dashboard">
             <Sidebar />
@@ -13,13 +18,21 @@ export default function Dashboard({ children, title, subtitle, breadcrumbs }) {
                 <Header breadcrumbs={breadcrumbs} />
 
                 <main className="dashboard__content">
-                    {/* Page Header */}
+                    {/* Welcome Greeting */}
+                    {!hideGreeting && (
+                        <div className="dashboard__greeting animate-fade-in">
+                            <h2>Good Morning, {user?.name?.split(' ')[0] || 'Admin'}! 👋</h2>
+                            <p>Here's what's happening in your organization today.</p>
+                        </div>
+                    )}
+
+                    {/* Page Header (Optional) */}
                     {title && (
-                        <div className="dashboard__page-header">
-                            <div className="dashboard__page-info">
-                                <h1 className="dashboard__page-title">{title}</h1>
+                        <div className="card__header" style={{ marginBottom: 'var(--spacing-lg)' }}>
+                            <div>
+                                <h1 className="card__title">{title}</h1>
                                 {subtitle && (
-                                    <p className="dashboard__page-subtitle">{subtitle}</p>
+                                    <p className="card__subtitle">{subtitle}</p>
                                 )}
                             </div>
                         </div>
@@ -31,6 +44,10 @@ export default function Dashboard({ children, title, subtitle, breadcrumbs }) {
                     </div>
                 </main>
             </div>
+
+            {/* Global Draggable Quick Actions */}
+            <ClockAttendanceWidget />
+            <FloatingQuickActions />
         </div>
     );
 }

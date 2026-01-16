@@ -99,32 +99,29 @@
 [data-theme="light"],
 :root {
     /* Backgrounds */
-    --bg-primary: #f8fafc;
-    /* Main page background */
+    --bg-primary: #f1f5f9;
+    /* Slate 100 */
     --bg-secondary: #ffffff;
     /* Cards, panels */
-    --bg-tertiary: #f1f5f9;
+    --bg-tertiary: #f8fafc;
     /* Hover states, subtle */
-    --bg-sidebar: #1e293b;
-    /* Dark sidebar */
-    --bg-sidebar-active: #334155;
-    /* Active menu item */
+    --bg-sidebar: #ffffff;
+    /* Light sidebar */
+    --bg-sidebar-active: #eef2ff;
+    /* Active menu item (Indigo light) */
 
     /* Text Colors */
-    --text-primary: #1e293b;
-    /* Main text */
-    --text-secondary: #64748b;
-    /* Secondary text */
+    --text-primary: #0f172a;
+    /* Slate 900 */
+    --text-secondary: #475569;
+    /* Slate 600 */
     --text-muted: #94a3b8;
-    /* Muted/disabled */
+    /* Slate 400 */
     --text-inverse: #ffffff;
-    /* Text on dark backgrounds */
-    --text-sidebar: #cbd5e1;
-    /* Sidebar text */
-    --text-sidebar-active: #ffffff;
 
     /* Borders */
-    --border-color: #e2e8f0;
+    --border-color: #cbd5e1;
+    /* Slate 300 */
     --border-color-focus: var(--brand-primary);
 
     /* Shadows */
@@ -136,59 +133,69 @@
     /* Cards */
     --card-bg: var(--bg-secondary);
     --card-border: var(--border-color);
-    --card-shadow: var(--shadow-md);
+    --card-shadow: var(--shadow-sm);
 
-    /* Inputs */
-    --input-bg: var(--bg-secondary);
-    --input-border: var(--border-color);
-    --input-focus-ring: var(--brand-primary-light);
+    /* Accents */
+    --accent-color: var(--brand-primary);
+    --accent-text: #ffffff;
 }
 
 
 /* ========================================
-   DARK THEME
+   DARK THEME (Black Theme)
    ======================================== */
 
 [data-theme="dark"] {
     /* Backgrounds */
-    --bg-primary: #0f172a;
-    /* Main page background */
-    --bg-secondary: #1e293b;
-    /* Cards, panels */
-    --bg-tertiary: #334155;
-    /* Hover states */
-    --bg-sidebar: #0f172a;
-    /* Sidebar (same as main in dark) */
-    --bg-sidebar-active: #1e293b;
+    --bg-primary: #000000;
+    /* True Black */
+    --bg-secondary: #0a0a0a;
+    /* Neutral 950 */
+    --bg-tertiary: #171717;
+    /* Neutral 900 */
+    --bg-sidebar: #0a0a0a;
+    --bg-sidebar-active: rgba(245, 158, 11, 0.1);
+    /* Amber 500 alpha */
 
     /* Text Colors */
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --text-inverse: #0f172a;
-    --text-sidebar: #94a3b8;
-    --text-sidebar-active: #ffffff;
+    --text-primary: #fafafa;
+    /* Neutral 50 */
+    --text-secondary: #a3a3a3;
+    /* Neutral 400 */
+    --text-muted: #525252;
+    /* Neutral 600 */
+    --text-inverse: #000000;
 
     /* Borders */
-    --border-color: #334155;
-    --border-color-focus: var(--brand-primary);
+    --border-color: #262626;
+    /* Neutral 800 */
+    --border-color-focus: #f59e0b;
+    /* Amber 500 */
 
-    /* Shadows (more subtle in dark mode) */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4);
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.7);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.8);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.9);
 
     /* Cards */
-    --card-bg: var(--bg-secondary);
+    --card-bg: #0a0a0a;
     --card-border: var(--border-color);
-    --card-shadow: var(--shadow-md);
+    --card-shadow: none;
 
-    /* Inputs */
-    --input-bg: #0f172a;
-    --input-border: #475569;
-    --input-focus-ring: rgba(79, 70, 229, 0.3);
+    /* Brand Overrides for Dark Mode */
+    --brand-primary: #f59e0b;
+    /* Amber 500 */
+    --brand-primary-hover: #d97706;
+    --brand-primary-light: rgba(245, 158, 11, 0.2);
 
-    /* Adjusted brand colors for dark mode */
-    --brand-primary-light: rgba(79, 70, 229, 0.2);
+    /* Status Overrides */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-danger: #f43f5e;
+    /* Rose 500 */
+
+    /* Accents */
+    --accent-color: #f59e0b;
+    --accent-text: #000000;
 }

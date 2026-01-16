@@ -1,123 +1,221 @@
-/* ===================================
-   Header Component Styles
-   =================================== */
+/* Header Styling - Premium Design matching uploaded image */
 
 .header {
+    height: 72px;
+    /* Fixed height for better control */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: var(--header-height);
-    padding: 0 var(--spacing-lg);
-    background: var(--bg-secondary);
+    padding: 0 32px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    transition: all var(--transition-normal);
 }
 
-/* Left Section */
-.header__left {
+[data-theme="dark"] .header {
+    background: rgba(13, 13, 13, 0.9);
+    border-bottom: 1px solid #1f1f1f;
+}
+
+/* Three Main Sections */
+.header__left,
+.header__right {
+    flex: 0 0 auto;
+    width: 300px;
+    /* Force consistent widths to help center the middle section */
+}
+
+.header__center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.header__right {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+}
+
+/* Header Left: Brand/Stack */
+.header__left {
+    display: flex;
+    flex-direction: column;
+}
+
+.header__brand {
+    display: flex;
+    flex-direction: column;
 }
 
 .header__breadcrumbs {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
-    font-size: var(--font-size-sm);
-}
-
-.header__breadcrumb {
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-}
-
-.header__breadcrumb:last-child {
-    color: var(--text-primary);
-    font-weight: var(--font-weight-medium);
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+    opacity: 0.6;
 }
 
 .header__breadcrumb-separator {
-    color: var(--text-muted);
+    font-size: 12px;
+    margin: 0 2px;
 }
 
-/* Right Section */
-.header__right {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
+.header__title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.2;
 }
 
-/* Search */
+/* Header Center: Search Capsule */
 .header__search {
     position: relative;
     display: flex;
     align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 0 16px;
+    width: 320px;
+    height: 38px;
+    transition: all 0.2s ease;
+}
+
+[data-theme="light"] .header__search {
+    background: #f4f4f5;
+    border-color: #e4e4e7;
+}
+
+.header__search:focus-within {
+    width: 360px;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--brand-primary);
 }
 
 .header__search-icon {
-    position: absolute;
-    left: var(--spacing-sm);
     color: var(--text-muted);
-    pointer-events: none;
+    opacity: 0.5;
 }
 
 .header__search-input {
-    width: 200px;
-    padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) 36px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-    transition: all var(--transition-fast);
-}
-
-.header__search-input:focus {
-    width: 280px;
-    border-color: var(--brand-primary);
-    background: var(--bg-secondary);
-    box-shadow: 0 0 0 3px var(--input-focus-ring);
-}
-
-.header__search-input::placeholder {
-    color: var(--text-muted);
-}
-
-/* Notification Button */
-.header__notification-btn {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
     background: transparent;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.header__notification-btn:hover {
-    background: var(--bg-tertiary);
+    border: none;
+    padding: 8px 12px;
+    font-size: 13px;
     color: var(--text-primary);
+    width: 100%;
+    outline: none;
 }
 
-.header__notification-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 4px;
-    background: var(--color-danger);
-    color: white;
-    font-size: 10px;
-    font-weight: var(--font-weight-bold);
-    border-radius: var(--radius-full);
+/* Header Right: Utility Group */
+.header__utility-btn {
+    position: relative;
+    padding: 8px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.header__utility-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--brand-primary);
+}
+
+.header__language {
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 12px;
+}
+
+.header__language span {
+    letter-spacing: 0.5px;
+}
+
+/* Notification Dot */
+.header__notification-dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 6px;
+    height: 6px;
+    background: #f43f5e;
+    /* Rose 500 */
+    border-radius: 50%;
+    border: 1.5px solid #0d0d0d;
+}
+
+/* User Section Refinements */
+.header__divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0 8px;
+}
+
+.header__user {
+    padding-left: 8px;
+}
+
+.header__avatar {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    /* Amber gradient */
+    color: #000;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.header__avatar:hover {
+    transform: scale(1.05);
+}
+
+/* Responsive Hide/Shrink */
+@media (max-width: 1024px) {
+
+    .header__left,
+    .header__right {
+        width: auto;
+    }
+
+    .header__search {
+        width: 200px;
+    }
+
+    .header__search:focus-within {
+        width: 240px;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .header__language,
+    .header__search {
+        display: none;
+    }
 }
