@@ -1,0 +1,156 @@
+/* Employee Component Styles */
+
+.employee-module {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* Toolbar */
+.employee-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.toolbar-search {
+    flex: 1;
+    min-width: 300px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0 var(--spacing-md);
+    color: var(--text-muted);
+}
+
+.toolbar-search input {
+    flex: 1;
+    padding: var(--spacing-sm) 0;
+    margin-left: var(--spacing-sm);
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+.filter-select {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0 var(--spacing-md);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.filter-select select {
+    background: transparent;
+    border: none;
+    padding: var(--spacing-sm) 0;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+/* User Cell */
+.user-info-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.user-avatar-sm {
+    width: 36px;
+    height: 36px;
+    background: var(--brand-primary-light);
+    color: var(--brand-primary);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-xs);
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.user-email {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+/* ID Cell */
+.id-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.emp-id {
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+}
+
+.emp-date {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+/* Table Actions */
+.table-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.action-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.action-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--brand-primary);
+}
+
+.action-btn--danger:hover {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+/* Empty State */
+.empty-state {
+    padding: var(--spacing-3xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--border-color);
+    color: var(--text-muted);
+    gap: var(--spacing-md);
+}

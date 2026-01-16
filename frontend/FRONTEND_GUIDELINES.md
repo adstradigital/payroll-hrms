@@ -4,172 +4,161 @@
 
 ```
 frontend/
-├── app/                    # Next.js App Router (ROUTING ONLY)
-│   ├── layout.js          # Root layout
-│   ├── page.js            # Home page (redirect to dashboard)
-│   ├── login/page.js      # Login route
-│   └── dashboard/         # Dashboard routes
-│       ├── page.js        # Dashboard home
-│       ├── employees/     # /dashboard/employees
-│       ├── attendance/    # /dashboard/attendance
-│       ├── leave/         # /dashboard/leave
-│       └── payroll/       # /dashboard/payroll
+├── app/                              # ROUTING ONLY
+│   ├── layout.js
+│   ├── page.js
+│   ├── login/page.js
+│   ├── register/page.js
+│   └── dashboard/
+│       ├── page.js
+│       ├── employees/page.js
+│       ├── attendance/page.js
+│       ├── leave/page.js
+│       └── payroll/page.js
 │
-├── components/             # ALL UI COMPONENTS GO HERE
-│   ├── Dashboard/         # Dashboard layout component
-│   │   ├── Dashboard.js
-│   │   └── Dashboard.css
-│   ├── Sidebar/           # Sidebar with nested menu
-│   │   ├── Sidebar.js
-│   │   └── Sidebar.css
-│   ├── ThemeToggle/       # Light/Dark mode toggle
-│   │   ├── ThemeToggle.js
-│   │   └── ThemeToggle.css
-│   └── [ComponentName]/   # Each component in its own folder
-│       ├── ComponentName.js
-│       └── ComponentName.css
+├── components/
+│   └── ClientAdmin/                  # CLIENT ADMIN PORTAL
+│       │
+│       ├── Account/                  # COMMON (Auth + Employees)
+│       │   ├── Login/
+│       │   │   ├── Login.js
+│       │   │   └── Login.css
+│       │   ├── Register/
+│       │   │   ├── Register.js
+│       │   │   └── Register.css
+│       │   └── Employee/             # Employee management (SHARED)
+│       │       ├── EmployeeList/
+│       │       ├── EmployeeForm/
+│       │       └── EmployeeCard/
+│       │
+│       ├── Dashboard/                # DASHBOARD LAYOUT
+│       │   ├── Dashboard.js
+│       │   ├── Dashboard.css
+│       │   ├── Sidebar/
+│       │   ├── Header/
+│       │   └── ThemeToggle/
+│       │
+│       ├── HRMS/                     # HRMS MODULE (Self-contained)
+│       │   ├── Attendance/
+│       │   │   └── AttendanceList/
+│       │   ├── Leave/
+│       │   │   ├── LeaveList/
+│       │   │   ├── LeaveForm/
+│       │   │   └── LeaveBalance/
+│       │   ├── Recruitment/
+│       │   │   ├── JobOpenings/
+│       │   │   ├── Candidates/
+│       │   │   └── Pipeline/
+│       │   ├── Performance/
+│       │   │   ├── Reviews/
+│       │   │   └── Goals/
+│       │   └── Training/
+│       │       ├── Courses/
+│       │       └── Certifications/
+│       │
+│       └── Payroll/                  # PAYROLL MODULE (Self-contained)
+│           ├── Attendance/           # For salary calculation
+│           │   └── AttendanceList/
+│           ├── Leave/                # For deductions
+│           │   └── LeaveDeductions/
+│           ├── SalaryStructure/
+│           │   ├── SalaryStructure.js
+│           │   └── SalaryStructure.css
+│           ├── PaySlips/
+│           │   └── PaySlipList/
+│           ├── RunPayroll/
+│           │   ├── RunPayroll.js
+│           │   └── RunPayroll.css
+│           └── Reports/
+│               ├── PayrollReport/
+│               └── TaxReport/
 │
-├── context/               # React Context providers
+├── context/
 │   └── ThemeContext.js
 │
-├── styles/                # Global styles
-│   ├── globals.css        # Global resets and base styles
-│   └── theme.css          # CSS variables for theming
+├── styles/
+│   ├── globals.css
+│   └── theme.css
 │
-└── lib/                   # Utilities, API functions
+└── lib/
     └── api.js
+```
+
+---
+
+## Module Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      ClientAdmin                            │
+├─────────────────────────────────────────────────────────────┤
+│  Account/                │  Dashboard/                      │
+│  ├── Login               │  ├── Sidebar                     │
+│  ├── Register            │  ├── Header                      │
+│  └── Employee (SHARED)   │  └── ThemeToggle                 │
+├─────────────────────────────────────────────────────────────┤
+│  HRMS/                   │  Payroll/                        │
+│  ├── Attendance          │  ├── Attendance (for salary)     │
+│  ├── Leave               │  ├── Leave (for deductions)      │
+│  ├── Recruitment         │  ├── SalaryStructure             │
+│  ├── Performance         │  ├── PaySlips                    │
+│  └── Training            │  ├── RunPayroll                  │
+│                          │  └── Reports                     │
+├─────────────────────────────────────────────────────────────┤
+│  Each module is SELF-CONTAINED and can be exported alone    │
+│  Permission-based access controls which module user sees    │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Coding Standards
 
-### 1. CSS Rules
+### CSS Rules
+- ✅ Vanilla CSS only
+- ✅ Each component `.js` + `.css` pair
+- ✅ Use CSS variables from `theme.css`
+- ❌ No inline styles
+- ❌ No Tailwind
 
-✅ **DO:**
-- Use vanilla CSS only (no Tailwind, styled-components, etc.)
-- Each component has its own `.css` file in its folder
-- Use CSS variables from `theme.css` for colors
-- Use BEM-like naming: `.component-name__element--modifier`
-
-❌ **DON'T:**
-- No inline styles (`style={{}}`)
-- No Tailwind classes
-- No CSS-in-JS libraries
-- No `!important` unless absolutely necessary
-
-### 2. Theme Variables
-
-Always use CSS variables from `theme.css`:
-
-```css
-/* ✅ Correct */
-.my-component {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+### Component Example
+```jsx
+// ✅ Correct
+import './MyComponent.css';
+export default function MyComponent() {
+  return <div className="my-component">...</div>;
 }
 
-/* ❌ Wrong */
-.my-component {
-  background: #ffffff;
-  color: #333333;
+// ❌ Wrong
+export default function MyComponent() {
+  return <div style={{ color: 'red' }}>...</div>;
 }
 ```
 
-### 3. Component Structure
-
-Each component folder contains:
-- `ComponentName.js` - React component
-- `ComponentName.css` - Component styles
-
+### Import Paths
 ```jsx
-// ComponentName.js
-'use client';
-import './ComponentName.css';
-
-export default function ComponentName({ props }) {
-  return (
-    <div className="component-name">
-      {/* content */}
-    </div>
-  );
-}
-```
-
-### 4. App Router Usage
-
-The `/app` folder is for **routing only**:
-- Pages import and render components
-- No complex logic in page files
-- Layout files handle shared structure
-
-```jsx
-// app/dashboard/employees/page.js
-import EmployeeList from '@/components/EmployeeList/EmployeeList';
-
-export default function EmployeesPage() {
-  return <EmployeeList />;
-}
+import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
+import LeaveList from '@/components/ClientAdmin/HRMS/Leave/LeaveList/LeaveList';
+import PaySlipList from '@/components/ClientAdmin/Payroll/PaySlips/PaySlipList/PaySlipList';
 ```
 
 ---
 
-## Theme System
+## Subscription Permission Flow
 
-### Light/Dark Mode
-
-Theme is controlled via `data-theme` attribute on `<html>`:
-- `data-theme="light"` - Light mode
-- `data-theme="dark"` - Dark mode
-
-### Color Naming Convention
-
-```css
-/* Backgrounds */
---bg-primary      /* Main background */
---bg-secondary    /* Card/panel backgrounds */
---bg-tertiary     /* Hover states */
-
-/* Text */
---text-primary    /* Main text */
---text-secondary  /* Muted text */
---text-muted      /* Disabled/placeholder */
-
-/* Accent Colors */
---accent-primary  /* Primary brand color */
---accent-success  /* Green - success states */
---accent-warning  /* Orange - warnings */
---accent-danger   /* Red - errors/delete */
-
-/* Borders & Shadows */
---border-color    /* Default borders */
---shadow-sm       /* Small shadow */
---shadow-md       /* Medium shadow */
---shadow-lg       /* Large shadow */
 ```
+Login → Check Subscription → Show appropriate modules
 
----
+User with "Payroll" subscription:
+  → See: Account, Dashboard, Payroll/*
+  → Hide: HRMS/*
 
-## Naming Conventions
+User with "HRMS" subscription:
+  → See: Account, Dashboard, HRMS/*
+  → Hide: Payroll/*
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Components | PascalCase | `EmployeeList.js` |
-| CSS files | PascalCase (match component) | `EmployeeList.css` |
-| CSS classes | kebab-case | `.employee-list` |
-| Folders | PascalCase | `EmployeeList/` |
-| Variables | camelCase | `const employeeData` |
-
----
-
-## Import Aliases
-
-Use `@/` alias for imports:
-
-```jsx
-import Sidebar from '@/components/Sidebar/Sidebar';
-import { useTheme } from '@/context/ThemeContext';
+User with "Both" subscription:
+  → See: Account, Dashboard, HRMS/*, Payroll/*
 ```
 
 ---
@@ -177,8 +166,7 @@ import { useTheme } from '@/context/ThemeContext';
 ## Checklist Before Commit
 
 - [ ] No inline styles
-- [ ] Using theme CSS variables for all colors
-- [ ] Component has its own CSS file
-- [ ] CSS class names follow naming convention
-- [ ] No Tailwind or other CSS frameworks
-- [ ] Page only imports and renders components
+- [ ] Using theme CSS variables
+- [ ] Component in correct module folder
+- [ ] CSS file alongside JS file
+- [ ] Page only imports component

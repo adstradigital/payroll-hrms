@@ -8,7 +8,8 @@ import {
     Wallet, FileText, Settings, ChevronDown,
     ChevronRight, LogOut, Bell
 } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
+import { usePermissions } from '@/context/PermissionContext';
+import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from '@/components/ClientAdmin/Dashboard/ThemeToggle/ThemeToggle';
 import './Sidebar.css';
 
@@ -35,6 +36,7 @@ const menuItems = [
         label: 'Attendance',
         icon: Clock,
         path: '/dashboard/attendance',
+        module: 'HRMS',
         children: [
             { id: 'daily-attendance', label: 'Daily Attendance', path: '/dashboard/attendance' },
             { id: 'shifts', label: 'Shifts', path: '/dashboard/attendance/shifts' },
@@ -46,6 +48,7 @@ const menuItems = [
         label: 'Leave Management',
         icon: Calendar,
         path: '/dashboard/leave',
+        module: 'HRMS',
         children: [
             { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave' },
             { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types' },
@@ -57,6 +60,7 @@ const menuItems = [
         label: 'Payroll',
         icon: Wallet,
         path: '/dashboard/payroll',
+        module: 'Payroll',
         children: [
             { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure' },
             { id: 'payslips', label: 'Payslips', path: '/dashboard/payroll/payslips' },
@@ -79,6 +83,8 @@ const menuItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const { user, logout } = useAuth();
+    const { hasHRMS, hasPayroll } = usePermissions();
     const [expandedItems, setExpandedItems] = useState(['employees', 'payroll']);
 
     const toggleExpand = (itemId) => {
@@ -98,6 +104,13 @@ export default function Sidebar() {
         return false;
     };
 
+    const filteredMenuItems = menuItems.filter(item => {
+        if (!item.module) return true;
+        if (item.module === 'HRMS') return hasHRMS;
+        if (item.module === 'Payroll') return hasPayroll;
+        return true;
+    });
+
     return (
         <aside className="sidebar">
             {/* Logo */}
@@ -110,7 +123,7 @@ export default function Sidebar() {
             <div className="sidebar__menu-label">MAIN MENU</div>
 
             <nav className="sidebar__nav">
-                {menuItems.map(item => {
+                {filteredMenuItems.map(item => {
                     const Icon = item.icon;
                     const hasChildren = item.children && item.children.length > 0;
                     const isExpanded = expandedItems.includes(item.id);
@@ -166,13 +179,18 @@ export default function Sidebar() {
             <div className="sidebar__footer">
                 <div className="sidebar__user">
                     <div className="sidebar__user-avatar">
-                        <span>AM</span>
+                        <span>{user?.name?.split(' ').map(n => n[0]).join('') || 'U'}</span>
                     </div>
                     <div className="sidebar__user-info">
-                        <span className="sidebar__user-name">Alex Morgan</span>
-                        <span className="sidebar__user-role">Administrator</span>
+                        <span className="sidebar__user-name">{user?.name || 'User'}</span>
+                        <span className="sidebar__user-role">
+                            {user?.subscription_plan === 'both' ? 'Enterprise Plan' :
+                                user?.subscription_plan === 'hrms' ? 'HRMS Plan' :
+                                    user?.subscription_plan === 'payroll' ? 'Payroll Plan' :
+                                        'Free Plan'}
+                        </span>
                     </div>
-                    <button className="sidebar__logout-btn">
+                    <button className="sidebar__logout-btn" onClick={logout}>
                         <LogOut size={18} />
                     </button>
                 </div>

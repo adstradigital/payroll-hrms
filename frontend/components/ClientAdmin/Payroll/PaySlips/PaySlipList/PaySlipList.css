@@ -1,0 +1,197 @@
+/* ===================================
+   PaySlip List Styles
+   =================================== */
+
+.payslip-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* Summary Cards */
+.payslip-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-md);
+}
+
+.summary-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.summary-card__label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.summary-card__value {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+
+.summary-card__value--success {
+    color: var(--color-success);
+}
+
+.summary-card__value--danger {
+    color: var(--color-danger);
+}
+
+/* Toolbar */
+.payslip-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.payslip-toolbar__left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.payslip-search {
+    position: relative;
+}
+
+.payslip-search__icon {
+    position: absolute;
+    left: var(--spacing-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.payslip-search__input {
+    padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) 36px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    width: 220px;
+}
+
+.payslip-month-picker {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+}
+
+/* Table */
+.payslip-table-container {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.payslip-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.payslip-table th {
+    background: var(--bg-tertiary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    text-align: left;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.payslip-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.payslip-table tr:last-child td {
+    border-bottom: none;
+}
+
+.payslip-table tr:hover td {
+    background: var(--bg-tertiary);
+}
+
+/* Employee Cell */
+.employee-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.employee-cell__avatar {
+    width: 36px;
+    height: 36px;
+    background: var(--brand-primary-light);
+    color: var(--brand-primary);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.employee-cell__info {
+    display: flex;
+    flex-direction: column;
+}
+
+.employee-cell__name {
+    font-weight: var(--font-weight-medium);
+}
+
+.employee-cell__id {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+/* Text utilities */
+.text-danger {
+    color: var(--color-danger);
+}
+
+.text-success {
+    color: var(--color-success);
+}
+
+.font-bold {
+    font-weight: var(--font-weight-bold);
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.action-btn {
+    padding: var(--spacing-xs);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.action-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--brand-primary);
+}

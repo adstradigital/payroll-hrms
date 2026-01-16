@@ -1,13 +1,14 @@
-import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
-import { Users, Clock, Calendar, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
-import './dashboard-page.css';
+'use client';
 
-export const metadata = {
-    title: 'Dashboard | HRMS Payroll',
-};
+import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
+import { useAuth } from '@/context/AuthContext';
+import { Users, Clock, Calendar, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function DashboardPage() {
+    const { user } = useAuth();
+
     const stats = [
+        // ... (rest of stats)
         {
             label: 'Total Employees',
             value: '156',
@@ -45,7 +46,7 @@ export default function DashboardPage() {
     return (
         <Dashboard
             title="Dashboard"
-            subtitle="Welcome back! Here's your company overview."
+            subtitle={`Welcome back, ${user?.name || 'User'}! Here's your company overview.`}
             breadcrumbs={['Dashboard']}
         >
             {/* Stats Grid */}

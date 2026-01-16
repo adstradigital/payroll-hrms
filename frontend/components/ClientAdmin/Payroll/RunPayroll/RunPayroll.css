@@ -1,0 +1,174 @@
+/* Run Payroll Styles */
+.run-payroll {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Progress Steps */
+.payroll-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+}
+
+.payroll-step {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.payroll-step__number {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-muted);
+}
+
+.payroll-step--active .payroll-step__number {
+    background: var(--brand-primary);
+    color: white;
+}
+
+.payroll-step__label {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+.payroll-step--active .payroll-step__label {
+    color: var(--text-primary);
+    font-weight: var(--font-weight-medium);
+}
+
+.payroll-step__line {
+    width: 60px;
+    height: 2px;
+    background: var(--border-color);
+}
+
+/* Content */
+.payroll-content {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-lg);
+    text-align: center;
+}
+
+.payroll-title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+}
+
+.period-selector {
+    padding: var(--spacing-lg);
+}
+
+.period-input {
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: var(--font-size-lg);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.summary-preview {
+    display: flex;
+    gap: var(--spacing-lg);
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* Review Cards */
+.review-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    width: 100%;
+}
+
+.review-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.review-card--highlight {
+    background: var(--brand-primary-light);
+    border-color: var(--brand-primary);
+}
+
+.review-card__label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.review-card__value {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+
+.payroll-actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.btn-lg {
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: var(--font-size-md);
+}
+
+/* Complete */
+.payroll-complete {
+    padding: var(--spacing-2xl);
+}
+
+.complete-icon {
+    color: var(--color-success);
+}
+
+.complete-message {
+    color: var(--text-secondary);
+    max-width: 400px;
+}
+
+.complete-actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.text-success {
+    color: var(--color-success);
+}
+
+.text-danger {
+    color: var(--color-danger);
+}
+
+.text-warning {
+    color: var(--color-warning);
+}

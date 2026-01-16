@@ -1,0 +1,19 @@
+'use client';
+
+import PaySlipList from '@/components/ClientAdmin/Payroll/PaySlips/PaySlipList/PaySlipList';
+import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
+import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
+
+export default function PaySlipsPage() {
+    return (
+        <Dashboard
+            title="PaySlips"
+            subtitle="View and download employee monthly payslips"
+            breadcrumbs={['Dashboard', 'Payroll', 'Payslips']}
+        >
+            <ModuleGuard module="Payroll">
+                <PaySlipList />
+            </ModuleGuard>
+        </Dashboard>
+    );
+}
