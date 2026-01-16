@@ -1,0 +1,194 @@
+/* ===================================
+   HRMS Payroll - Theme System
+   Use these variables throughout the app
+   =================================== */
+
+:root {
+    /* ========== Color Palette ========== */
+
+    /* Brand Colors */
+    --brand-primary: #4f46e5;
+    /* Indigo */
+    --brand-primary-hover: #4338ca;
+    --brand-primary-light: #eef2ff;
+    --brand-secondary: #6366f1;
+
+    /* Status Colors */
+    --color-success: #10b981;
+    --color-success-light: #d1fae5;
+    --color-warning: #f59e0b;
+    --color-warning-light: #fef3c7;
+    --color-danger: #ef4444;
+    --color-danger-light: #fee2e2;
+    --color-info: #3b82f6;
+    --color-info-light: #dbeafe;
+
+    /* ========== Typography ========== */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-size-xs: 0.75rem;
+    /* 12px */
+    --font-size-sm: 0.875rem;
+    /* 14px */
+    --font-size-md: 1rem;
+    /* 16px */
+    --font-size-lg: 1.125rem;
+    /* 18px */
+    --font-size-xl: 1.25rem;
+    /* 20px */
+    --font-size-2xl: 1.5rem;
+    /* 24px */
+    --font-size-3xl: 1.875rem;
+    /* 30px */
+
+    /* Font Weights */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* ========== Spacing ========== */
+    --spacing-xs: 0.25rem;
+    /* 4px */
+    --spacing-sm: 0.5rem;
+    /* 8px */
+    --spacing-md: 1rem;
+    /* 16px */
+    --spacing-lg: 1.5rem;
+    /* 24px */
+    --spacing-xl: 2rem;
+    /* 32px */
+    --spacing-2xl: 3rem;
+    /* 48px */
+
+    /* ========== Border Radius ========== */
+    --radius-sm: 0.25rem;
+    /* 4px */
+    --radius-md: 0.5rem;
+    /* 8px */
+    --radius-lg: 0.75rem;
+    /* 12px */
+    --radius-xl: 1rem;
+    /* 16px */
+    --radius-full: 9999px;
+
+    /* ========== Layout ========== */
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 80px;
+    --header-height: 64px;
+
+    /* ========== Transitions ========== */
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --transition-slow: 350ms ease;
+
+    /* ========== Z-Index Scale ========== */
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 400;
+    --z-modal: 500;
+    --z-tooltip: 600;
+    --z-toast: 700;
+}
+
+
+/* ========================================
+   LIGHT THEME (Default)
+   ======================================== */
+
+[data-theme="light"],
+:root {
+    /* Backgrounds */
+    --bg-primary: #f8fafc;
+    /* Main page background */
+    --bg-secondary: #ffffff;
+    /* Cards, panels */
+    --bg-tertiary: #f1f5f9;
+    /* Hover states, subtle */
+    --bg-sidebar: #1e293b;
+    /* Dark sidebar */
+    --bg-sidebar-active: #334155;
+    /* Active menu item */
+
+    /* Text Colors */
+    --text-primary: #1e293b;
+    /* Main text */
+    --text-secondary: #64748b;
+    /* Secondary text */
+    --text-muted: #94a3b8;
+    /* Muted/disabled */
+    --text-inverse: #ffffff;
+    /* Text on dark backgrounds */
+    --text-sidebar: #cbd5e1;
+    /* Sidebar text */
+    --text-sidebar-active: #ffffff;
+
+    /* Borders */
+    --border-color: #e2e8f0;
+    --border-color-focus: var(--brand-primary);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+    /* Cards */
+    --card-bg: var(--bg-secondary);
+    --card-border: var(--border-color);
+    --card-shadow: var(--shadow-md);
+
+    /* Inputs */
+    --input-bg: var(--bg-secondary);
+    --input-border: var(--border-color);
+    --input-focus-ring: var(--brand-primary-light);
+}
+
+
+/* ========================================
+   DARK THEME
+   ======================================== */
+
+[data-theme="dark"] {
+    /* Backgrounds */
+    --bg-primary: #0f172a;
+    /* Main page background */
+    --bg-secondary: #1e293b;
+    /* Cards, panels */
+    --bg-tertiary: #334155;
+    /* Hover states */
+    --bg-sidebar: #0f172a;
+    /* Sidebar (same as main in dark) */
+    --bg-sidebar-active: #1e293b;
+
+    /* Text Colors */
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-inverse: #0f172a;
+    --text-sidebar: #94a3b8;
+    --text-sidebar-active: #ffffff;
+
+    /* Borders */
+    --border-color: #334155;
+    --border-color-focus: var(--brand-primary);
+
+    /* Shadows (more subtle in dark mode) */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4);
+
+    /* Cards */
+    --card-bg: var(--bg-secondary);
+    --card-border: var(--border-color);
+    --card-shadow: var(--shadow-md);
+
+    /* Inputs */
+    --input-bg: #0f172a;
+    --input-border: #475569;
+    --input-focus-ring: rgba(79, 70, 229, 0.3);
+
+    /* Adjusted brand colors for dark mode */
+    --brand-primary-light: rgba(79, 70, 229, 0.2);
+}

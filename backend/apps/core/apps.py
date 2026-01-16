@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class PayrollConfig(AppConfig):
+class CoreConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.payroll'
-    verbose_name = 'Payroll'
+    name = 'apps.core'
+    verbose_name = 'Core'

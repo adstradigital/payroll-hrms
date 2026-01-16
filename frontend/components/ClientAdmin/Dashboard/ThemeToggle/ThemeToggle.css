@@ -1,0 +1,56 @@
+/* ===================================
+   Theme Toggle Button Styles
+   =================================== */
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.theme-toggle__track {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-normal);
+}
+
+.theme-toggle__track--dark {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.theme-toggle__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 22px;
+    height: 22px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--transition-normal);
+}
+
+.theme-toggle__track--dark .theme-toggle__thumb {
+    transform: translateX(24px);
+    background: var(--bg-secondary);
+}
+
+.theme-toggle__icon {
+    color: var(--color-warning);
+}
+
+.theme-toggle__track--dark .theme-toggle__icon {
+    color: var(--brand-primary);
+}
