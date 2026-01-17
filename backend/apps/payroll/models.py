@@ -1,5 +1,5 @@
 from django.db import models
-from apps.core.models import Company, Employee
+from apps.accounts.models import Organization, Employee
 from decimal import Decimal
 
 
@@ -17,7 +17,7 @@ class SalaryComponent(models.Model):
         ('formula', 'Custom Formula'),
     ]
     
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='salary_components')
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='salary_components')
     name = models.CharField(max_length=100)  # Basic, HRA, Conveyance, PF, etc.
     code = models.CharField(max_length=20)
     component_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
@@ -55,7 +55,7 @@ class SalaryComponent(models.Model):
 
 class SalaryStructure(models.Model):
     """Template for employee salary composition"""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='salary_structures')
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='salary_structures')
     name = models.CharField(max_length=100)  # Manager Grade, Executive Grade, etc.
     code = models.CharField(max_length=20, blank=True)
     description = models.TextField(blank=True)
@@ -156,7 +156,7 @@ class PayrollPeriod(models.Model):
         ('cancelled', 'Cancelled'),
     ]
     
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='payroll_periods')
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='payroll_periods')
     name = models.CharField(max_length=50)  # January 2026, etc.
     month = models.PositiveIntegerField()  # 1-12
     year = models.PositiveIntegerField()

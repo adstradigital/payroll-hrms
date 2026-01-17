@@ -1,12 +1,12 @@
 from django.test import TestCase
-from apps.core.models import Company, Employee
+from apps.accounts.models import Organization, Employee
 from .models import Shift, Attendance
 from datetime import date, time
 
 
 class AttendanceModelTest(TestCase):
     def setUp(self):
-        self.company = Company.objects.create(name="Test Corp")
+        self.company = Organization.objects.create(name="Test Corp", slug="test-corp")
         self.employee = Employee.objects.create(
             employee_id="EMP001",
             company=self.company,
@@ -17,6 +17,7 @@ class AttendanceModelTest(TestCase):
         self.shift = Shift.objects.create(
             company=self.company,
             name="General",
+            code="GEN",
             start_time=time(9, 0),
             end_time=time(18, 0)
         )

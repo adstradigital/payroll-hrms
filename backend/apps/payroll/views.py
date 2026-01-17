@@ -8,7 +8,7 @@ from datetime import date
 from calendar import monthrange
 from decimal import Decimal
 
-from apps.core.models import Employee
+from apps.accounts.models import Employee
 from apps.attendance.models import Attendance
 from apps.leave.models import LeaveRequest
 

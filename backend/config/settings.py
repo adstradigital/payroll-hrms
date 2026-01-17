@@ -36,6 +36,8 @@ INSTALLED_APPS = [
     'django_filters',
 
     # Local apps - Core (shared)
+    'apps.accounts',
+    'apps.subscriptions',
     'apps.core',
     'apps.attendance',
     'apps.leave',
@@ -44,7 +46,6 @@ INSTALLED_APPS = [
     'apps.payroll',
     'apps.hrms',
     'apps.reports',
-    'apps.subscriptions',
 ]
 
 MIDDLEWARE = [
@@ -121,6 +122,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Media files
 MEDIA_URL = '/media/'
@@ -128,6 +130,14 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # CORS Configuration
 CORS_ALLOW_ALL_ORIGINS = True  # For development only
+
+# CSRF Configuration
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -1,11 +1,11 @@
 from django.db import models
-from apps.core.models import Company, Employee
+from apps.accounts.models import Organization, Employee
 from datetime import date
 
 
 class LeaveType(models.Model):
     """Types of leaves available in the company"""
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='leave_types')
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='leave_types')
     name = models.CharField(max_length=50)  # Casual Leave, Sick Leave, etc.
     code = models.CharField(max_length=10)  # CL, SL, EL, etc.
     description = models.TextField(blank=True)

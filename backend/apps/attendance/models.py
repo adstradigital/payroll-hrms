@@ -4,7 +4,7 @@ from django.utils import timezone
 
 
 class Shift(models.Model):
-    company = models.ForeignKey('core.Company', on_delete=models.CASCADE)
+    company = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=50)
     start_time = models.TimeField()
@@ -17,7 +17,7 @@ class Shift(models.Model):
 
 
 class EmployeeShiftAssignment(models.Model):
-    employee = models.ForeignKey('core.Employee', on_delete=models.CASCADE)
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE)
     shift = models.ForeignKey(Shift, on_delete=models.CASCADE)
     effective_from = models.DateField()
     effective_to = models.DateField(null=True, blank=True)
@@ -25,7 +25,7 @@ class EmployeeShiftAssignment(models.Model):
 
 
 class AttendancePolicy(models.Model):
-    company = models.ForeignKey('core.Company', on_delete=models.CASCADE)
+    company = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE)
     late_grace_minutes = models.PositiveIntegerField(default=0)
     half_day_after_minutes = models.PositiveIntegerField(default=0)
 
@@ -41,7 +41,7 @@ class Attendance(models.Model):
         ('work_from_home', 'WFH'),
     )
 
-    employee = models.ForeignKey('core.Employee', on_delete=models.CASCADE)
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE)
     shift = models.ForeignKey(Shift, null=True, blank=True, on_delete=models.SET_NULL)
     date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
@@ -75,11 +75,11 @@ class AttendanceRegularization(models.Model):
     )
 
     attendance = models.ForeignKey(Attendance, on_delete=models.CASCADE)
-    employee = models.ForeignKey('core.Employee', on_delete=models.CASCADE)
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE)
     reason = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS, default='pending')
     reviewed_by = models.ForeignKey(
-        'core.Employee', null=True, blank=True,
+        'accounts.Employee', null=True, blank=True,
         related_name='reviewed_regularizations',
         on_delete=models.SET_NULL
     )
@@ -88,7 +88,7 @@ class AttendanceRegularization(models.Model):
 
 
 class Holiday(models.Model):
-    company = models.ForeignKey('core.Company', on_delete=models.CASCADE)
+    company = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE)
     name = models.CharField(max_length=150)
     date = models.DateField()
     holiday_type = models.CharField(max_length=50)
@@ -96,7 +96,7 @@ class Holiday(models.Model):
 
 
 class AttendanceSummary(models.Model):
-    employee = models.ForeignKey('core.Employee', on_delete=models.CASCADE)
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE)
     month = models.PositiveIntegerField()
     year = models.PositiveIntegerField()
     total_working_days = models.PositiveIntegerField(default=0)

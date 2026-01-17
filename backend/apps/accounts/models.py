@@ -26,67 +26,105 @@ class BaseModel(models.Model):
         ordering = ['-created_at']
 
 
-class Company(BaseModel):
-    """Company/Organization Model"""
+# ==================== ORGANIZATION MODEL ====================
+
+class Organization(BaseModel):
+    """Organization/Company - Can be parent or subsidiary"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=150, unique=True)
+    name = models.CharField(max_length=150, db_index=True)
+    slug = models.SlugField(max_length=150, unique=True, blank=True)
+    
+    # Contact
     email = models.EmailField(blank=True, null=True, validators=[EmailValidator()])
     phone_regex = RegexValidator(
         regex=r'^\+?1?\d{9,15}$',
-        message="Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed."
+        message="Phone format: '+999999999'. Up to 15 digits."
     )
     phone = models.CharField(validators=[phone_regex], max_length=20, blank=True)
+    
+    # Address
     address = models.TextField(blank=True)
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=100, blank=True)
     country = models.CharField(max_length=100, blank=True)
     pincode = models.CharField(max_length=10, blank=True)
     
-    gstin = models.CharField(
-        max_length=15, 
-        blank=True,
-        validators=[RegexValidator(
-            regex=r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$',
-            message='Invalid GSTIN format'
-        )]
-    )
-    pan = models.CharField(
-        max_length=10,
-        blank=True,
-        validators=[RegexValidator(
-            regex=r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$',
-            message='Invalid PAN format'
-        )]
-    )
+    # Legal
+    gstin = models.CharField(max_length=15, blank=True)
+    pan = models.CharField(max_length=10, blank=True)
+    tax_id = models.CharField(max_length=50, blank=True)
     
-    logo = models.ImageField(upload_to='company/logos/', null=True, blank=True)
+    # Branding
+    logo = models.ImageField(upload_to='organizations/logos/', null=True, blank=True)
     website = models.URLField(blank=True)
     
+    # Hierarchy
+    is_parent = models.BooleanField(default=True)
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='subsidiaries'
+    )
+    
+    # Status
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
     
-    # Additional fields
+    # Metadata
     employee_count = models.PositiveIntegerField(default=0)
     established_date = models.DateField(null=True, blank=True)
+    industry = models.CharField(max_length=100, blank=True)
+    
+    # Settings
+    settings = models.JSONField(default=dict, blank=True)
     
     class Meta:
-        verbose_name_plural = 'Companies'
+        verbose_name_plural = 'Organizations'
         indexes = [
             models.Index(fields=['name', 'is_active']),
-            models.Index(fields=['gstin']),
+            models.Index(fields=['parent', 'is_active']),
         ]
+        unique_together = [('parent', 'name')]
 
     def __str__(self):
         return self.name
-
+    
+    def get_all_subsidiaries(self):
+        """Get all subsidiaries recursively"""
+        subs = list(self.subsidiaries.filter(is_active=True))
+        for sub in list(subs):
+            subs.extend(sub.get_all_subsidiaries())
+        return subs
+    
+    def get_root_parent(self):
+        """Get the root/main parent organization"""
+        if self.parent:
+            return self.parent.get_root_parent()
+        return self
+    
     def get_active_employees_count(self):
-        return self.employee_set.filter(status='active').count()
+        return self.employees.filter(status='active').count()
 
+
+# ==================== COMPANY MODEL (Alias to Organization) ====================
+
+class Company(Organization):
+    """Proxy model for Organization - for backward compatibility"""
+    class Meta:
+        proxy = True
+        verbose_name = 'Company'
+        verbose_name_plural = 'Companies'
+
+
+# ==================== DEPARTMENT MODEL ====================
 
 class Department(BaseModel):
     """Department Model with hierarchical structure"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='departments')
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='departments')
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20)
     description = models.TextField(blank=True)
@@ -134,13 +172,15 @@ class Department(BaseModel):
         return children
 
     def get_employee_count(self):
-        return self.employee_set.filter(status='active').count()
+        return self.employees.filter(status='active').count()
 
+
+# ==================== DESIGNATION MODEL ====================
 
 class Designation(BaseModel):
     """Designation/Job Title Model"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='designations')
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='designations')
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20)
     description = models.TextField(blank=True)
@@ -166,6 +206,8 @@ class Designation(BaseModel):
     def __str__(self):
         return self.name
 
+
+# ==================== EMPLOYEE MODEL ====================
 
 class Employee(BaseModel):
     """Employee Model with comprehensive fields"""
@@ -220,7 +262,7 @@ class Employee(BaseModel):
         blank=True,
         related_name='employee_profile'
     )
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='employees')
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='employees')
     department = models.ForeignKey(
         Department, 
         on_delete=models.SET_NULL,
@@ -369,7 +411,8 @@ class Employee(BaseModel):
         if self.confirmation_date:
             return False
         if self.date_of_joining:
-            probation_end = self.date_of_joining + timezone.timedelta(days=30 * self.probation_period_months)
+            from datetime import timedelta
+            probation_end = self.date_of_joining + timedelta(days=30 * self.probation_period_months)
             return timezone.now().date() < probation_end
         return False
 
@@ -387,6 +430,8 @@ class Employee(BaseModel):
             subordinates.extend(subordinate.get_all_subordinates())
         return subordinates
 
+
+# ==================== EMPLOYEE DOCUMENT MODEL ====================
 
 class EmployeeDocument(BaseModel):
     """Employee Documents Model"""
@@ -420,6 +465,8 @@ class EmployeeDocument(BaseModel):
         return f"{self.employee.full_name} - {self.title}"
 
 
+# ==================== EMPLOYEE EDUCATION MODEL ====================
+
 class EmployeeEducation(BaseModel):
     """Employee Education History"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -439,6 +486,8 @@ class EmployeeEducation(BaseModel):
         return f"{self.employee.full_name} - {self.degree}"
 
 
+# ==================== EMPLOYEE EXPERIENCE MODEL ====================
+
 class EmployeeExperience(BaseModel):
     """Employee Work Experience History"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -456,3 +505,102 @@ class EmployeeExperience(BaseModel):
 
     def __str__(self):
         return f"{self.employee.full_name} - {self.company_name}"
+
+
+# ==================== INVITE CODE MODEL ====================
+
+class InviteCode(BaseModel):
+    """Employee invitation codes"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=20, unique=True, db_index=True)
+    email = models.EmailField(db_index=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='invite_codes'
+    )
+    
+    # Employee details (if known)
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
+    designation = models.CharField(max_length=100, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    
+    # Status
+    is_used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+    used_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='used_invites'
+    )
+    
+    # Expiry
+    expires_at = models.DateTimeField()
+    
+    # Invite type
+    role = models.CharField(
+        max_length=50,
+        default='employee',
+        help_text="admin, manager, employee, etc."
+    )
+    
+    # Metadata
+    sent_at = models.DateTimeField(null=True, blank=True)
+    reminder_sent_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['code', 'is_used']),
+            models.Index(fields=['email', 'organization']),
+            models.Index(fields=['expires_at', 'is_used']),
+        ]
+        
+    def __str__(self):
+        return f"{self.code} - {self.email}"
+    
+    @property
+    def is_expired(self):
+        """Check if invite code is expired"""
+        return timezone.now() > self.expires_at
+    
+    @property
+    def is_valid(self):
+        """Check if invite code is valid"""
+        return not self.is_used and not self.is_expired
+
+
+# ==================== NOTIFICATION PREFERENCES ====================
+
+class NotificationPreference(BaseModel):
+    """User notification preferences"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='notification_preferences'
+    )
+    
+    # Email notifications
+    email_subscription_expiry = models.BooleanField(default=True)
+    email_payment_success = models.BooleanField(default=True)
+    email_payment_failed = models.BooleanField(default=True)
+    email_feature_updates = models.BooleanField(default=True)
+    email_weekly_reports = models.BooleanField(default=False)
+    
+    # In-app notifications
+    inapp_subscription_alerts = models.BooleanField(default=True)
+    inapp_payment_alerts = models.BooleanField(default=True)
+    inapp_system_updates = models.BooleanField(default=True)
+    
+    # SMS notifications
+    sms_payment_alerts = models.BooleanField(default=False)
+    sms_critical_alerts = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name_plural = 'Notification Preferences'
+        
+    def __str__(self):
+        return f"Preferences for {self.user.email}"

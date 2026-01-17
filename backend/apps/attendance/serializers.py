@@ -19,6 +19,22 @@ class AttendanceSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class AttendanceDetailSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    shift_name = serializers.CharField(source='shift.name', read_only=True)
+    
+    class Meta:
+        model = Attendance
+        fields = "__all__"
+
+
+class BulkAttendanceSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    employees = serializers.ListField(child=serializers.UUIDField())
+    status = serializers.ChoiceField(choices=Attendance.STATUS_CHOICES)
+    remarks = serializers.CharField(required=False, allow_blank=True)
+
+
 class AttendancePunchSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendancePunch
