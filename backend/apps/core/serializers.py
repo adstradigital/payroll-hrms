@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Company, Department, Designation, Employee, BankDetails
+from .models import Company, Department, Designation, Employee
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -11,7 +11,7 @@ class CompanySerializer(serializers.ModelSerializer):
 class DepartmentSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     parent_name = serializers.CharField(source='parent.name', read_only=True)
-    
+
     class Meta:
         model = Department
         fields = '__all__'
@@ -19,57 +19,47 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 class DesignationSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
-    
+
     class Meta:
         model = Designation
         fields = '__all__'
 
 
-class BankDetailsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BankDetails
-        fields = '__all__'
-
-
 class EmployeeListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for list views"""
     department_name = serializers.CharField(source='department.name', read_only=True)
     designation_name = serializers.CharField(source='designation.name', read_only=True)
     full_name = serializers.ReadOnlyField()
-    
+
     class Meta:
         model = Employee
         fields = [
-            'id', 'employee_id', 'first_name', 'last_name', 'full_name',
-            'email', 'phone', 'department', 'department_name', 
-            'designation', 'designation_name', 'status', 'date_of_joining',
-            'profile_photo'
+            'id', 'employee_id', 'full_name', 'email',
+            'department', 'department_name',
+            'designation', 'designation_name',
+            'status', 'date_of_joining'
         ]
 
 
 class EmployeeDetailSerializer(serializers.ModelSerializer):
-    """Full serializer for detail/edit views"""
     department_name = serializers.CharField(source='department.name', read_only=True)
     designation_name = serializers.CharField(source='designation.name', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    reporting_manager_name = serializers.CharField(source='reporting_manager.full_name', read_only=True)
+    reporting_manager_name = serializers.CharField(
+        source='reporting_manager.full_name', read_only=True
+    )
     full_name = serializers.ReadOnlyField()
-    bank_accounts = BankDetailsSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Employee
         fields = '__all__'
 
 
 class EmployeeCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for creating/updating employees"""
-    
     class Meta:
         model = Employee
         fields = '__all__'
-    
+
     def validate_employee_id(self, value):
-        # On update, allow same employee_id
         if self.instance and self.instance.employee_id == value:
             return value
         if Employee.objects.filter(employee_id=value).exists():

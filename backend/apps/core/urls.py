@@ -1,14 +1,18 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import CompanyViewSet, DepartmentViewSet, DesignationViewSet, EmployeeViewSet, BankDetailsViewSet
-
-router = DefaultRouter()
-router.register(r'companies', CompanyViewSet)
-router.register(r'departments', DepartmentViewSet)
-router.register(r'designations', DesignationViewSet)
-router.register(r'employees', EmployeeViewSet)
-router.register(r'bank-details', BankDetailsViewSet)
+from django.urls import path
+from .views import (
+    CompanyListCreateView, CompanyDetailView,
+    DepartmentListCreateView,
+    DesignationListCreateView,
+    EmployeeListCreateView, EmployeeDetailView
+)
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('companies/', CompanyListCreateView.as_view()),
+    path('companies/<int:pk>/', CompanyDetailView.as_view()),
+
+    path('departments/', DepartmentListCreateView.as_view()),
+    path('designations/', DesignationListCreateView.as_view()),
+
+    path('employees/', EmployeeListCreateView.as_view()),
+    path('employees/<int:pk>/', EmployeeDetailView.as_view()),
 ]
