@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Clock, Play, Pause, RotateCcw,
-    ArrowRight, LogIn, LogOut, Globe,
-    ChevronDown
+    ArrowRight, LogIn, LogOut,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
 import './ClockAttendanceWidget.css';
 
 export default function ClockAttendanceWidget() {
     const [isOpen, setIsOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false); // NEW: Badge collapse state
     const [time, setTime] = useState(new Date());
-    const [activeTab, setActiveTab] = useState('attendance'); // 'attendance', 'clock', 'stopwatch'
+    const [activeTab, setActiveTab] = useState('attendance');
 
     // Stopwatch State
     const [stopwatchTime, setStopwatchTime] = useState(0);
@@ -68,6 +69,19 @@ export default function ClockAttendanceWidget() {
         }
     };
 
+    // Handle collapse toggle (left chevron click)
+    const handleCollapseToggle = (e) => {
+        e.stopPropagation();
+        setIsCollapsed(!isCollapsed);
+    };
+
+    // Handle opening the drawer (clicking on the main badge content)
+    const handleOpenDrawer = () => {
+        if (!isCollapsed) {
+            setIsOpen(true);
+        }
+    };
+
     const formatStopwatch = (time) => {
         const minutes = Math.floor((time / 60000) % 60);
         const seconds = Math.floor((time / 1000) % 60);
@@ -89,27 +103,68 @@ export default function ClockAttendanceWidget() {
 
     return (
         <div className="clock-widget-container">
-            {/* 1. Closed State Badge */}
+            {/* Badge - Closed State (can be collapsed or expanded) */}
             {!isOpen && (
                 <div
-                    className={`clock-badge ${isClockedIn ? 'is-active' : ''}`}
-                    onClick={() => setIsOpen(true)}
+                    className={`clock-badge ${isClockedIn ? 'is-active' : ''} ${isCollapsed ? 'is-collapsed' : ''}`}
                 >
-                    <div className="clock-badge__info">
-                        <span className="clock-badge__day">{time.toLocaleDateString([], { weekday: 'short' })}</span>
-                        <span className="clock-badge__time">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {/* Collapse/Expand Handle - Always visible */}
+                    <div
+                        className="clock-badge__handle"
+                        onClick={handleCollapseToggle}
+                        title={isCollapsed ? 'Expand' : 'Collapse'}
+                    >
+                        {isCollapsed ? (
+                            <>
+                                <span className="clock-badge__handle-text">ATTENDANCE</span>
+                                <ChevronLeft size={14} />
+                            </>
+                        ) : (
+                            <ChevronRight size={16} />
+                        )}
                     </div>
-                    <div className="clock-badge__icon">
-                        <Clock size={20} />
+
+                    {/* Collapsible Content - Only visible when expanded */}
+                    <div className="clock-badge__collapsible" onClick={handleOpenDrawer}>
+                        {/* Title Label */}
+                        <div className="clock-badge__label">
+                            <span>ATTENDANCE</span>
+                        </div>
+
+                        {/* Main Content */}
+                        <div className="clock-badge__content">
+                            <div className="clock-badge__info">
+                                <span className="clock-badge__weekday">
+                                    {time.toLocaleDateString([], { weekday: 'short' }).toUpperCase()}
+                                </span>
+                                <span className="clock-badge__date">
+                                    {time.toLocaleDateString([], { month: 'short', day: 'numeric' }).toUpperCase()}
+                                </span>
+                                <span className="clock-badge__time">
+                                    {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Status Indicator */}
+                        <div className="clock-badge__status">
+                            <div className="clock-badge__status-icon">
+                                <Clock size={18} />
+                            </div>
+                            <span className="clock-badge__status-text">
+                                {isClockedIn ? 'IN' : 'OUT'}
+                            </span>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* 2. Expanded Drawer */}
+            {/* Overlay */}
             {isOpen && (
                 <div className="clock-overlay" onClick={() => setIsOpen(false)} />
             )}
 
+            {/* Expanded Drawer */}
             <div className={`clock-drawer ${isOpen ? 'is-open' : ''}`}>
                 <div className="clock-drawer__header">
                     <div className="clock-drawer__tabs">
@@ -133,7 +188,7 @@ export default function ClockAttendanceWidget() {
                         </button>
                     </div>
                     <button className="clock-drawer__close" onClick={() => setIsOpen(false)}>
-                        <ArrowRight size={20} />
+                        <ArrowRight size={18} />
                     </button>
                 </div>
 

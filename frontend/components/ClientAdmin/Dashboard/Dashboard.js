@@ -2,8 +2,8 @@
 
 import Sidebar from '@/components/ClientAdmin/Dashboard/Sidebar/Sidebar';
 import Header from '@/components/ClientAdmin/Dashboard/Header/Header';
-import FloatingQuickActions from '@/components/ClientAdmin/Dashboard/FloatingQuickActions';
-import ClockAttendanceWidget from '@/components/ClientAdmin/Dashboard/ClockAttendanceWidget';
+import FloatingQuickActions from '@/components/ClientAdmin/Dashboard/Widgets/FloatingQuickActions';
+import ClockAttendanceWidget from '@/components/ClientAdmin/Dashboard/Widgets/ClockAttendanceWidget';
 import { useAuth } from '@/context/AuthContext';
 import './Dashboard.css';
 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
     TrendingUp, TrendingDown, Users, CalendarPlus,
     Clock, DollarSign, Download, Building2, UserPlus, Wallet,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, GripVertical, CalendarDays
 } from 'lucide-react';
 
 export const StatCard = ({ title, value, trend, trendValue, icon: Icon, color }) => (
@@ -162,3 +162,92 @@ export const HolidayBanner = () => (
         </div>
     </div>
 );
+
+// Actions Widget - Shows pending actions count
+export const ActionsWidget = () => {
+    const actions = [
+        { label: 'Leave', count: 8, color: 'warning' },
+        { label: 'Payroll', count: 5, color: 'info' },
+        { label: 'Attendance', count: 3, color: 'success' },
+    ];
+
+    return (
+        <div className="action-widget">
+            <div className="action-widget__header">
+                <GripVertical size={16} className="drag-handle" />
+                <h3 className="action-widget__title">Actions</h3>
+            </div>
+            <div className="action-widget__list">
+                {actions.map((action, i) => (
+                    <div key={i} className="action-widget__item">
+                        <span className={`action-dot action-dot--${action.color}`}></span>
+                        <span className="action-label">{action.label}</span>
+                        <span className="action-count">{action.count}</span>
+                    </div>
+                ))}
+            </div>
+            <button className="action-widget__btn">All Actions</button>
+        </div>
+    );
+};
+
+// My Team Widget - Shows direct reports
+export const MyTeamWidget = () => {
+    const teamStats = [
+        { label: 'Present', count: 10 },
+        { label: 'WFH', count: 2 },
+    ];
+
+    return (
+        <div className="team-widget">
+            <div className="team-widget__header">
+                <GripVertical size={16} className="drag-handle" />
+                <h3 className="team-widget__title">My Team</h3>
+            </div>
+            <div className="team-widget__circle">
+                <span className="team-widget__count">12</span>
+                <div className="team-widget__info">
+                    <span className="team-widget__label">Direct Reports</span>
+                    <span className="team-widget__dept">Engineering</span>
+                </div>
+            </div>
+            <div className="team-widget__stats">
+                {teamStats.map((stat, i) => (
+                    <div key={i} className="team-stat">
+                        <span className="team-stat__label">{stat.label}</span>
+                        <span className="team-stat__value">{stat.count}</span>
+                    </div>
+                ))}
+            </div>
+            <button className="team-widget__btn">View Team</button>
+        </div>
+    );
+};
+
+// Next Run Widget - Payroll countdown
+export const NextRunWidget = () => {
+    return (
+        <div className="nextrun-widget">
+            <div className="nextrun-widget__header">
+                <span className="nextrun-widget__label">NEXT RUN</span>
+                <CalendarDays size={18} className="nextrun-icon" />
+            </div>
+            <div className="nextrun-widget__date">Jan 31</div>
+            <div className="nextrun-widget__countdown">
+                <span className="countdown-value">3</span>
+                <span className="countdown-label">days left</span>
+            </div>
+            <div className="nextrun-widget__stats">
+                <div className="nextrun-stat">
+                    <span className="nextrun-stat__label">Pending</span>
+                    <span className="nextrun-stat__value">12</span>
+                </div>
+                <div className="nextrun-stat">
+                    <span className="nextrun-stat__label">Processed</span>
+                    <span className="nextrun-stat__value">1236</span>
+                </div>
+            </div>
+            <button className="nextrun-widget__btn">View</button>
+        </div>
+    );
+};

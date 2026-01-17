@@ -163,6 +163,79 @@ User with "Both" subscription:
 
 ---
 
+## Theme System
+
+### Overview
+The app uses CSS variables defined in `styles/theme.css` for seamless light/dark mode switching. **Never hardcode colors** - always use theme variables.
+
+### Color Variables
+
+| Variable | Light Mode | Dark Mode | Usage |
+|----------|------------|-----------|-------|
+| `--brand-primary` | #4f46e5 (Indigo) | #f59e0b (Amber) | Primary accent, buttons, links |
+| `--brand-primary-light` | #eef2ff | rgba(245,158,11,0.2) | Backgrounds, hover states |
+| `--bg-primary` | #f1f5f9 | #000000 | Page background |
+| `--bg-secondary` | #ffffff | #0a0a0a | Cards, panels |
+| `--bg-tertiary` | #f8fafc | #171717 | Hover states, subtle backgrounds |
+| `--text-primary` | #0f172a | #fafafa | Main text |
+| `--text-secondary` | #475569 | #a3a3a3 | Secondary text |
+| `--text-muted` | #94a3b8 | #525252 | Muted/disabled text |
+| `--border-color` | #cbd5e1 | #262626 | Borders |
+| `--color-success` | #10b981 | #10b981 | Success states |
+| `--color-danger` | #ef4444 | #f43f5e | Danger/error states |
+| `--color-warning` | #f59e0b | #f59e0b | Warning states |
+
+### CSS Best Practices
+
+```css
+/* ✅ CORRECT - Uses theme variables */
+.my-component {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.my-button {
+    background: var(--brand-primary);
+    color: var(--accent-text);
+}
+
+/* ❌ WRONG - Hardcoded colors */
+.my-component {
+    background: #ffffff;
+    color: #333333;
+    border: 1px solid #e0e0e0;
+}
+```
+
+### Component Theme Checklist
+
+- [ ] All colors use CSS variables from `theme.css`
+- [ ] No hardcoded color values (hex, rgb, etc.)
+- [ ] No separate `[data-theme="dark"]` overrides (variables handle it)
+- [ ] Test component in both light AND dark mode before commit
+- [ ] Status colors use `--color-success/danger/warning`
+
+### Adding New Theme Variables
+
+If you need a new color variable:
+1. Add to `:root` in `theme.css` for light mode
+2. Add override in `[data-theme="dark"]` block
+3. Use descriptive name: `--component-element-state`
+
+```css
+/* In theme.css */
+:root {
+    --chart-bar-inactive: #e2e8f0;
+}
+
+[data-theme="dark"] {
+    --chart-bar-inactive: #404040;
+}
+```
+
+---
+
 ## Checklist Before Commit
 
 - [ ] No inline styles
@@ -170,3 +243,4 @@ User with "Both" subscription:
 - [ ] Component in correct module folder
 - [ ] CSS file alongside JS file
 - [ ] Page only imports component
+- [ ] Tested in both light AND dark mode

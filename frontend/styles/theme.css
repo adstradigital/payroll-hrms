@@ -138,6 +138,13 @@
     /* Accents */
     --accent-color: var(--brand-primary);
     --accent-text: #ffffff;
+
+    /* Charts - Bar colors that are visible against backgrounds */
+    --chart-bar: #c7d2fe;
+    /* Indigo 200 - visible on white */
+    --chart-bar-hover: #818cf8;
+    /* Indigo 400 - hover state */
+    --chart-bar-active: var(--brand-primary);
 }
 
 
@@ -198,4 +205,11 @@
     /* Accents */
     --accent-color: #f59e0b;
     --accent-text: #000000;
+
+    /* Charts - Amber/gold tones visible on dark backgrounds */
+    --chart-bar: #78716c;
+    /* Stone 500 - visible on black */
+    --chart-bar-hover: #d97706;
+    /* Amber 600 */
+    --chart-bar-active: var(--brand-primary);
 }

@@ -3,8 +3,9 @@
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 import {
     StatCard, AttendanceChart, MiniCalendar,
-    HolidayBanner, RecentActivityTable
-} from '@/components/ClientAdmin/Dashboard/Widgets';
+    HolidayBanner, RecentActivityTable,
+    ActionsWidget, MyTeamWidget, NextRunWidget
+} from '@/components/ClientAdmin/Dashboard/Widgets/Widgets';
 import {
     Users, Clock, Calendar, Wallet,
     Download, MoreVertical
@@ -81,6 +82,13 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Action Widgets Row */}
+            <div className="action-widgets-grid">
+                <ActionsWidget />
+                <MyTeamWidget />
+                <NextRunWidget />
             </div>
 
             {/* Bottom Section: Recent Activity & Calendar Widget */}
