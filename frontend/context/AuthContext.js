@@ -40,6 +40,8 @@ export function AuthProvider({ children }) {
         setUser(null);
         Cookies.remove('user');
         Cookies.remove('token');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
     };
 
     const updateSubscription = (plan) => {

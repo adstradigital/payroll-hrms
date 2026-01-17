@@ -2,336 +2,475 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { Building2, Mail, Lock, Eye, EyeOff, User, Phone, CheckCircle, ArrowRight, ArrowLeft, Shield, Zap, Globe } from 'lucide-react';
+import { register as apiRegister } from '@/api/api_clientadmin';
+import {
+    User as UserIcon,
+    CheckCircle as CheckCircleIcon,
+    AlertCircle as AlertCircleIcon,
+    Mail as MailIcon,
+    Building2 as Building2Icon,
+    ArrowRight as ArrowRightIcon,
+    Briefcase as BriefcaseIcon,
+    Phone as PhoneIcon,
+    Users as UsersIcon,
+    Plus as PlusIcon,
+    Trash2 as TrashIcon,
+    Building as BuildingIcon,
+    Layers as LayersIcon,
+    Lock as LockIcon
+} from 'lucide-react';
 import './Register.css';
 
 export default function Register() {
     const router = useRouter();
     const { login } = useAuth();
-    const [step, setStep] = useState(1); // 1: Company, 2: Admin User
+
+    // UI State for registration mode: Default is Single Company (False)
+    const [isMultiCompany, setIsMultiCompany] = useState(false);
+
     const [formData, setFormData] = useState({
-        // Company Details
-        companyName: '',
-        companyEmail: '',
-        companyPhone: '',
-        gstin: '',
-
-        // Admin User Details
-        firstName: '',
-        lastName: '',
+        // Organization Registration
+        organizationName: '',
+        companies: [{ id: Date.now(), name: '' }],
+        fullName: '',
         email: '',
+        phone: '',
+        employeeCount: '1-50',
         password: '',
-        confirmPassword: '',
-
-        // Subscription
-        plan: 'payroll', // payroll, hrms, both
     });
-    const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
 
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+
+    const [status, setStatus] = useState('idle'); // idle, loading, success, error
+    const [errorMessage, setErrorMessage] = useState('');
+
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+        if (status === 'error') {
+            setStatus('idle');
+            setErrorMessage('');
+        }
     };
 
-    const handleNextStep = (e) => {
-        e.preventDefault();
-        if (step === 1) {
-            setStep(2);
+    // Handlers for Dynamic Company Fields
+    const handleCompanyChange = (id, value) => {
+        setFormData(prev => ({
+            ...prev,
+            companies: prev.companies.map(company =>
+                company.id === id ? { ...company, name: value } : company
+            )
+        }));
+    };
+
+    const addCompanyField = () => {
+        setFormData(prev => ({
+            ...prev,
+            companies: [...prev.companies, { id: Date.now(), name: '' }]
+        }));
+    };
+
+    const removeCompanyField = (id) => {
+        if (formData.companies.length > 1) {
+            setFormData(prev => ({
+                ...prev,
+                companies: prev.companies.filter(company => company.id !== id)
+            }));
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
-            return;
-        }
-
-        setLoading(true);
-        setError('');
+        setStatus('loading');
 
         try {
-            // TODO: Replace with actual API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Validation
+            const isOrgNameValid = formData.organizationName.trim().length > 0;
+            const areCompaniesValid = isMultiCompany
+                ? formData.companies.some(c => c.name.trim() !== '')
+                : true;
+
+            if (!isOrgNameValid) {
+                throw new Error(isMultiCompany ? "Group Name is required." : "Company Name is required.");
+            }
+            if (isMultiCompany && !areCompaniesValid) {
+                throw new Error("At least one subsidiary company name is required.");
+            }
+            if (!formData.email || !formData.fullName) {
+                throw new Error("Please fill in all required fields.");
+            }
+
+            // Generate a temporary password if not provided
+            const tempPassword = formData.password || Math.random().toString(36).slice(-8) + 'A1!';
+
+            // Call real API
+            const response = await apiRegister({
+                email: formData.email,
+                password: tempPassword,
+                organizationName: formData.organizationName,
+                fullName: formData.fullName,
+                phone: formData.phone,
+                employeeCount: formData.employeeCount,
+                isMultiCompany: isMultiCompany,
+                companies: isMultiCompany ? formData.companies.filter(c => c.name.trim()) : []
+            });
+
+            // Store JWT tokens
+            const { access, refresh } = response.data.tokens;
+            localStorage.setItem('accessToken', access);
+            localStorage.setItem('refreshToken', refresh);
 
             // On success, use AuthContext's login and redirect
             login({
-                name: `${formData.firstName} ${formData.lastName}`,
+                name: formData.fullName,
                 email: formData.email,
-                company: formData.companyName,
-                subscription_plan: formData.plan,
-                role: 'owner'
+                company: formData.organizationName,
+                role: 'owner',
+                ...response.data.user
             });
-            router.push('/dashboard');
+
+            setStatus('success');
+            setTimeout(() => {
+                router.push('/dashboard');
+            }, 500);
         } catch (err) {
-            setError('Registration failed. Please try again.');
-        } finally {
-            setLoading(false);
+            setStatus('error');
+            const errorMsg = err.response?.data?.error ||
+                err.message ||
+                'Registration failed. Please try again.';
+            setErrorMessage(errorMsg);
         }
     };
 
+    const features = [
+        "Automated Salary Processing",
+        "Real-time Attendance Tracking",
+        "Comprehensive Tax Management"
+    ];
+
     return (
-        <div className="register-page">
-            <div className="register-container">
-                {/* Logo */}
-                <div className="register__logo">
-                    <div className="register__logo-icon">H</div>
-                    <span className="register__logo-text">HR Nexus</span>
+        <div className="auth-page">
+            {/* Left Side - Visual & Branding */}
+            <div className="auth-hero">
+                <div className="auth-hero__bg"></div>
+                <div className="auth-hero__shapes">
+                    <div className="auth-hero__shape auth-hero__shape--1"></div>
+                    <div className="auth-hero__shape auth-hero__shape--2"></div>
                 </div>
 
-                <div className="register__card">
-                    <h1 className="register__title">Create Account</h1>
-                    <p className="register__subtitle">
-                        {step === 1 ? 'Enter your company details' : 'Create your admin account'}
-                    </p>
-
-                    {/* Progress Steps */}
-                    <div className="register__steps">
-                        <div className={`register__step ${step >= 1 ? 'register__step--active' : ''}`}>
-                            <span className="register__step-number">1</span>
-                            <span className="register__step-label">Company</span>
+                <div className="auth-hero__content">
+                    <div className="auth-hero__logo">
+                        <div className="auth-hero__logo-icon">
+                            <Building2Icon size={28} />
                         </div>
-                        <div className="register__step-line"></div>
-                        <div className={`register__step ${step >= 2 ? 'register__step--active' : ''}`}>
-                            <span className="register__step-number">2</span>
-                            <span className="register__step-label">Admin</span>
+                        <span className="auth-hero__logo-text">Nexus HRMS</span>
+                    </div>
+
+                    <div className="auth-hero__text">
+                        <h2 className="auth-hero__title">
+                            {isMultiCompany
+                                ? "Multi-Company Payroll Management"
+                                : "Unified HR Platform"}
+                        </h2>
+                        <p className="auth-hero__subtitle">
+                            {isMultiCompany
+                                ? "Manage multiple legal entities, subsidiaries, and branches under a single unified organization account."
+                                : "Join over 5,000+ companies automating their payroll, attendance, and compliance with Nexus HRMS."}
+                        </p>
+
+                        <div className="auth-hero__features">
+                            {features.map((feature, idx) => (
+                                <div key={idx} className="auth-hero__feature">
+                                    <div className="auth-hero__feature-icon">
+                                        <CheckCircleIcon size={16} />
+                                    </div>
+                                    <span>{feature}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    {error && (
-                        <div className="register__error">{error}</div>
-                    )}
+                    <div className="auth-hero__footer">
+                        © 2024 Nexus Systems Inc. All rights reserved.
+                    </div>
+                </div>
+            </div>
 
-                    {/* Step 1: Company Details */}
-                    {step === 1 && (
-                        <form onSubmit={handleNextStep} className="register__form">
-                            <div className="register__field">
-                                <label className="register__label">Company Name</label>
-                                <div className="register__input-wrapper">
-                                    <Building2 size={18} className="register__input-icon" />
+            {/* Right Side - Form Container */}
+            <div className="auth-form-container">
+                <div className="auth-form-wrapper register-form-wrapper">
+                    {/* Mobile Header */}
+                    <div className="auth-mobile-header">
+                        <div className="auth-mobile-header__logo">
+                            <Building2Icon size={24} />
+                        </div>
+                        <span className="auth-mobile-header__text">Nexus HRMS</span>
+                    </div>
+
+                    <div className="auth-header">
+                        <h1 className="auth-header__title">
+                            {isMultiCompany ? "Register Group / Organization" : "Register Company"}
+                        </h1>
+                        <p className="auth-header__subtitle">
+                            {isMultiCompany
+                                ? "Create your master account and add your subsidiaries."
+                                : "Create your company account to get started."}
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="auth-form">
+                        {/* Alerts */}
+                        {status === 'error' && (
+                            <div className="auth-alert auth-alert--error">
+                                <AlertCircleIcon size={20} className="auth-alert__icon" />
+                                <span className="auth-alert__text">{errorMessage}</span>
+                            </div>
+                        )}
+                        {status === 'success' && (
+                            <div className="auth-alert auth-alert--success">
+                                <CheckCircleIcon size={20} className="auth-alert__icon" />
+                                <span className="auth-alert__text">Success! Redirecting to dashboard...</span>
+                            </div>
+                        )}
+
+                        <div className="auth-form__fields">
+                            {/* Organization Name */}
+                            <div className="auth-field">
+                                <div className="auth-field__header">
+                                    <label htmlFor="organizationName" className="auth-field__label">
+                                        {isMultiCompany ? "Organization / Group Name" : "Company Name"}
+                                    </label>
+                                    {!isMultiCompany && (
+                                        <span className="auth-field__hint">Legal Entity Name</span>
+                                    )}
+                                </div>
+                                <div className="auth-field__input-wrapper">
+                                    <div className="auth-field__icon">
+                                        <Building2Icon size={20} />
+                                    </div>
                                     <input
+                                        id="organizationName"
+                                        name="organizationName"
                                         type="text"
-                                        name="companyName"
-                                        value={formData.companyName}
-                                        onChange={handleChange}
-                                        placeholder="Enter company name"
-                                        className="register__input"
                                         required
+                                        placeholder={isMultiCompany ? "e.g. Tata Group" : "e.g. Acme Corp"}
+                                        className="auth-field__input"
+                                        value={formData.organizationName}
+                                        onChange={handleInputChange}
                                     />
                                 </div>
                             </div>
 
-                            <div className="register__field">
-                                <label className="register__label">Company Email</label>
-                                <div className="register__input-wrapper">
-                                    <Mail size={18} className="register__input-icon" />
-                                    <input
-                                        type="email"
-                                        name="companyEmail"
-                                        value={formData.companyEmail}
-                                        onChange={handleChange}
-                                        placeholder="company@example.com"
-                                        className="register__input"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="register__field">
-                                <label className="register__label">Phone Number</label>
-                                <div className="register__input-wrapper">
-                                    <Phone size={18} className="register__input-icon" />
-                                    <input
-                                        type="tel"
-                                        name="companyPhone"
-                                        value={formData.companyPhone}
-                                        onChange={handleChange}
-                                        placeholder="+91 XXXXX XXXXX"
-                                        className="register__input"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="register__field">
-                                <label className="register__label">GSTIN (Optional)</label>
-                                <div className="register__input-wrapper">
-                                    <Building2 size={18} className="register__input-icon" />
-                                    <input
-                                        type="text"
-                                        name="gstin"
-                                        value={formData.gstin}
-                                        onChange={handleChange}
-                                        placeholder="22AAAAA0000A1Z5"
-                                        className="register__input"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Subscription Plan */}
-                            <div className="register__field">
-                                <label className="register__label">Select Plan</label>
-                                <div className="register__plans">
-                                    <label className={`register__plan ${formData.plan === 'payroll' ? 'register__plan--selected' : ''}`}>
-                                        <input
-                                            type="radio"
-                                            name="plan"
-                                            value="payroll"
-                                            checked={formData.plan === 'payroll'}
-                                            onChange={handleChange}
-                                        />
-                                        <span className="register__plan-name">Payroll Only</span>
-                                    </label>
-                                    <label className={`register__plan ${formData.plan === 'hrms' ? 'register__plan--selected' : ''}`}>
-                                        <input
-                                            type="radio"
-                                            name="plan"
-                                            value="hrms"
-                                            checked={formData.plan === 'hrms'}
-                                            onChange={handleChange}
-                                        />
-                                        <span className="register__plan-name">HRMS Only</span>
-                                    </label>
-                                    <label className={`register__plan ${formData.plan === 'both' ? 'register__plan--selected' : ''}`}>
-                                        <input
-                                            type="radio"
-                                            name="plan"
-                                            value="both"
-                                            checked={formData.plan === 'both'}
-                                            onChange={handleChange}
-                                        />
-                                        <span className="register__plan-name">HRMS + Payroll</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <button type="submit" className="register__submit">
-                                Continue
+                            {/* Multi-Company Toggle */}
+                            <button
+                                type="button"
+                                onClick={() => setIsMultiCompany(!isMultiCompany)}
+                                className="register-toggle"
+                            >
+                                {isMultiCompany ? (
+                                    <>
+                                        <BuildingIcon size={14} />
+                                        Single company? Switch to Standard Registration
+                                    </>
+                                ) : (
+                                    <>
+                                        <LayersIcon size={14} />
+                                        Registering a Group with subsidiaries?
+                                    </>
+                                )}
                             </button>
-                        </form>
-                    )}
 
-                    {/* Step 2: Admin Account */}
-                    {step === 2 && (
-                        <form onSubmit={handleSubmit} className="register__form">
-                            <div className="register__row">
-                                <div className="register__field">
-                                    <label className="register__label">First Name</label>
-                                    <div className="register__input-wrapper">
-                                        <User size={18} className="register__input-icon" />
-                                        <input
-                                            type="text"
-                                            name="firstName"
-                                            value={formData.firstName}
-                                            onChange={handleChange}
-                                            placeholder="First name"
-                                            className="register__input"
-                                            required
-                                        />
-                                    </div>
-                                </div>
+                            {/* Dynamic Company List - Only Visible if isMultiCompany is true */}
+                            {isMultiCompany && (
+                                <div className="register-subsidiaries">
+                                    <label className="auth-field__label">
+                                        Subsidiaries / Operating Companies
+                                    </label>
 
-                                <div className="register__field">
-                                    <label className="register__label">Last Name</label>
-                                    <div className="register__input-wrapper">
-                                        <User size={18} className="register__input-icon" />
-                                        <input
-                                            type="text"
-                                            name="lastName"
-                                            value={formData.lastName}
-                                            onChange={handleChange}
-                                            placeholder="Last name"
-                                            className="register__input"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                                    {formData.companies.map((company, index) => (
+                                        <div key={company.id} className="register-subsidiary">
+                                            <div className="auth-field__input-wrapper">
+                                                <div className="auth-field__icon">
+                                                    <BuildingIcon size={18} />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder={`Subsidiary ${index + 1} Name`}
+                                                    className="auth-field__input"
+                                                    value={company.name}
+                                                    onChange={(e) => handleCompanyChange(company.id, e.target.value)}
+                                                />
+                                            </div>
+                                            {formData.companies.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeCompanyField(company.id)}
+                                                    className="register-subsidiary__remove"
+                                                    title="Remove company"
+                                                >
+                                                    <TrashIcon size={18} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
 
-                            <div className="register__field">
-                                <label className="register__label">Admin Email</label>
-                                <div className="register__input-wrapper">
-                                    <Mail size={18} className="register__input-icon" />
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        placeholder="admin@company.com"
-                                        className="register__input"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="register__field">
-                                <label className="register__label">Password</label>
-                                <div className="register__input-wrapper">
-                                    <Lock size={18} className="register__input-icon" />
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        name="password"
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        placeholder="Create password"
-                                        className="register__input"
-                                        required
-                                        minLength={8}
-                                    />
                                     <button
                                         type="button"
-                                        className="register__password-toggle"
-                                        onClick={() => setShowPassword(!showPassword)}
+                                        onClick={addCompanyField}
+                                        className="register-add-btn"
                                     >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        <PlusIcon size={16} />
+                                        Add Subsidiary
                                     </button>
                                 </div>
-                            </div>
+                            )}
 
-                            <div className="register__field">
-                                <label className="register__label">Confirm Password</label>
-                                <div className="register__input-wrapper">
-                                    <Lock size={18} className="register__input-icon" />
+                            <div className="register-divider"></div>
+
+                            {/* Full Name */}
+                            <div className="auth-field">
+                                <label htmlFor="fullName" className="auth-field__label">Full Name</label>
+                                <div className="auth-field__input-wrapper">
+                                    <div className="auth-field__icon">
+                                        <UserIcon size={20} />
+                                    </div>
                                     <input
-                                        type="password"
-                                        name="confirmPassword"
-                                        value={formData.confirmPassword}
-                                        onChange={handleChange}
-                                        placeholder="Confirm password"
-                                        className="register__input"
+                                        id="fullName"
+                                        name="fullName"
+                                        type="text"
                                         required
+                                        placeholder="John Doe"
+                                        className="auth-field__input"
+                                        value={formData.fullName}
+                                        onChange={handleInputChange}
                                     />
                                 </div>
                             </div>
 
-                            <div className="register__actions">
-                                <button
-                                    type="button"
-                                    className="register__back"
-                                    onClick={() => setStep(1)}
-                                >
-                                    Back
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="register__submit"
-                                    disabled={loading}
-                                >
-                                    {loading ? 'Creating Account...' : 'Create Account'}
-                                </button>
+                            {/* Phone and Employee Count Row */}
+                            <div className="register-row">
+                                <div className="auth-field">
+                                    <label htmlFor="phone" className="auth-field__label">Phone</label>
+                                    <div className="auth-field__input-wrapper">
+                                        <div className="auth-field__icon">
+                                            <PhoneIcon size={18} />
+                                        </div>
+                                        <input
+                                            id="phone"
+                                            name="phone"
+                                            type="tel"
+                                            placeholder="+91..."
+                                            className="auth-field__input"
+                                            value={formData.phone}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="auth-field">
+                                    <label htmlFor="employeeCount" className="auth-field__label">Total Size</label>
+                                    <div className="auth-field__input-wrapper auth-field__input-wrapper--select">
+                                        <div className="auth-field__icon">
+                                            <UsersIcon size={18} />
+                                        </div>
+                                        <select
+                                            id="employeeCount"
+                                            name="employeeCount"
+                                            className="auth-field__select"
+                                            value={formData.employeeCount}
+                                            onChange={handleInputChange}
+                                        >
+                                            <option value="1-50">1-50</option>
+                                            <option value="51-200">51-200</option>
+                                            <option value="201-1000">201-1000</option>
+                                            <option value="1000+">1000+</option>
+                                        </select>
+                                        <div className="auth-field__select-arrow">
+                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </form>
-                    )}
 
-                    {/* Login Link */}
-                    <p className="register__login-link">
-                        Already have an account? <a href="/login">Sign in</a>
-                    </p>
+                            <div className="auth-field">
+                                <label htmlFor="email" className="auth-field__label">Work Email</label>
+                                <div className="auth-field__input-wrapper">
+                                    <div className="auth-field__icon">
+                                        <BriefcaseIcon size={20} />
+                                    </div>
+                                    <input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        required
+                                        placeholder="name@company.com"
+                                        className="auth-field__input"
+                                        value={formData.email}
+                                        onChange={handleInputChange}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Password Field */}
+                            <div className="auth-field">
+                                <label htmlFor="password" className="auth-field__label">Create Password</label>
+                                <div className="auth-field__input-wrapper">
+                                    <div className="auth-field__icon">
+                                        <LockIcon size={20} />
+                                    </div>
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        className="auth-field__input"
+                                        value={formData.password}
+                                        onChange={handleInputChange}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Submit Button */}
+                        <button
+                            type="submit"
+                            disabled={status === 'loading' || status === 'success'}
+                            className={`auth-submit ${status === 'loading' ? 'auth-submit--loading' : ''} ${status === 'success' ? 'auth-submit--success' : ''}`}
+                        >
+                            {status === 'loading' ? (
+                                <>
+                                    <div className="auth-submit__spinner"></div>
+                                    <span>Processing...</span>
+                                </>
+                            ) : status === 'success' ? (
+                                <>
+                                    <CheckCircleIcon size={20} />
+                                    <span>Success</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span>{isMultiCompany ? "Create Organization" : "Create Account"}</span>
+                                    <ArrowRightIcon size={20} />
+                                </>
+                            )}
+                        </button>
+
+                        {/* Login Link */}
+                        <div className="auth-links">
+                            <p className="auth-links__text">
+                                Already have an account?{' '}
+                                <Link href="/login" className="auth-links__link">
+                                    Back to Sign In
+                                </Link>
+                            </p>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

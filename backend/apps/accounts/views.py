@@ -13,6 +13,7 @@ from datetime import timedelta
 import logging
 import secrets
 
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
@@ -122,10 +123,16 @@ def register_organization(request):
             
             NotificationPreference.objects.create(user=user)
             
+            refresh = RefreshToken.for_user(user)
+            
             logger.info(f"Organization registered: {org_name} by {email}")
             
             return Response({
                 'success': True, 'message': 'Registration successful',
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                },
                 'user': {'id': str(user.id), 'email': user.email, 'name': full_name},
                 'organization': {'id': str(main_org.id), 'name': main_org.name, 'slug': main_org.slug},
                 'employee': {'id': str(admin_employee.id), 'employee_id': admin_employee.employee_id},

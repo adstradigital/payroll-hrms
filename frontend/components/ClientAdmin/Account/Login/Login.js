@@ -2,134 +2,278 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
+import {
+    Eye,
+    EyeOff,
+    Lock as LockIcon,
+    Briefcase as BriefcaseIcon,
+    CheckCircle as CheckCircleIcon,
+    AlertCircle as AlertCircleIcon,
+    Building2 as Building2Icon,
+    ArrowRight as ArrowRightIcon
+} from 'lucide-react';
+import { login as apiLogin } from '@/api/api_clientadmin';
+import { useAuth } from '@/context/AuthContext';
 import './Login.css';
 
 export default function Login() {
     const router = useRouter();
+    const { login } = useAuth();
     const [formData, setFormData] = useState({
         email: '',
         password: '',
+        rememberMe: false,
     });
     const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [status, setStatus] = useState('idle'); // idle, loading, success, error
+    const [errorMessage, setErrorMessage] = useState('');
 
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+        if (status === 'error') {
+            setStatus('idle');
+            setErrorMessage('');
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
+        setStatus('loading');
 
         try {
-            // TODO: Replace with actual API call
-            // const response = await fetch('/api/auth/login', {
-            //   method: 'POST',
-            //   body: JSON.stringify(formData)
-            // });
+            // Call real API
+            const response = await apiLogin({
+                username: formData.email,
+                password: formData.password
+            });
 
-            // Simulate login for now
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Store JWT tokens
+            const { access, refresh } = response.data;
+            localStorage.setItem('accessToken', access);
+            localStorage.setItem('refreshToken', refresh);
 
-            // On success, redirect to dashboard
-            router.push('/dashboard');
+            // Update AuthContext
+            login({
+                email: formData.email,
+                ...response.data.user
+            });
+
+            if (formData.rememberMe) {
+                localStorage.setItem('rememberMe', 'true');
+            }
+
+            setStatus('success');
+            setTimeout(() => {
+                router.push('/dashboard');
+            }, 500);
         } catch (err) {
-            setError('Invalid email or password');
-        } finally {
-            setLoading(false);
+            setStatus('error');
+            const errorMsg = err.response?.data?.detail ||
+                err.response?.data?.error ||
+                'Invalid email or password. Please try again.';
+            setErrorMessage(errorMsg);
         }
     };
 
+    const features = [
+        "Automated Salary Processing",
+        "Real-time Attendance Tracking",
+        "Comprehensive Tax Management"
+    ];
+
     return (
-        <div className="login-page">
-            <div className="login-container">
-                {/* Logo */}
-                <div className="login__logo">
-                    <div className="login__logo-icon">H</div>
-                    <span className="login__logo-text">HR Nexus</span>
+        <div className="auth-page">
+            {/* Left Side - Visual & Branding */}
+            <div className="auth-hero">
+                <div className="auth-hero__bg"></div>
+                <div className="auth-hero__shapes">
+                    <div className="auth-hero__shape auth-hero__shape--1"></div>
+                    <div className="auth-hero__shape auth-hero__shape--2"></div>
                 </div>
 
-                <div className="login__card">
-                    <h1 className="login__title">Welcome Back</h1>
-                    <p className="login__subtitle">Sign in to your account to continue</p>
-
-                    {error && (
-                        <div className="login__error">
-                            {error}
+                <div className="auth-hero__content">
+                    <div className="auth-hero__logo">
+                        <div className="auth-hero__logo-icon">
+                            <Building2Icon size={28} />
                         </div>
-                    )}
+                        <span className="auth-hero__logo-text">Nexus HRMS</span>
+                    </div>
 
-                    <form onSubmit={handleSubmit} className="login__form">
-                        {/* Email Field */}
-                        <div className="login__field">
-                            <label className="login__label">Email Address</label>
-                            <div className="login__input-wrapper">
-                                <Mail size={18} className="login__input-icon" />
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    placeholder="Enter your email"
-                                    className="login__input"
-                                    required
-                                />
+                    <div className="auth-hero__text">
+                        <h2 className="auth-hero__title">
+                            Streamline Your Payroll & Workforce Management
+                        </h2>
+                        <p className="auth-hero__subtitle">
+                            Experience the next generation of employee management. Secure, efficient, and designed for modern enterprises.
+                        </p>
+
+                        <div className="auth-hero__features">
+                            {features.map((feature, idx) => (
+                                <div key={idx} className="auth-hero__feature">
+                                    <div className="auth-hero__feature-icon">
+                                        <CheckCircleIcon size={16} />
+                                    </div>
+                                    <span>{feature}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="auth-hero__footer">
+                        © 2024 Nexus Systems Inc. All rights reserved.
+                    </div>
+                </div>
+            </div>
+
+            {/* Right Side - Form Container */}
+            <div className="auth-form-container">
+                <div className="auth-form-wrapper">
+                    {/* Mobile Header */}
+                    <div className="auth-mobile-header">
+                        <div className="auth-mobile-header__logo">
+                            <Building2Icon size={24} />
+                        </div>
+                        <span className="auth-mobile-header__text">Nexus HRMS</span>
+                    </div>
+
+                    <div className="auth-header">
+                        <h1 className="auth-header__title">Welcome back</h1>
+                        <p className="auth-header__subtitle">
+                            Please enter your credentials to access the dashboard.
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="auth-form">
+                        {/* Alerts */}
+                        {status === 'error' && (
+                            <div className="auth-alert auth-alert--error">
+                                <AlertCircleIcon size={20} className="auth-alert__icon" />
+                                <span className="auth-alert__text">{errorMessage}</span>
                             </div>
-                        </div>
-
-                        {/* Password Field */}
-                        <div className="login__field">
-                            <label className="login__label">Password</label>
-                            <div className="login__input-wrapper">
-                                <Lock size={18} className="login__input-icon" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    placeholder="Enter your password"
-                                    className="login__input"
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    className="login__password-toggle"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
+                        )}
+                        {status === 'success' && (
+                            <div className="auth-alert auth-alert--success">
+                                <CheckCircleIcon size={20} className="auth-alert__icon" />
+                                <span className="auth-alert__text">Success! Redirecting to dashboard...</span>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Remember Me & Forgot Password */}
-                        <div className="login__options">
-                            <label className="login__remember">
-                                <input type="checkbox" />
-                                <span>Remember me</span>
-                            </label>
-                            <a href="/forgot-password" className="login__forgot">Forgot password?</a>
+                        <div className="auth-form__fields">
+                            {/* Email Field */}
+                            <div className="auth-field">
+                                <label htmlFor="email" className="auth-field__label">Work Email</label>
+                                <div className="auth-field__input-wrapper">
+                                    <div className="auth-field__icon">
+                                        <BriefcaseIcon size={20} />
+                                    </div>
+                                    <input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        required
+                                        placeholder="name@company.com"
+                                        className="auth-field__input"
+                                        value={formData.email}
+                                        onChange={handleInputChange}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Password Field */}
+                            <div className="auth-field">
+                                <div className="auth-field__header">
+                                    <label htmlFor="password" className="auth-field__label">Password</label>
+                                    <Link href="/forgot-password" className="auth-field__link">
+                                        Forgot password?
+                                    </Link>
+                                </div>
+                                <div className="auth-field__input-wrapper">
+                                    <div className="auth-field__icon">
+                                        <LockIcon size={20} />
+                                    </div>
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        placeholder="••••••••"
+                                        className="auth-field__input auth-field__input--password"
+                                        value={formData.password}
+                                        onChange={handleInputChange}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="auth-field__toggle"
+                                    >
+                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Remember Me */}
+                            <div className="auth-checkbox">
+                                <input
+                                    type="checkbox"
+                                    id="rememberMe"
+                                    name="rememberMe"
+                                    className="auth-checkbox__input"
+                                    checked={formData.rememberMe}
+                                    onChange={handleInputChange}
+                                />
+                                <label htmlFor="rememberMe" className="auth-checkbox__label">
+                                    Remember this device
+                                </label>
+                            </div>
                         </div>
 
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            className="login__submit"
-                            disabled={loading}
+                            disabled={status === 'loading' || status === 'success'}
+                            className={`auth-submit ${status === 'loading' ? 'auth-submit--loading' : ''} ${status === 'success' ? 'auth-submit--success' : ''}`}
                         >
-                            {loading ? 'Signing in...' : 'Sign In'}
+                            {status === 'loading' ? (
+                                <>
+                                    <div className="auth-submit__spinner"></div>
+                                    <span>Processing...</span>
+                                </>
+                            ) : status === 'success' ? (
+                                <>
+                                    <CheckCircleIcon size={20} />
+                                    <span>Success</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span>Sign In</span>
+                                    <ArrowRightIcon size={20} />
+                                </>
+                            )}
                         </button>
-                    </form>
 
-                    {/* Register Link */}
-                    <p className="login__register-link">
-                        Don't have an account? <a href="/register">Create account</a>
-                    </p>
+                        {/* Navigation Links */}
+                        <div className="auth-links">
+                            <p className="auth-links__text">
+                                New to Nexus?
+                            </p>
+                            <Link href="/register" className="auth-links__link">
+                                Register Company
+                            </Link>
+
+                            <div className="auth-links__divider">
+                                <span>OR</span>
+                            </div>
+
+                            <Link href="/" className="auth-links__secondary">
+                                Have an invite code? Activate Account
+                            </Link>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
