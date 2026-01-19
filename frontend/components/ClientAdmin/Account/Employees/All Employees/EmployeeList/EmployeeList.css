@@ -1,18 +1,12 @@
-/* Employee Component Styles */
+/* Employee List Component Styles */
 
-.employee-module {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-}
-
-/* Toolbar */
 .employee-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: var(--spacing-md);
     flex-wrap: wrap;
+    margin-bottom: var(--spacing-lg);
 }
 
 .toolbar-search {
@@ -35,6 +29,7 @@
     background: transparent;
     border: none;
     color: var(--text-primary);
+    outline: none;
 }
 
 .toolbar-actions {
@@ -81,6 +76,13 @@
     justify-content: center;
     font-weight: var(--font-weight-semibold);
     font-size: var(--font-size-xs);
+    overflow: hidden;
+}
+
+.user-avatar-sm img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .user-details {
@@ -129,6 +131,9 @@
     border-radius: var(--radius-md);
     color: var(--text-secondary);
     transition: all var(--transition-fast);
+    background: transparent;
+    border: none;
+    cursor: pointer;
 }
 
 .action-btn:hover {
@@ -153,4 +158,39 @@
     border: 1px dashed var(--border-color);
     color: var(--text-muted);
     gap: var(--spacing-md);
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    margin-top: var(--spacing-md);
+}
+
+.pagination-info {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.pagination-btns {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }

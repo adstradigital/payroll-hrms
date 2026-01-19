@@ -7,7 +7,7 @@ import ClockAttendanceWidget from '@/components/ClientAdmin/Dashboard/Widgets/Cl
 import { useAuth } from '@/context/AuthContext';
 import './Dashboard.css';
 
-export default function Dashboard({ children, title, subtitle, breadcrumbs, hideGreeting = false }) {
+export default function Dashboard({ children, title, subtitle, breadcrumbs, showGreeting = false }) {
     const { user } = useAuth();
 
     return (
@@ -19,24 +19,13 @@ export default function Dashboard({ children, title, subtitle, breadcrumbs, hide
 
                 <main className="dashboard__content">
                     {/* Welcome Greeting */}
-                    {!hideGreeting && (
+                    {showGreeting && (
                         <div className="dashboard__greeting animate-fade-in">
                             <h2>Good Morning, {user?.name?.split(' ')[0] || 'Admin'}! 👋</h2>
                             <p>Here's what's happening in your organization today.</p>
                         </div>
                     )}
 
-                    {/* Page Header (Optional) */}
-                    {title && (
-                        <div className="card__header" style={{ marginBottom: 'var(--spacing-lg)' }}>
-                            <div>
-                                <h1 className="card__title">{title}</h1>
-                                {subtitle && (
-                                    <p className="card__subtitle">{subtitle}</p>
-                                )}
-                            </div>
-                        </div>
-                    )}
 
                     {/* Page Content */}
                     <div className="dashboard__page-content">

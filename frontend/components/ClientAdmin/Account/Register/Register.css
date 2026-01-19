@@ -1,300 +1,189 @@
 /* ===================================
    Register Page Styles
+   Extends Auth Base Styles (Login.css)
    =================================== */
 
-.register-page {
-    min-height: 100vh;
+/* Import base auth styles - the shared styles are in Login.css */
+@import '../Login/Login.css';
+
+/* ===== REGISTER SPECIFIC STYLES ===== */
+
+.register-form-wrapper {
+    max-width: 480px;
+}
+
+/* Toggle Button */
+.register-toggle {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
-    padding: var(--spacing-lg);
-}
-
-.register-container {
-    width: 100%;
-    max-width: 500px;
-}
-
-/* Logo */
-.register__logo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-xl);
-}
-
-.register__logo-icon {
-    width: 48px;
-    height: 48px;
-    background: white;
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: var(--font-weight-bold);
-    color: var(--brand-primary);
-    font-size: var(--font-size-xl);
-}
-
-.register__logo-text {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-bold);
-    color: white;
-}
-
-/* Card */
-.register__card {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-xl);
-    padding: var(--spacing-xl);
-    box-shadow: var(--shadow-xl);
-}
-
-.register__title {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-bold);
-    color: var(--text-primary);
-    text-align: center;
-    margin-bottom: var(--spacing-xs);
-}
-
-.register__subtitle {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    text-align: center;
-    margin-bottom: var(--spacing-lg);
-}
-
-/* Progress Steps */
-.register__steps {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-lg);
-}
-
-.register__step {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-}
-
-.register__step-number {
-    width: 28px;
-    height: 28px;
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    color: var(--text-muted);
-}
-
-.register__step--active .register__step-number {
-    background: var(--brand-primary);
-    color: white;
-}
-
-.register__step-label {
-    font-size: var(--font-size-sm);
-    color: var(--text-muted);
-}
-
-.register__step--active .register__step-label {
-    color: var(--text-primary);
-    font-weight: var(--font-weight-medium);
-}
-
-.register__step-line {
-    width: 40px;
-    height: 2px;
-    background: var(--border-color);
-}
-
-/* Error */
-.register__error {
-    background: var(--color-danger-light);
-    color: var(--color-danger);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-sm);
-    margin-bottom: var(--spacing-md);
-    text-align: center;
-}
-
-/* Form */
-.register__form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-}
-
-.register__row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
-}
-
-.register__field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-}
-
-.register__label {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    color: var(--text-primary);
-}
-
-.register__input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.register__input-icon {
-    position: absolute;
-    left: var(--spacing-md);
-    color: var(--text-muted);
-    pointer-events: none;
-}
-
-.register__input {
-    width: 100%;
-    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 44px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-    transition: all var(--transition-fast);
-}
-
-.register__input:focus {
-    border-color: var(--brand-primary);
-    box-shadow: 0 0 0 3px var(--input-focus-ring);
-}
-
-.register__input::placeholder {
-    color: var(--text-muted);
-}
-
-.register__password-toggle {
-    position: absolute;
-    right: var(--spacing-md);
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 0;
+    gap: 6px;
+    padding: 4px 0;
     background: none;
     border: none;
+    color: var(--brand-primary, #2563eb);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-/* Subscription Plans */
-.register__plans {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-sm);
+.register-toggle:hover {
+    color: var(--brand-primary-hover, #1d4ed8);
+    text-decoration: underline;
 }
 
-.register__plan {
+/* Subsidiaries Section */
+.register-subsidiaries {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-md);
-    background: var(--bg-primary);
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-fast);
+    gap: 12px;
+    padding: 16px 0 16px 16px;
+    border-left: 2px solid var(--border-color, #f1f5f9);
+    animation: fadeIn 0.3s ease-out;
 }
 
-.register__plan:hover {
-    border-color: var(--brand-primary);
-}
-
-.register__plan--selected {
-    border-color: var(--brand-primary);
-    background: var(--brand-primary-light);
-}
-
-.register__plan input {
-    display: none;
-}
-
-.register__plan-name {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-    color: var(--text-primary);
-    text-align: center;
-}
-
-/* Actions */
-.register__actions {
+.register-subsidiary {
     display: flex;
-    gap: var(--spacing-md);
-    margin-top: var(--spacing-sm);
+    gap: 8px;
 }
 
-.register__back {
+.register-subsidiary .auth-field__input-wrapper {
     flex: 1;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-size: var(--font-size-md);
-    font-weight: var(--font-weight-medium);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: background var(--transition-fast);
 }
 
-.register__back:hover {
-    background: var(--border-color);
-}
-
-.register__submit {
-    flex: 2;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--brand-primary);
-    color: white;
-    font-size: var(--font-size-md);
-    font-weight: var(--font-weight-semibold);
+.register-subsidiary__remove {
+    padding: 10px;
+    color: var(--text-muted, #94a3b8);
+    background: none;
     border: none;
-    border-radius: var(--radius-md);
+    border-radius: 8px;
     cursor: pointer;
-    transition: background var(--transition-fast);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.register__submit:hover:not(:disabled) {
-    background: var(--brand-primary-hover);
+.register-subsidiary__remove:hover {
+    color: #ef4444;
+    background: #fef2f2;
 }
 
-.register__submit:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+/* Add Subsidiary Button */
+.register-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 0;
+    background: none;
+    border: none;
+    color: var(--brand-primary, #2563eb);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-/* Login Link */
-.register__login-link {
-    text-align: center;
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    margin-top: var(--spacing-lg);
+.register-add-btn:hover {
+    color: var(--brand-primary-hover, #1d4ed8);
 }
 
-.register__login-link a {
-    color: var(--brand-primary);
-    font-weight: var(--font-weight-medium);
-    text-decoration: none;
+/* Divider */
+.register-divider {
+    height: 1px;
+    background: var(--border-color, #f1f5f9);
+    margin: 4px 0;
 }
 
-.register__login-link a:hover {
-    text-decoration: underline;
+/* Two Column Row */
+.register-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 480px) {
+    .register-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Select Field */
+.auth-field__input-wrapper--select {
+    position: relative;
+}
+
+.auth-field__select {
+    width: 100%;
+    padding: 12px 40px 12px 40px;
+    background: white;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 12px;
+    color: var(--text-primary, #1e293b);
+    font-size: 15px;
+    transition: all 0.2s ease;
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.auth-field__select:focus {
+    border-color: var(--brand-primary, #2563eb);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.auth-field__select-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted, #94a3b8);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Hint Text */
+.auth-field__hint {
+    font-size: 12px;
+    color: var(--text-muted, #94a3b8);
+}
+
+/* ===== INFO BOX ===== */
+.register-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    margin-top: 8px;
+}
+
+.register-info-box__icon {
+    color: #2563eb;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.register-info-box__content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.register-info-box__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d4ed8;
+    margin: 0;
+}
+
+.register-info-box__text {
+    font-size: 13px;
+    color: #3b82f6;
+    margin: 0;
+    line-height: 1.5;
 }

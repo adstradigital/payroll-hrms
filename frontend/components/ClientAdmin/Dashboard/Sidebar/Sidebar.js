@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
     LayoutDashboard, Users, Calendar, Clock,
     Wallet, FileText, Settings, ChevronDown,
-    ChevronRight, LogOut, Bell
+    ChevronRight, LogOut, Bell, User
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +19,12 @@ const menuItems = [
         label: 'Dashboard',
         icon: LayoutDashboard,
         path: '/dashboard',
+    },
+    {
+        id: 'profile',
+        label: 'My Profile',
+        icon: User,
+        path: '/dashboard/profile',
     },
     {
         id: 'employees',
@@ -73,6 +79,7 @@ const menuItems = [
         icon: FileText,
         path: '/dashboard/reports',
     },
+
     {
         id: 'settings',
         label: 'Settings',

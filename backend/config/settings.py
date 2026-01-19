@@ -1,5 +1,12 @@
+"""
+Django settings for payroll-hrms project.
+Cleaned and optimized for cPanel + Passenger deployment.
+Supports MySQL database for both local and production environments.
+"""
+
 import os
 from pathlib import Path
+from datetime import timedelta
 import environ
 
 # Initialize environ
@@ -13,14 +20,43 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Read .env file
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-# Quick-start development settings - unsuitable for production
-SECRET_KEY = env('SECRET_KEY', default='django-insecure-default')
+# =============================================================================
+# SECURITY & ENVIRONMENT
+# =============================================================================
+
 DEBUG = env('DEBUG')
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-default')
 
-ALLOWED_HOSTS = ['*']
+if DEBUG:
+    # --- LOCAL DEVELOPMENT SETTINGS ---
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    
+    # Security Relaxed for Local
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+else:
+    # --- PRODUCTION SETTINGS ---
+    # Parse comma-separated allowed hosts from .env or use defaults
+    ALLOWED_HOSTS = [
+        host.strip() for host in 
+        env('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+    ]
+    
+    # Security Hardened for Production
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 
-# Application definition
+# =============================================================================
+# APPLICATION DEFINITION
+# =============================================================================
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -32,22 +68,32 @@ INSTALLED_APPS = [
     
     # Third party apps
     'rest_framework',
+    'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
 
     # Local apps
     'apps.accounts',
+    # Local apps - Core (shared)
+    'apps.subscriptions',
     'apps.attendance',
     'apps.leave',
     'apps.payroll',
     'apps.hrms',
     'apps.reports',
-    'apps.subscriptions',
 ]
+
+# Custom User Model - uncomment if you create a custom User class
+# AUTH_USER_MODEL = "accounts.User"
+
+
+# =============================================================================
+# MIDDLEWARE
+# =============================================================================
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # Added CORS middleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -56,12 +102,25 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+
+# =============================================================================
+# URL & WSGI
+# =============================================================================
+
 ROOT_URLCONF = 'config.urls'
+WSGI_APPLICATION = 'config.wsgi.application'
+
+
+# =============================================================================
+# TEMPLATES
+# =============================================================================
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -73,65 +132,104 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+
+# =============================================================================
+# DATABASE CONFIGURATION (MySQL)
+# =============================================================================
+
+if DEBUG:
+    # --- LOCAL DEVELOPMENT DATABASE ---
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': env('DB_LOCAL_NAME', default='payroll_hrms'),
+            'USER': env('DB_LOCAL_USER', default='root'),
+            'PASSWORD': env('DB_LOCAL_PASSWORD', default='root@123'),
+            'HOST': env('DB_LOCAL_HOST', default='localhost'),
+            'PORT': env('DB_LOCAL_PORT', default='3306'),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                'charset': 'utf8mb4',
+            },
+        }
+    }
+else:
+    # --- PRODUCTION DATABASE ---
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': env('DB_PROD_NAME'),
+            'USER': env('DB_PROD_USER'),
+            'PASSWORD': env('DB_PROD_PASSWORD'),
+            'HOST': env('DB_PROD_HOST', default='localhost'),
+            'PORT': env('DB_PROD_PORT', default='3306'),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                'charset': 'utf8mb4',
+            },
+        }
+    }
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# =============================================================================
+# AUTHENTICATION CONFIGURATION
+# =============================================================================
 
-DATABASES = {
-    'default': env.db('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}')
-}
-
-
-# Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
+AUTHENTICATION_BACKENDS = [
+    'apps.accounts.auth_backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
+# =============================================================================
+# CORS / CSRF CONFIGURATION
+# =============================================================================
 
-LANGUAGE_CODE = 'en-us'
+CORS_ALLOW_CREDENTIALS = True
 
-TIME_ZONE = 'UTC'
+if DEBUG:
+    # Local development - allow all origins
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+else:
+    # Production - parse from .env
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [
+        origin.strip() for origin in 
+        env('CORS_ALLOWED_ORIGINS', default='').split(',') if origin.strip()
+    ]
 
-USE_I18N = True
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS if CORS_ALLOWED_ORIGINS else [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 
-USE_TZ = True
 
+# =============================================================================
+# REST FRAMEWORK + JWT
+# =============================================================================
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
-
-STATIC_URL = 'static/'
-
-# Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-# CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
-
-# Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# REST Framework Configuration
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',
+    ),
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
@@ -139,4 +237,67 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+}
+
+
+# =============================================================================
+# STATIC & MEDIA FILES
+# =============================================================================
+
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+] if (BASE_DIR / 'static').exists() else []
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+
+# =============================================================================
+# INTERNATIONALIZATION
+# =============================================================================
+
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'Asia/Kolkata'  # Indian timezone
+USE_I18N = True
+USE_TZ = True
+
+
+# =============================================================================
+# DEFAULT PRIMARY KEY
+# =============================================================================
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# =============================================================================
+# LOGGING
+# =============================================================================
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {'format': '{levelname} {message}', 'style': '{'},
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {'handlers': ['console'], 'level': 'INFO'},
 }

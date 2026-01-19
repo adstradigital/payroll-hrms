@@ -1,12 +1,12 @@
 from django.test import TestCase
-from apps.core.models import Company, Employee
+from apps.accounts.models import Organization, Employee
 from .models import LeaveType, LeaveBalance, LeaveRequest
 from datetime import date
 
 
 class LeaveRequestTest(TestCase):
     def setUp(self):
-        self.company = Company.objects.create(name="Test Corp")
+        self.company = Organization.objects.create(name="Test Corp", slug="test-corp")
         self.employee = Employee.objects.create(
             employee_id="EMP001",
             company=self.company,

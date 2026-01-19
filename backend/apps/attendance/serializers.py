@@ -159,23 +159,26 @@ class AttendanceListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Attendance
-        fields = [
-            'id', 'employee', 'employee_name', 'employee_id', 'date',
-            'check_in_time', 'check_out_time', 'shift', 'shift_name',
-            'status', 'total_hours', 'overtime_hours', 'is_late',
-            'is_early_departure', 'late_by_minutes', 'is_regularized'
-        ]
-        read_only_fields = ['id', 'total_hours', 'overtime_hours']
+        fields = "__all__"
 
 
 class AttendanceDetailSerializer(serializers.ModelSerializer):
-    """Attendance Detail Serializer"""
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
-    employee_id = serializers.CharField(source='employee.employee_id', read_only=True)
     shift_name = serializers.CharField(source='shift.name', read_only=True)
-    breaks = AttendanceBreakSerializer(many=True, read_only=True)
-    regularized_by_name = serializers.CharField(source='regularized_by.full_name', read_only=True)
     
+    class Meta:
+        model = Attendance
+        fields = "__all__"
+
+
+class BulkAttendanceSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    employees = serializers.ListField(child=serializers.UUIDField())
+    status = serializers.ChoiceField(choices=Attendance.STATUS_CHOICES)
+    remarks = serializers.CharField(required=False, allow_blank=True)
+
+
+class AttendancePunchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attendance
         fields = '__all__'

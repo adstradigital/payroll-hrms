@@ -1,6 +1,6 @@
 'use client';
 
-import Employee from '@/components/ClientAdmin/Account/Employees/Employee';
+import Employee from '@/components/ClientAdmin/Account/Employees/All Employees/Employee';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 
 export default function EmployeesPage() {
