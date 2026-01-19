@@ -108,7 +108,7 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
             approver_id = request.data.get('approver_id')
             
             if action_type == 'approve':
-                from apps.core.models import Employee
+                from apps.accounts.models import Employee
                 approver = Employee.objects.get(id=approver_id) if approver_id else None
                 leave_request.approve(approver)
                 return Response({'message': 'Leave approved successfully'})

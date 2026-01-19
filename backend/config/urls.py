@@ -17,7 +17,6 @@ urlpatterns = [
     path('api/health/', health_check, name='health_check'),
     
     # Core APIs (shared)
-    path('api/core/', include('apps.core.urls')),
     path('api/attendance/', include('apps.attendance.urls')),
     path('api/leave/', include('apps.leave.urls')),
     

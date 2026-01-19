@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("core", "0001_initial"),
+        ("accounts", "0001_initial"),
     ]
 
     operations = [
@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="leave_types",
-                        to="core.company",
+                        to="accounts.company",
                     ),
                 ),
             ],
@@ -150,7 +150,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="approved_leaves",
-                        to="core.employee",
+                        to="accounts.employee",
                     ),
                 ),
                 (
@@ -158,7 +158,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="leave_requests",
-                        to="core.employee",
+                        to="accounts.employee",
                     ),
                 ),
                 (
@@ -214,7 +214,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="leave_balances",
-                        to="core.employee",
+                        to="accounts.employee",
                     ),
                 ),
                 (

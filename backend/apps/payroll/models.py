@@ -1,5 +1,5 @@
 from django.db import models
-from apps.core.models import Company, Employee
+from apps.accounts.models import Company, Employee
 from decimal import Decimal
 
 

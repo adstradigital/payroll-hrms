@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("core", "0001_initial"),
+        ("accounts", "0001_initial"),
     ]
 
     operations = [
@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="salaries",
-                        to="core.employee",
+                        to="accounts.employee",
                     ),
                 ),
             ],
@@ -108,7 +108,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="payroll_periods",
-                        to="core.company",
+                        to="accounts.company",
                     ),
                 ),
                 (
@@ -118,7 +118,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="processed_payrolls",
-                        to="core.employee",
+                        to="accounts.employee",
                     ),
                 ),
             ],
@@ -223,7 +223,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="payslips",
-                        to="core.employee",
+                        to="accounts.employee",
                     ),
                 ),
                 (
@@ -319,7 +319,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="salary_components",
-                        to="core.company",
+                        to="accounts.company",
                     ),
                 ),
                 (
@@ -361,7 +361,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="salary_structures",
-                        to="core.company",
+                        to="accounts.company",
                     ),
                 ),
             ],

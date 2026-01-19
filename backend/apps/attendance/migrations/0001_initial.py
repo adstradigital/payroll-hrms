@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("core", "0001_initial"),
+        ("accounts", "0001_initial"),
     ]
 
     operations = [
@@ -68,7 +68,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="shifts",
-                        to="core.company",
+                        to="accounts.company",
                     ),
                 ),
             ],
@@ -99,7 +99,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="holidays",
-                        to="core.company",
+                        to="accounts.company",
                     ),
                 ),
             ],
@@ -171,7 +171,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="attendances",
-                        to="core.employee",
+                        to="accounts.employee",
                     ),
                 ),
                 (
