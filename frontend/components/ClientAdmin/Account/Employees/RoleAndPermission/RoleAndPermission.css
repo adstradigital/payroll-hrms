@@ -1,13 +1,41 @@
-/* RoleAndPermission.css - Premium Dark Theme */
+/* RoleAndPermission.css - Theme Consistent */
+
+/*
+   NOTE: This file now depends on global CSS variables for colors
+   (e.g., --bg-primary, --text-primary, --brand-primary) to ensure
+   it adapts to Light/Dark mode automatically.
+*/
+
+:root {
+    /* Map local variables to global theme variables for easier maintenance */
+    --rp-bg-main: var(--bg-primary);
+    --rp-bg-panel: var(--bg-secondary);
+    --rp-bg-card: var(--card-bg, #fff);
+    --rp-bg-hover: var(--bg-secondary, #f8f9fa);
+
+    --rp-border: var(--border-color, #e2e8f0);
+    --rp-border-highlight: var(--brand-primary, #3b82f6);
+
+    --rp-primary: var(--brand-primary, #3b82f6);
+    --rp-primary-light: var(--brand-primary-light, rgba(59, 130, 246, 0.1));
+
+    --rp-text-main: var(--text-primary, #1e293b);
+    --rp-text-secondary: var(--text-secondary, #64748b);
+    --rp-text-muted: var(--text-muted, #94a3b8);
+
+    --rp-success: var(--success, #10b981);
+    --rp-danger: var(--danger, #ef4444);
+
+    --rp-radius: var(--radius-md, 8px);
+    --rp-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
 .rp-container {
-    padding: 2rem;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #0f1419 0%, #1a242f 100%);
     background-color: var(--rp-bg-main);
     color: var(--rp-text-main);
-    font-family: var(--rp-font);
-    min-height: calc(100vh - 80px);
+    font-family: var(--font-primary, inherit);
+    height: calc(100vh - 80px);
+    /* Adjust based on valid header height */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -25,14 +53,14 @@
     align-items: center;
     justify-content: center;
     height: 60vh;
-    color: var(--rp-gold-primary);
+    color: var(--rp-primary);
 }
 
 .rp-spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid rgba(212, 175, 55, 0.3);
-    border-top-color: var(--rp-gold-bright);
+    border: 3px solid var(--rp-primary-light);
+    border-top-color: var(--rp-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 16px;
@@ -69,30 +97,26 @@
 .rp-icon-box {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, var(--rp-gold-dim), var(--rp-bg-panel));
-    border: 1px solid var(--rp-gold-dim);
+    background: var(--rp-primary-light);
+    border: 1px solid transparent;
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--rp-gold-bright);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    color: var(--rp-primary);
 }
 
 .rp-header h1 {
     font-size: 24px;
     font-weight: 700;
     margin: 0;
-    background: linear-gradient(to right, #fff, #ccc);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--rp-text-main);
     letter-spacing: -0.5px;
 }
 
 .rp-header p {
     margin: 4px 0 0;
-    color: var(--rp-text-secondary);
+    color: var(--rp-text-muted);
     font-size: 13px;
 }
 
@@ -104,16 +128,16 @@
 
 .rp-status-badge {
     font-size: 12px;
-    color: var(--rp-gold-primary);
-    background: rgba(212, 175, 55, 0.1);
+    color: var(--rp-primary);
+    background: var(--rp-primary-light);
     padding: 6px 12px;
     border-radius: 20px;
-    border: 1px solid rgba(212, 175, 55, 0.2);
+    border: 1px solid transparent;
 }
 
 .rp-btn-primary {
-    background: linear-gradient(135deg, var(--rp-gold-primary), var(--rp-gold-dim));
-    color: #000;
+    background: var(--rp-primary);
+    color: #fff;
     border: none;
     padding: 10px 24px;
     border-radius: 6px;
@@ -124,13 +148,13 @@
     align-items: center;
     gap: 8px;
     transition: var(--rp-transition);
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .rp-btn-primary:hover {
     filter: brightness(1.1);
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 
 .rp-btn-primary:disabled {
@@ -142,8 +166,8 @@
 .spinner-small {
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(0, 0, 0, 0.3);
-    border-top-color: #000;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -157,7 +181,6 @@
     flex: 1;
     overflow: hidden;
     height: calc(100vh - 160px);
-    /* Adjust based on header */
 }
 
 /* --- Left Panel (Sidebar) --- */
@@ -195,8 +218,8 @@
 }
 
 .rp-panel-search input:focus {
-    border-color: var(--rp-gold-primary);
-    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
+    border-color: var(--rp-primary);
+    box-shadow: 0 0 0 2px var(--rp-primary-light);
 }
 
 .rp-list-header {
@@ -226,12 +249,12 @@
 }
 
 .rp-desig-item:hover {
-    background-color: var(--rp-bg-hover);
+    background-color: var(--rp-bg-main);
 }
 
 .rp-desig-item.active {
-    background: linear-gradient(90deg, rgba(212, 175, 55, 0.05), transparent);
-    border: 1px solid rgba(212, 175, 55, 0.2);
+    background: var(--rp-primary-light);
+    border: 1px solid transparent;
 }
 
 .rp-desig-avatar {
@@ -248,9 +271,9 @@
 }
 
 .rp-desig-item.active .rp-desig-avatar {
-    background: var(--rp-gold-primary);
-    color: #000;
-    border-color: var(--rp-gold-primary);
+    background: var(--rp-primary);
+    color: #fff;
+    border-color: var(--rp-primary);
 }
 
 .rp-desig-info {
@@ -266,7 +289,7 @@
 }
 
 .rp-desig-item.active .rp-desig-name {
-    color: var(--rp-gold-primary);
+    color: var(--rp-primary);
 }
 
 .rp-desig-count {
@@ -275,7 +298,7 @@
 }
 
 .rp-active-indicator {
-    color: var(--rp-gold-primary);
+    color: var(--rp-primary);
 }
 
 /* --- Right Panel (Main Content) --- */
@@ -298,8 +321,8 @@
 
 .rp-placeholder-icon {
     margin-bottom: 24px;
-    opacity: 0.1;
-    color: var(--rp-gold-primary);
+    opacity: 0.2;
+    color: var(--rp-primary);
 }
 
 .rp-placeholder h3 {
@@ -324,10 +347,7 @@
 .rp-ph-content h2 {
     font-size: 28px;
     margin: 0 0 8px;
-    background: linear-gradient(to right, var(--rp-gold-primary), var(--rp-gold-bright));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--rp-text-main);
 }
 
 .rp-security-badge {
@@ -368,14 +388,13 @@
     justify-content: space-between;
     padding: 16px 24px;
     cursor: pointer;
-    background-color: rgba(255, 255, 255, 0.02);
+    background-color: var(--rp-bg-panel);
     border-bottom: 1px solid transparent;
     transition: var(--rp-transition);
 }
 
 .rp-module-group.expanded .rp-module-header {
     border-bottom-color: var(--rp-border);
-    background-color: rgba(255, 255, 255, 0.01);
 }
 
 .rp-module-title {
@@ -388,7 +407,7 @@
 }
 
 .rp-module-title svg {
-    color: var(--rp-gold-primary);
+    color: var(--rp-primary);
 }
 
 .rp-module-meta {
@@ -400,14 +419,15 @@
 .rp-progress-bar {
     width: 100px;
     height: 4px;
-    background: #333;
+    background: var(--rp-bg-main);
+    border: 1px solid var(--rp-border);
     border-radius: 2px;
     overflow: hidden;
 }
 
 .rp-progress-fill {
     height: 100%;
-    background: var(--rp-gold-primary);
+    background: var(--rp-primary);
     border-radius: 2px;
 }
 
@@ -421,6 +441,7 @@
 .rp-module-content {
     padding: 0;
     display: none;
+    background-color: var(--rp-bg-card);
     animation: slideDown 0.3s ease-out;
 }
 
@@ -459,7 +480,7 @@
 }
 
 .rp-perm-row.selected {
-    background-color: rgba(212, 175, 55, 0.03);
+    background-color: var(--rp-primary-light);
 }
 
 .rp-perm-check {
@@ -500,17 +521,19 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    color: #000;
+    color: #fff;
+    /* checkmark color always white usually */
 }
 
+/* Light mode override for checkmark color inside checkbox? No, if marked, background is blue */
 .checkbox-wrapper input:checked+.custom-checkbox {
-    background: var(--rp-gold-primary);
-    border-color: var(--rp-gold-primary);
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+    background: var(--rp-primary);
+    border-color: var(--rp-primary);
+    box-shadow: 0 0 10px var(--rp-primary-light);
 }
 
 .checkbox-wrapper input:hover+.custom-checkbox {
-    border-color: var(--rp-gold-primary);
+    border-color: var(--rp-primary);
 }
 
 .rp-perm-text {
@@ -555,7 +578,7 @@
 }
 
 .rp-select-wrapper:hover {
-    border-color: var(--rp-gold-dim);
+    border-color: var(--rp-primary);
 }
 
 .rp-scope-icon {
@@ -563,7 +586,7 @@
     left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--rp-gold-primary);
+    color: var(--rp-primary);
     pointer-events: none;
 }
 
@@ -589,7 +612,7 @@
 }
 
 .rp-select-wrapper select option {
-    background: var(--rp-bg-panel);
+    background: var(--rp-bg-card);
     color: var(--rp-text-main);
     padding: 10px;
 }
@@ -600,14 +623,15 @@
     bottom: 24px;
     right: 24px;
     background: var(--rp-bg-panel);
-    color: #fff;
+    color: var(--rp-text-main);
+    border: 1px solid var(--rp-border);
     padding: 12px 20px;
     border-radius: 8px;
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    border-left: 4px solid var(--rp-gold-primary);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border-left: 4px solid var(--rp-primary);
     z-index: 100;
 }
 

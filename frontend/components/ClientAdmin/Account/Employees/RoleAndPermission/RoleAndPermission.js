@@ -117,6 +117,33 @@ export default function RoleAndPermission() {
         }));
     };
 
+    const handleModuleToggle = (e, moduleName, modulePerms) => {
+        e.stopPropagation(); // Prevent accordion toggle
+
+        // Check if all are currently selected
+        const allSelected = modulePerms.every(p => selectedPermissions[p.id]);
+
+        setSelectedPermissions(prev => {
+            const newPerms = { ...prev };
+
+            if (allSelected) {
+                // Deselect all in this module
+                modulePerms.forEach(p => {
+                    delete newPerms[p.id];
+                });
+            } else {
+                // Select all in this module with default scope
+                const defaultScopeId = scopes[0]?.id;
+                if (defaultScopeId) {
+                    modulePerms.forEach(p => {
+                        newPerms[p.id] = defaultScopeId;
+                    });
+                }
+            }
+            return newPerms;
+        });
+    };
+
     const handleSave = async () => {
         if (!selectedDesignation) return;
         setSaving(true);
@@ -250,80 +277,101 @@ export default function RoleAndPermission() {
                             </div>
 
                             <div className="rp-modules-list">
-                                {Object.entries(groupedPermissions).sort().map(([module, modulePerms]) => (
-                                    <div key={module} className={`rp-module-group ${expandedModules[module] ? 'expanded' : ''}`}>
-                                        <div
-                                            className="rp-module-header"
-                                            onClick={() => toggleModule(module)}
-                                        >
-                                            <div className="rp-module-title">
-                                                {expandedModules[module] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                                                <span>{module}</span>
-                                            </div>
-                                            <div className="rp-module-meta">
-                                                <div className="rp-progress-bar">
+                                {Object.entries(groupedPermissions).sort().map(([module, modulePerms]) => {
+                                    const selectedCount = modulePerms.filter(p => selectedPermissions[p.id]).length;
+                                    const isAllSelected = selectedCount === modulePerms.length && modulePerms.length > 0;
+
+                                    return (
+                                        <div key={module} className={`rp-module-group ${expandedModules[module] ? 'expanded' : ''}`}>
+                                            <div
+                                                className="rp-module-header"
+                                                onClick={() => toggleModule(module)}
+                                            >
+                                                <div className="rp-module-title">
+                                                    {/* Select All Checkbox */}
                                                     <div
-                                                        className="rp-progress-fill"
-                                                        style={{ width: `${(modulePerms.filter(p => selectedPermissions[p.id]).length / modulePerms.length) * 100}%` }}
-                                                    ></div>
-                                                </div>
-                                                <span className="rp-module-badge">
-                                                    {modulePerms.filter(p => selectedPermissions[p.id]).length} / {modulePerms.length}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="rp-module-content">
-                                            {modulePerms.map(perm => {
-                                                const isSelected = !!selectedPermissions[perm.id];
-                                                return (
-                                                    <div key={perm.id} className={`rp-perm-row ${isSelected ? 'selected' : ''}`}>
-                                                        <div className="rp-perm-check">
-                                                            <div className="checkbox-wrapper">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    id={`perm-${perm.id}`}
-                                                                    checked={isSelected}
-                                                                    onChange={() => togglePermission(perm.id, scopes[0]?.id)}
-                                                                />
-                                                                <label htmlFor={`perm-${perm.id}`} className="custom-checkbox">
-                                                                    {isSelected && <Check size={12} strokeWidth={4} />}
-                                                                </label>
-                                                            </div>
-                                                            <div className="rp-perm-text">
-                                                                <label htmlFor={`perm-${perm.id}`} className="rp-perm-name">{perm.name}</label>
-                                                                <p className="rp-perm-desc">{perm.description || 'Access control for this feature'}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="rp-scope-container">
-                                                            {isSelected ? (
-                                                                <div className="rp-select-wrapper">
-                                                                    <Unlock size={14} className="rp-scope-icon" />
-                                                                    <select
-                                                                        value={selectedPermissions[perm.id]}
-                                                                        onChange={(e) => changeScope(perm.id, e.target.value)}
-                                                                    >
-                                                                        {scopes.map(scope => (
-                                                                            <option key={scope.id} value={scope.id}>
-                                                                                {scope.name}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                    <ChevronDown size={14} className="rp-select-arrow" />
-                                                                </div>
-                                                            ) : (
-                                                                <div className="rp-locked-state">
-                                                                    <Lock size={14} /> <span>Restricted</span>
-                                                                </div>
-                                                            )}
+                                                        className="checkbox-wrapper"
+                                                        onClick={(e) => handleModuleToggle(e, module, modulePerms)}
+                                                        style={{ marginRight: '12px' }}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isAllSelected}
+                                                            readOnly
+                                                        />
+                                                        <div className="custom-checkbox">
+                                                            {isAllSelected && <Check size={12} strokeWidth={4} />}
                                                         </div>
                                                     </div>
-                                                );
-                                            })}
+
+                                                    {expandedModules[module] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                                                    <span>{module}</span>
+                                                </div>
+                                                <div className="rp-module-meta">
+                                                    <div className="rp-progress-bar">
+                                                        <div
+                                                            className="rp-progress-fill"
+                                                            style={{ width: `${(selectedCount / modulePerms.length) * 100}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="rp-module-badge">
+                                                        {selectedCount} / {modulePerms.length}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="rp-module-content">
+                                                {modulePerms.map(perm => {
+                                                    const isSelected = !!selectedPermissions[perm.id];
+                                                    return (
+                                                        <div key={perm.id} className={`rp-perm-row ${isSelected ? 'selected' : ''}`}>
+                                                            <div className="rp-perm-check">
+                                                                <div className="checkbox-wrapper">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        id={`perm-${perm.id}`}
+                                                                        checked={isSelected}
+                                                                        onChange={() => togglePermission(perm.id, scopes[0]?.id)}
+                                                                    />
+                                                                    <label htmlFor={`perm-${perm.id}`} className="custom-checkbox">
+                                                                        {isSelected && <Check size={12} strokeWidth={4} />}
+                                                                    </label>
+                                                                </div>
+                                                                <div className="rp-perm-text">
+                                                                    <label htmlFor={`perm-${perm.id}`} className="rp-perm-name">{perm.name}</label>
+                                                                    <p className="rp-perm-desc">{perm.description || 'Access control for this feature'}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="rp-scope-container">
+                                                                {isSelected ? (
+                                                                    <div className="rp-select-wrapper">
+                                                                        <Unlock size={14} className="rp-scope-icon" />
+                                                                        <select
+                                                                            value={selectedPermissions[perm.id]}
+                                                                            onChange={(e) => changeScope(perm.id, e.target.value)}
+                                                                        >
+                                                                            {scopes.map(scope => (
+                                                                                <option key={scope.id} value={scope.id}>
+                                                                                    {scope.name}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                        <ChevronDown size={14} className="rp-select-arrow" />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="rp-locked-state">
+                                                                        <Lock size={14} /> <span>Restricted</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : (
