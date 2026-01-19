@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
     LayoutDashboard, Users, Calendar, Clock,
     Wallet, FileText, Settings, ChevronDown,
-    ChevronRight, LogOut, Bell, User
+    ChevronRight, LogOut, Bell, User, CheckCircle2
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -41,13 +41,18 @@ const menuItems = [
     {
         id: 'attendance',
         label: 'Attendance',
-        icon: Clock,
+        icon: CheckCircle2,
         path: '/dashboard/attendance',
-        module: 'HRMS',
         children: [
-            { id: 'daily-attendance', label: 'Daily Attendance', path: '/dashboard/attendance' },
-            { id: 'shifts', label: 'Shifts', path: '/dashboard/attendance/shifts' },
-            { id: 'holidays', label: 'Holidays', path: '/dashboard/attendance/holidays' },
+            { id: 'att-dashboard', label: 'Dashboard', path: '/dashboard/attendance' },
+            { id: 'att-biometric', label: 'Biometric Devices', path: '/dashboard/attendance/biometric' },
+            { id: 'att-attendances', label: 'Attendances', path: '/dashboard/attendance/list' },
+            { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests' },
+            { id: 'att-hour-account', label: 'Hour Account', path: '/dashboard/attendance/hour-account' },
+            { id: 'att-work-records', label: 'Work Records', path: '/dashboard/attendance/work-records' },
+            { id: 'att-activities', label: 'Attendance Activities', path: '/dashboard/attendance/activities' },
+            { id: 'att-late-early', label: 'Late Come Early Out', path: '/dashboard/attendance/late-early' },
+            { id: 'att-my-attendance', label: 'My Attendances', path: '/dashboard/attendance/my-attendance' },
         ]
     },
     {
@@ -55,7 +60,6 @@ const menuItems = [
         label: 'Leave Management',
         icon: Calendar,
         path: '/dashboard/leave',
-        module: 'HRMS',
         children: [
             { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave' },
             { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types' },
@@ -67,7 +71,6 @@ const menuItems = [
         label: 'Payroll',
         icon: Wallet,
         path: '/dashboard/payroll',
-        module: 'Payroll',
         children: [
             { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure' },
             { id: 'payslips', label: 'Payslips', path: '/dashboard/payroll/payslips' },

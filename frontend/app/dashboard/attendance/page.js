@@ -1,18 +1,18 @@
 'use client';
 
-import AttendanceList from '@/components/ClientAdmin/HRMS/Attendance/AttendanceList/AttendanceList';
+import AttendanceDashboard from '@/components/ClientAdmin/HRMS/Attendance/AttendanceDashboard';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
 
 export default function AttendancePage() {
     return (
         <Dashboard
-            title="Attendance Management"
-            subtitle="Track and manage employee daily attendance"
+            title="Attendance Performance"
+            subtitle="Central overview of organizational presence and trends"
             breadcrumbs={['Dashboard', 'Attendance']}
         >
             <ModuleGuard module="HRMS">
-                <AttendanceList />
+                <AttendanceDashboard />
             </ModuleGuard>
         </Dashboard>
     );
