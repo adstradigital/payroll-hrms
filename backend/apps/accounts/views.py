@@ -19,7 +19,7 @@ from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
     InviteCode, NotificationPreference, Role, Module, Permission,
-    DataScope, RolePermission
+    DataScope, RolePermission, DesignationPermission
 )
 from apps.subscriptions.models import Package, Subscription, Payment, FeatureUsage
 from .serializers import (
@@ -110,12 +110,35 @@ def register_organization(request):
             )
             
             employee_id = f"EMP-{main_org.id.hex[:8].upper()}-001"
+            
+            # Create Administrator designation for the organization
+            admin_designation, _ = Designation.objects.get_or_create(
+                company=main_org,
+                code='admin',
+                defaults={
+                    'name': 'Administrator',
+                    'description': 'Organization Administrator with full access',
+                    'level': 1,
+                    'is_active': True,
+                    'is_managerial': True,
+                    'created_by': user
+                }
+            )
+            
+            # Assign Super Admin role to Administrator designation if exists
+            try:
+                super_admin_role = Role.objects.get(code='super_admin')
+                admin_designation.roles.add(super_admin_role)
+            except Role.DoesNotExist:
+                pass  # Role will be created when setup_permissions is run
+            
             admin_employee = Employee.objects.create(
                 user=user, company=main_org, employee_id=employee_id,
                 first_name=full_name.split()[0] if full_name else '',
                 last_name=' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else '',
                 email=email, phone=phone, date_of_joining=timezone.now().date(),
                 status='active', employment_type='permanent', 
+                designation=admin_designation,
                 is_admin=True, created_by=user
             )
             
@@ -595,9 +618,20 @@ def department_list_create(request):
     """List or create departments"""
     try:
         if request.method == 'GET':
-            company_id = request.query_params.get('company', None)
+            # Isolate data by user's company
+            current_employee = Employee.objects.filter(user=request.user).first()
+            if current_employee:
+                user_company_id = current_employee.company_id
+            else:
+                org = Organization.objects.filter(created_by=request.user).first()
+                user_company_id = org.id if org else None
+
+            company_id = request.query_params.get('company', user_company_id)
             queryset = Department.objects.select_related('company', 'parent', 'head')
-            if company_id:
+            
+            if user_company_id:
+                queryset = queryset.filter(company_id=user_company_id)
+            elif company_id:
                 queryset = queryset.filter(company_id=company_id)
             
             paginator = StandardResultsSetPagination()
@@ -657,9 +691,20 @@ def designation_list_create(request):
     """List or create designations"""
     try:
         if request.method == 'GET':
-            company_id = request.query_params.get('company', None)
+            # Isolate data by user's company
+            current_employee = Employee.objects.filter(user=request.user).first()
+            if current_employee:
+                user_company_id = current_employee.company_id
+            else:
+                org = Organization.objects.filter(created_by=request.user).first()
+                user_company_id = org.id if org else None
+
+            company_id = request.query_params.get('company', user_company_id)
             queryset = Designation.objects.select_related('company').prefetch_related('roles')
-            if company_id:
+            
+            if user_company_id:
+                queryset = queryset.filter(company_id=user_company_id)
+            elif company_id:
                 queryset = queryset.filter(company_id=company_id)
             
             paginator = StandardResultsSetPagination()
@@ -704,6 +749,47 @@ def designation_detail(request, pk):
         logger.error(f"Error in designation_detail: {str(e)}")
         return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def designation_permissions(request, pk):
+    """Update permissions for a designation (designation IS the role)"""
+    try:
+        desig = get_object_or_404(Designation, pk=pk)
+        
+        # permissions format: [{ permission: uuid, scope: uuid }, ...]
+        permissions_data = request.data.get('permissions', [])
+        
+        with transaction.atomic():
+            # Clear existing permissions
+            DesignationPermission.objects.filter(designation=desig).delete()
+            
+            # Create new permissions
+            for perm_data in permissions_data:
+                perm_id = perm_data.get('permission')
+                scope_id = perm_data.get('scope')
+                
+                if perm_id and scope_id:
+                    DesignationPermission.objects.create(
+                        designation=desig,
+                        permission_id=perm_id,
+                        scope_id=scope_id,
+                        conditions=perm_data.get('conditions', {})
+                    )
+            
+            desig.updated_by = request.user
+            desig.save()
+        
+        return Response({
+            'success': True, 
+            'message': f'Permissions updated for {desig.name}',
+            'permissions_count': desig.designationpermission_set.count()
+        })
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in designation_permissions: {str(e)}")
+        logger.error(traceback.format_exc())
+        return Response({'error': f'Failed to update permissions: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -897,14 +983,32 @@ def employee_list_create(request):
     """List or create employees"""
     try:
         if request.method == 'GET':
-            company_id = request.query_params.get('company', None)
+            # Determine the user's company to enforce isolation
+            current_employee = Employee.objects.filter(user=request.user).first()
+            if current_employee:
+                user_company_id = current_employee.company_id
+            else:
+                # Fallback for virtual admins (org creators)
+                org = Organization.objects.filter(created_by=request.user).first()
+                user_company_id = org.id if org else None
+
+            company_id = request.query_params.get('company', user_company_id)
             department_id = request.query_params.get('department', None)
             status_filter = request.query_params.get('status', None)
             search = request.query_params.get('search', None)
             
             queryset = Employee.objects.select_related('company', 'department', 'designation')
-            if company_id:
-                queryset = queryset.filter(company_id=company_id)
+            
+            # CRITICAL: Always filter by the user's company (or the requested one if valid)
+            if user_company_id:
+                 # If user has a company, strict filter. 
+                 # Even if they request another company_id via params, they shouldn't see it unless logic allows (e.g. superuser)
+                 # For now, we enforce the user's company or the one they manage.
+                 queryset = queryset.filter(company_id=user_company_id)
+            elif company_id:
+                 # Fallback if we couldn't determine user's company but param exists (unsafe generally, but for superadmin maybe)
+                 queryset = queryset.filter(company_id=company_id)
+            
             if department_id:
                 queryset = queryset.filter(department_id=department_id)
             if status_filter:

@@ -196,12 +196,21 @@ class Designation(BaseModel):
     is_active = models.BooleanField(default=True)
     is_managerial = models.BooleanField(default=False)
     
-    # Permission roles associated with this designation
+    # Permission roles associated with this designation (legacy - for role-based)
     roles = models.ManyToManyField(
         'Role', 
         blank=True, 
         related_name='designations',
         help_text="Roles automatically granted to employees with this designation"
+    )
+    
+    # Direct permissions for this designation (simplified - designation IS the role)
+    permissions = models.ManyToManyField(
+        'Permission',
+        through='DesignationPermission',
+        blank=True,
+        related_name='designations',
+        help_text="Permissions directly assigned to this designation"
     )
 
     class Meta:
@@ -822,6 +831,37 @@ class RolePermission(models.Model):
     def __str__(self):
         return f"{self.role.name} - {self.permission.name} ({self.scope.name})"
 
+
+class DesignationPermission(models.Model):
+    """Through model for Designation-Permission (Designation IS the role)"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    designation = models.ForeignKey('Designation', on_delete=models.CASCADE)
+    permission = models.ForeignKey(Permission, on_delete=models.CASCADE)
+    
+    # Data access scope for this permission
+    scope = models.ForeignKey(
+        DataScope,
+        on_delete=models.CASCADE,
+        help_text="Data access scope for this permission"
+    )
+    
+    # Additional conditions (JSON)
+    conditions = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional conditions for this permission"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['designation', 'permission']
+        indexes = [
+            models.Index(fields=['designation', 'permission']),
+        ]
+        
+    def __str__(self):
+        return f"{self.designation.name} - {self.permission.name} ({self.scope.name})"
 
 class UserRole(models.Model):
     """Assign roles to users"""

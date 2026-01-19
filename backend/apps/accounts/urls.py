@@ -45,6 +45,7 @@ urlpatterns = [
     # ==================== DESIGNATION ====================
     path('designations/', views.designation_list_create, name='designation_list_create'),
     path('designations/<uuid:pk>/', views.designation_detail, name='designation_detail'),
+    path('designations/<uuid:pk>/permissions/', views.designation_permissions, name='designation_permissions'),
     
     # ==================== EMPLOYEE ====================
     path('employees/me/', views.get_my_profile, name='get_my_profile'),

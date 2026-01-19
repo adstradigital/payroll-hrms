@@ -1,37 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Shield, Plus, Edit2, Trash2, X, Check, ChevronDown, ChevronRight,
-    Users, Key, Layers, Save, AlertCircle
+    Shield, Check, Search, Save, AlertCircle, ChevronDown, ChevronRight, Layers, Lock, Unlock, Crown
 } from 'lucide-react';
 import {
-    getRoles, createRole, updateRole, deleteRole,
-    getPermissions, getScopes, getAllDesignations, updateDesignation
+    getPermissions, getScopes, getAllDesignations, updateDesignationPermissions
 } from '@/api/api_clientadmin';
 import './RoleAndPermission.css';
 
 export default function RoleAndPermission() {
-    const [roles, setRoles] = useState([]);
     const [permissions, setPermissions] = useState([]);
     const [scopes, setScopes] = useState([]);
     const [designations, setDesignations] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('roles');
 
-    // Role editing
-    const [selectedRole, setSelectedRole] = useState(null);
-    const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-    const [roleFormData, setRoleFormData] = useState({ name: '', code: '', description: '' });
-    const [selectedPermissions, setSelectedPermissions] = useState({});
-
-    // Designation mapping
+    // Selection
     const [selectedDesignation, setSelectedDesignation] = useState(null);
-    const [designationRoles, setDesignationRoles] = useState([]);
+    const [selectedPermissions, setSelectedPermissions] = useState({}); // { permId: scopeId }
 
-    // Grouped permissions by module
+    // UI State
     const [groupedPermissions, setGroupedPermissions] = useState({});
     const [expandedModules, setExpandedModules] = useState({});
+    const [searchTerm, setSearchTerm] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [notification, setNotification] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -40,20 +33,28 @@ export default function RoleAndPermission() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [rolesRes, permsRes, scopesRes, desigRes] = await Promise.all([
-                getRoles(),
+            const [permsRes, scopesRes, desigRes] = await Promise.all([
                 getPermissions(),
                 getScopes(),
                 getAllDesignations()
             ]);
 
-            console.log('Permissions API Response:', permsRes.data);
-            console.log('Scopes API Response:', scopesRes.data);
-
-            setRoles(rolesRes.data.roles || []);
             setPermissions(permsRes.data.permissions || []);
             setScopes(scopesRes.data.scopes || []);
-            setDesignations(desigRes.data.results || desigRes.data || []);
+
+            const desigs = desigRes.data.results || desigRes.data || [];
+            setDesignations(desigs);
+
+            // If we have a selected designation, update it with fresh data
+            if (selectedDesignation) {
+                const refreshedDesig = desigs.find(d => d.id === selectedDesignation.id);
+                if (refreshedDesig) {
+                    handleDesignationSelect(refreshedDesig, false);
+                }
+            } else if (desigs.length > 0) {
+                // Auto-select first designation
+                handleDesignationSelect(desigs[0]);
+            }
 
             // Group permissions by module
             const grouped = (permsRes.data.permissions || []).reduce((acc, perm) => {
@@ -64,15 +65,49 @@ export default function RoleAndPermission() {
             }, {});
             setGroupedPermissions(grouped);
 
-            // Auto-expand all modules so permissions are visible
+            // Auto-expand all modules
             const allExpanded = {};
             Object.keys(grouped).forEach(key => { allExpanded[key] = true; });
             setExpandedModules(allExpanded);
         } catch (error) {
             console.error('Error fetching data:', error);
+            showNotification('error', 'Failed to load data');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleDesignationSelect = (desig, updateState = true) => {
+        if (updateState) {
+            setSelectedDesignation(desig);
+            setNotification(null);
+        }
+
+        // Build permission map from designation permissions
+        const permMap = {};
+        (desig.permissions_data || []).forEach(dp => {
+            permMap[dp.permission] = dp.scope;
+        });
+        setSelectedPermissions(permMap);
+    };
+
+    const togglePermission = (permId, defaultScopeId) => {
+        setSelectedPermissions(prev => {
+            const newPerms = { ...prev };
+            if (newPerms[permId]) {
+                delete newPerms[permId]; // Remove permission
+            } else {
+                newPerms[permId] = defaultScopeId; // Add with default scope
+            }
+            return newPerms;
+        });
+    };
+
+    const changeScope = (permId, scopeId) => {
+        setSelectedPermissions(prev => ({
+            ...prev,
+            [permId]: scopeId
+        }));
     };
 
     const toggleModule = (moduleName) => {
@@ -82,310 +117,226 @@ export default function RoleAndPermission() {
         }));
     };
 
-    const handleOpenRoleModal = (role = null) => {
-        if (role) {
-            setSelectedRole(role);
-            setRoleFormData({ name: role.name, code: role.code, description: role.description || '' });
-            // Build permission map from existing role
-            const permMap = {};
-            (role.permissions_data || []).forEach(rp => {
-                permMap[rp.permission] = rp.scope;
-            });
-            setSelectedPermissions(permMap);
-        } else {
-            setSelectedRole(null);
-            setRoleFormData({ name: '', code: '', description: '' });
-            setSelectedPermissions({});
-        }
-        setIsRoleModalOpen(true);
-    };
-
-    const handleRoleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSave = async () => {
+        if (!selectedDesignation) return;
+        setSaving(true);
         try {
-            const permissionsPayload = Object.entries(selectedPermissions).map(([permId, scopeId]) => ({
+            // Convert map to array { permission: uuid, scope: uuid }
+            const permissionsList = Object.entries(selectedPermissions).map(([permId, scopeId]) => ({
                 permission: permId,
                 scope: scopeId
             }));
 
-            const payload = {
-                ...roleFormData,
-                permissions: permissionsPayload
-            };
-
-            if (selectedRole) {
-                await updateRole(selectedRole.id, payload);
-            } else {
-                await createRole(payload);
-            }
-            setIsRoleModalOpen(false);
-            fetchData();
-        } catch (error) {
-            console.error('Error saving role:', error);
-        }
-    };
-
-    const handleDeleteRole = async (id) => {
-        if (window.confirm('Are you sure you want to delete this role?')) {
-            try {
-                await deleteRole(id);
-                fetchData();
-            } catch (error) {
-                console.error('Error deleting role:', error);
-            }
-        }
-    };
-
-    const handlePermissionToggle = (permId, scopeId) => {
-        setSelectedPermissions(prev => {
-            if (prev[permId] === scopeId) {
-                const newPerms = { ...prev };
-                delete newPerms[permId];
-                return newPerms;
-            }
-            return { ...prev, [permId]: scopeId };
-        });
-    };
-
-    const handleDesignationSelect = (desig) => {
-        setSelectedDesignation(desig);
-        setDesignationRoles((desig.roles || []).map(r => r.id));
-    };
-
-    const handleDesignationRoleToggle = (roleId) => {
-        setDesignationRoles(prev =>
-            prev.includes(roleId)
-                ? prev.filter(id => id !== roleId)
-                : [...prev, roleId]
-        );
-    };
-
-    const handleSaveDesignationRoles = async () => {
-        if (!selectedDesignation) return;
-        try {
-            await updateDesignation(selectedDesignation.id, {
-                ...selectedDesignation,
-                roles: designationRoles
+            await updateDesignationPermissions(selectedDesignation.id, {
+                permissions: permissionsList
             });
+
+            showNotification('success', `Permissions updated for ${selectedDesignation.name}`);
+
+            // Refresh data to ensure sync
             fetchData();
         } catch (error) {
-            console.error('Error saving designation roles:', error);
+            console.error('Error saving permissions:', error);
+            showNotification('error', 'Failed to save permissions');
+        } finally {
+            setSaving(false);
         }
     };
+
+    const showNotification = (type, message) => {
+        setNotification({ type, message });
+        setTimeout(() => setNotification(null), 3000);
+    };
+
+    // Filter designations
+    const filteredDesignations = designations.filter(d =>
+        d.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     if (loading) {
         return (
-            <div className="rp-loading">
-                <div className="rp-spinner"></div>
-                <p>Loading permissions...</p>
+            <div className="rp-container theme-black-gold">
+                <div className="rp-loading">
+                    <div className="rp-spinner"></div>
+                    <p>Loading permissions data...</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="rp-container">
-            <div className="rp-header">
-                <div className="rp-title-section">
-                    <Shield className="rp-icon" />
-                    <div>
-                        <h1>Roles & Permissions</h1>
-                        <p>Manage access control and role-based permissions</p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="rp-tabs">
-                <button
-                    className={`rp-tab ${activeTab === 'roles' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('roles')}
-                >
-                    <Key size={18} /> Manage Roles
-                </button>
-                <button
-                    className={`rp-tab ${activeTab === 'designations' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('designations')}
-                >
-                    <Users size={18} /> Designation Mapping
-                </button>
-            </div>
-
-            {activeTab === 'roles' && (
-                <div className="rp-content">
-                    <div className="rp-section-header">
-                        <h2>Custom Roles</h2>
-                        <button className="rp-btn-primary" onClick={() => handleOpenRoleModal()}>
-                            <Plus size={18} /> New Role
-                        </button>
-                    </div>
-
-                    <div className="rp-roles-grid">
-                        {roles.map(role => (
-                            <div key={role.id} className={`rp-role-card ${role.role_type === 'system' ? 'system' : ''}`}>
-                                <div className="rp-role-header">
-                                    <h3>{role.name}</h3>
-                                    {role.role_type === 'system' && <span className="rp-badge system">System</span>}
-                                </div>
-                                <p className="rp-role-code">{role.code}</p>
-                                <p className="rp-role-desc">{role.description || 'No description'}</p>
-                                <div className="rp-role-stats">
-                                    <span>{(role.permissions_data || []).length} permissions</span>
-                                </div>
-                                <div className="rp-role-actions">
-                                    <button onClick={() => handleOpenRoleModal(role)} disabled={role.role_type === 'system'}>
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button onClick={() => handleDeleteRole(role.id)} disabled={role.role_type === 'system'}>
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+        <div className="rp-container theme-black-gold">
+            {notification && (
+                <div className={`rp-notification ${notification.type} animate-slide-in`}>
+                    {notification.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+                    {notification.message}
                 </div>
             )}
 
-            {activeTab === 'designations' && (
-                <div className="rp-content rp-split-view">
-                    <div className="rp-desig-list">
-                        <h3>Designations</h3>
-                        {designations.map(desig => (
+            <div className="rp-header">
+                <div className="rp-title-section">
+                    <div className="rp-icon-box">
+                        <Crown size={28} />
+                    </div>
+                    <div>
+                        <h1>Roles & Permissions</h1>
+                        <p>Configure access levels and security scopes</p>
+                    </div>
+                </div>
+                {selectedDesignation && (
+                    <div className="rp-actions">
+                        <span className="rp-status-badge">
+                            {Object.keys(selectedPermissions).length} Active Permissions
+                        </span>
+                        <button
+                            className="rp-btn-primary"
+                            onClick={handleSave}
+                            disabled={saving}
+                        >
+                            {saving ? <div className="spinner-small"></div> : <Save size={18} />}
+                            {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <div className="rp-split-view">
+                {/* Left Panel: Designation List */}
+                <div className="rp-left-panel">
+                    <div className="rp-panel-search">
+                        <Search size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search Roles..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="rp-desig-list-scroll">
+                        <div className="rp-list-header">DESIGNATIONS</div>
+                        {filteredDesignations.map(desig => (
                             <div
                                 key={desig.id}
                                 className={`rp-desig-item ${selectedDesignation?.id === desig.id ? 'active' : ''}`}
                                 onClick={() => handleDesignationSelect(desig)}
                             >
-                                <span>{desig.name}</span>
-                                <span className="rp-desig-roles-count">{(desig.roles || []).length} roles</span>
+                                <div className="rp-desig-avatar">
+                                    {desig.name.charAt(0)}
+                                </div>
+                                <div className="rp-desig-info">
+                                    <span className="rp-desig-name">{desig.name}</span>
+                                    <span className="rp-desig-count">
+                                        {(desig.permissions_data?.length || 0) + (selectedDesignation?.id === desig.id ? Object.keys(selectedPermissions).length - (desig.permissions_data?.length || 0) : 0)} permissions
+                                    </span>
+                                </div>
+                                {selectedDesignation?.id === desig.id && <ChevronRight size={16} className="rp-active-indicator" />}
                             </div>
                         ))}
                     </div>
-
-                    <div className="rp-desig-roles">
-                        {selectedDesignation ? (
-                            <>
-                                <div className="rp-desig-roles-header">
-                                    <h3>Roles for: {selectedDesignation.name}</h3>
-                                    <button className="rp-btn-primary" onClick={handleSaveDesignationRoles}>
-                                        <Save size={16} /> Save Changes
-                                    </button>
-                                </div>
-                                <div className="rp-desig-roles-list">
-                                    {roles.map(role => (
-                                        <label key={role.id} className="rp-checkbox-label">
-                                            <input
-                                                type="checkbox"
-                                                checked={designationRoles.includes(role.id)}
-                                                onChange={() => handleDesignationRoleToggle(role.id)}
-                                            />
-                                            <span>{role.name}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </>
-                        ) : (
-                            <div className="rp-desig-placeholder">
-                                <Layers size={48} />
-                                <p>Select a designation to manage its roles</p>
-                            </div>
-                        )}
-                    </div>
                 </div>
-            )}
 
-            {/* Role Modal */}
-            {isRoleModalOpen && (
-                <div className="rp-modal-overlay" onClick={() => setIsRoleModalOpen(false)}>
-                    <div className="rp-modal" onClick={e => e.stopPropagation()}>
-                        <div className="rp-modal-header">
-                            <h2>{selectedRole ? 'Edit Role' : 'Create New Role'}</h2>
-                            <button className="rp-modal-close" onClick={() => setIsRoleModalOpen(false)}>
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleRoleSubmit}>
-                            <div className="rp-modal-body">
-                                <div className="rp-form-row">
-                                    <div className="rp-form-group">
-                                        <label>Role Name</label>
-                                        <input
-                                            type="text"
-                                            value={roleFormData.name}
-                                            onChange={e => setRoleFormData(prev => ({ ...prev, name: e.target.value }))}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="rp-form-group">
-                                        <label>Code</label>
-                                        <input
-                                            type="text"
-                                            value={roleFormData.code}
-                                            onChange={e => setRoleFormData(prev => ({ ...prev, code: e.target.value }))}
-                                            required
-                                        />
-                                    </div>
+                {/* Right Panel: Permissions Matrix */}
+                <div className="rp-right-panel">
+                    {selectedDesignation ? (
+                        <div className="rp-permissions-wrapper">
+                            <div className="rp-panel-header">
+                                <div className="rp-ph-content">
+                                    <h2>{selectedDesignation.name}</h2>
+                                    <p className="rp-subtitle">Manage module access and data visibility</p>
                                 </div>
-                                <div className="rp-form-group">
-                                    <label>Description</label>
-                                    <textarea
-                                        value={roleFormData.description}
-                                        onChange={e => setRoleFormData(prev => ({ ...prev, description: e.target.value }))}
-                                        rows={2}
-                                    />
+                                <div className="rp-security-badge">
+                                    <Shield size={14} /> Security Level: High
                                 </div>
+                            </div>
 
-                                <div className="rp-permissions-section">
-                                    <h3>Permissions</h3>
-                                    <div className="rp-permissions-list">
-                                        {Object.entries(groupedPermissions).map(([moduleName, perms]) => (
-                                            <div key={moduleName} className="rp-permission-module">
-                                                <div
-                                                    className="rp-module-header"
-                                                    onClick={() => toggleModule(moduleName)}
-                                                >
-                                                    {expandedModules[moduleName]
-                                                        ? <ChevronDown size={18} />
-                                                        : <ChevronRight size={18} />
-                                                    }
-                                                    <span>{moduleName}</span>
-                                                    <span className="rp-module-count">{perms.length}</span>
-                                                </div>
-                                                {expandedModules[moduleName] && (
-                                                    <div className="rp-module-permissions">
-                                                        {perms.map(perm => (
-                                                            <div key={perm.id} className="rp-permission-row">
-                                                                <span className="rp-perm-name">{perm.name}</span>
-                                                                <select
-                                                                    value={selectedPermissions[perm.id] || ''}
-                                                                    onChange={e => handlePermissionToggle(perm.id, e.target.value)}
-                                                                >
-                                                                    <option value="">No Access</option>
-                                                                    {scopes.map(scope => (
-                                                                        <option key={scope.id} value={scope.id}>
-                                                                            {scope.name}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                            <div className="rp-modules-list">
+                                {Object.entries(groupedPermissions).sort().map(([module, modulePerms]) => (
+                                    <div key={module} className={`rp-module-group ${expandedModules[module] ? 'expanded' : ''}`}>
+                                        <div
+                                            className="rp-module-header"
+                                            onClick={() => toggleModule(module)}
+                                        >
+                                            <div className="rp-module-title">
+                                                {expandedModules[module] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                                                <span>{module}</span>
                                             </div>
-                                        ))}
+                                            <div className="rp-module-meta">
+                                                <div className="rp-progress-bar">
+                                                    <div
+                                                        className="rp-progress-fill"
+                                                        style={{ width: `${(modulePerms.filter(p => selectedPermissions[p.id]).length / modulePerms.length) * 100}%` }}
+                                                    ></div>
+                                                </div>
+                                                <span className="rp-module-badge">
+                                                    {modulePerms.filter(p => selectedPermissions[p.id]).length} / {modulePerms.length}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="rp-module-content">
+                                            {modulePerms.map(perm => {
+                                                const isSelected = !!selectedPermissions[perm.id];
+                                                return (
+                                                    <div key={perm.id} className={`rp-perm-row ${isSelected ? 'selected' : ''}`}>
+                                                        <div className="rp-perm-check">
+                                                            <div className="checkbox-wrapper">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    id={`perm-${perm.id}`}
+                                                                    checked={isSelected}
+                                                                    onChange={() => togglePermission(perm.id, scopes[0]?.id)}
+                                                                />
+                                                                <label htmlFor={`perm-${perm.id}`} className="custom-checkbox">
+                                                                    {isSelected && <Check size={12} strokeWidth={4} />}
+                                                                </label>
+                                                            </div>
+                                                            <div className="rp-perm-text">
+                                                                <label htmlFor={`perm-${perm.id}`} className="rp-perm-name">{perm.name}</label>
+                                                                <p className="rp-perm-desc">{perm.description || 'Access control for this feature'}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="rp-scope-container">
+                                                            {isSelected ? (
+                                                                <div className="rp-select-wrapper">
+                                                                    <Unlock size={14} className="rp-scope-icon" />
+                                                                    <select
+                                                                        value={selectedPermissions[perm.id]}
+                                                                        onChange={(e) => changeScope(perm.id, e.target.value)}
+                                                                    >
+                                                                        {scopes.map(scope => (
+                                                                            <option key={scope.id} value={scope.id}>
+                                                                                {scope.name}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <ChevronDown size={14} className="rp-select-arrow" />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="rp-locked-state">
+                                                                    <Lock size={14} /> <span>Restricted</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
+                                ))}
                             </div>
-                            <div className="rp-modal-footer">
-                                <button type="button" className="rp-btn-secondary" onClick={() => setIsRoleModalOpen(false)}>
-                                    Cancel
-                                </button>
-                                <button type="submit" className="rp-btn-primary">
-                                    <Check size={18} /> {selectedRole ? 'Update Role' : 'Create Role'}
-                                </button>
+                        </div>
+                    ) : (
+                        <div className="rp-placeholder">
+                            <div className="rp-placeholder-icon">
+                                <Layers size={64} />
                             </div>
-                        </form>
-                    </div>
+                            <h3>Select a Designation</h3>
+                            <p>Choose a role from the sidebar to configure permissions.</p>
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }

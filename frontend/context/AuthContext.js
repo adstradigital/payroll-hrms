@@ -13,22 +13,30 @@ export function AuthProvider({ children }) {
     const router = useRouter();
 
     useEffect(() => {
-        // ... existing useEffect logic ...
         const savedUser = Cookies.get('user');
+        const accessToken = localStorage.getItem('accessToken');
+
+        console.log('AuthContext init - savedUser:', savedUser);
+        console.log('AuthContext init - accessToken exists:', !!accessToken);
+
         if (savedUser) {
             try {
-                setUser(JSON.parse(savedUser));
+                const parsedUser = JSON.parse(savedUser);
+                console.log('AuthContext - User loaded:', parsedUser);
+                console.log('AuthContext - User role:', parsedUser.role);
+                setUser(parsedUser);
             } catch (err) {
                 console.error('Failed to parse user cookie', err);
             }
-        } else {
-            // DEV MODE fallback
+        } else if (!accessToken) {
+            // DEV MODE fallback - only use if no real auth exists
+            console.log('AuthContext - Using DEV fallback user');
             setUser({
                 name: 'Dev Admin',
                 email: 'admin@example.com',
                 company: 'HR Nexus Demo',
                 subscription_plan: 'both',
-                role: 'owner'
+                role: 'admin'
             });
         }
         setLoading(false);

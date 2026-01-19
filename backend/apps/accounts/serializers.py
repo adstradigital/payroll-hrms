@@ -5,7 +5,7 @@ from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
     InviteCode, NotificationPreference, Role, Module, Permission,
-    DataScope, RolePermission
+    DataScope, RolePermission, DesignationPermission
 )
 
 
@@ -216,26 +216,37 @@ class RoleSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
+class DesignationPermissionSerializer(serializers.ModelSerializer):
+    """Serializer for Designation-Permission (simplified model where designation IS role)"""
+    permission_detail = PermissionSerializer(source='permission', read_only=True)
+    scope_name = serializers.CharField(source='scope.name', read_only=True)
+    
+    class Meta:
+        model = DesignationPermission
+        fields = ['id', 'permission', 'permission_detail', 'scope', 'scope_name', 'conditions']
+
 class DesignationListSerializer(serializers.ModelSerializer):
     """Designation List Serializer"""
     company_name = serializers.CharField(source='company.name', read_only=True)
     employee_count = serializers.SerializerMethodField()
     roles = RoleSerializer(many=True, read_only=True)
+    permissions_data = DesignationPermissionSerializer(source='designationpermission_set', many=True, read_only=True)
+    permissions_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Designation
         fields = [
             'id', 'company', 'company_name', 'name', 'code',
-            'level', 'job_grade', 'is_active', 'employee_count', 'roles'
+            'level', 'job_grade', 'is_active', 'employee_count', 'roles',
+            'permissions_data', 'permissions_count'
         ]
         read_only_fields = ['id', 'company_name', 'employee_count']
     
     def get_employee_count(self, obj):
         return obj.employees.filter(status='active').count()
-
-
-    def get_employee_count(self, obj):
-        return obj.employees.filter(status='active').count()
+    
+    def get_permissions_count(self, obj):
+        return obj.designationpermission_set.count()
 
 
 class DesignationDetailSerializer(serializers.ModelSerializer):

@@ -34,6 +34,7 @@ export const getAllDesignations = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.
 export const createDesignation = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DESIGNATIONS, data);
 export const updateDesignation = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id), data);
 export const deleteDesignation = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id));
+export const updateDesignationPermissions = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.DESIGNATION_PERMISSIONS(id), data);
 
 export const getRoles = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ROLES);
 export const createRole = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ROLES, data);
