@@ -89,7 +89,9 @@ export default function EditProfile({ employee, onClose, onSuccess }) {
             onClose();
         } catch (error) {
             console.error('Error saving profile:', error);
-            alert('Failed to save profile. Please check your data or contact support.');
+            console.error('Error response:', error.response?.data);
+            const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to save profile. Please check your data or contact support.';
+            alert(errorMsg);
         } finally {
             setLoading(false);
         }

@@ -15,8 +15,11 @@ urlpatterns = [
     path('packages/', views.package_list, name='package_list'),
     path('packages/<uuid:package_id>/', views.package_detail, name='package_detail'),
     
-    # ==================== ROLES ====================
-    path('roles/', views.role_list, name='role_list'),
+    # ==================== ROLES & PERMISSIONS ====================
+    path('roles/', views.role_list_create, name='role_list_create'),
+    path('roles/<uuid:pk>/', views.role_detail, name='role_detail'),
+    path('permissions/', views.permission_list, name='permission_list'),
+    path('scopes/', views.datascope_list, name='datascope_list'),
     
     # ==================== SUBSCRIPTION ====================
     path('subscription/', views.subscription_detail, name='subscription_detail'),

@@ -56,6 +56,9 @@ export const CLIENTADMIN_ENDPOINTS = {
     DESIGNATIONS: `${BASE_URL}/account/designations/`,
     DESIGNATION_DETAIL: (id) => `${BASE_URL}/account/designations/${id}/`,
     ROLES: `${BASE_URL}/account/roles/`,
+    ROLE_DETAIL: (id) => `${BASE_URL}/account/roles/${id}/`,
+    PERMISSIONS: `${BASE_URL}/account/permissions/`,
+    SCOPES: `${BASE_URL}/account/scopes/`,
 
     // Attendance
     ATTENDANCE: `${BASE_URL}/attendance/`,

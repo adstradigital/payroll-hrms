@@ -36,6 +36,11 @@ export const updateDesignation = (id, data) => axiosInstance.put(CLIENTADMIN_END
 export const deleteDesignation = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id));
 
 export const getRoles = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ROLES);
+export const createRole = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ROLES, data);
+export const updateRole = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ROLE_DETAIL(id), data);
+export const deleteRole = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ROLE_DETAIL(id));
+export const getPermissions = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PERMISSIONS);
+export const getScopes = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SCOPES);
 
 // Attendance
 export const getAllAttendance = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE, { params });

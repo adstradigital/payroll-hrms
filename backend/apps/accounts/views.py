@@ -18,10 +18,15 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
-    InviteCode, NotificationPreference
+    InviteCode, NotificationPreference, Role, Module, Permission,
+    DataScope, RolePermission
 )
 from apps.subscriptions.models import Package, Subscription, Payment, FeatureUsage
-from .serializers import MyTokenObtainPairSerializer
+from .serializers import (
+    MyTokenObtainPairSerializer, ModuleSerializer, PermissionSerializer,
+    DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
+    DesignationListSerializer, DesignationDetailSerializer
+)
 
 logger = logging.getLogger(__name__)
 
@@ -702,14 +707,142 @@ def designation_detail(request, pk):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def role_list(request):
-    """List all available roles for mapping"""
+def permission_list(request):
+    """List all available permissions grouped by module"""
     try:
-        roles = Role.objects.filter(is_active=True).order_by('name')
-        serializer = RoleSerializer(roles, many=True)
-        return Response({'success': True, 'roles': serializer.data})
+        permissions = Permission.objects.select_related('module').filter(is_active=True).order_by('module__sort_order', 'name')
+        serializer = PermissionSerializer(permissions, many=True)
+        return Response({'success': True, 'permissions': serializer.data})
     except Exception as e:
-        logger.error(f"Error in role_list: {str(e)}")
+        logger.error(f"Error in permission_list: {str(e)}")
+        return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def datascope_list(request):
+    """List all available data scopes"""
+    try:
+        scopes = DataScope.objects.all().order_by('level')
+        serializer = DataScopeSerializer(scopes, many=True)
+        return Response({'success': True, 'scopes': serializer.data})
+    except Exception as e:
+        logger.error(f"Error in datascope_list: {str(e)}")
+        return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def role_list_create(request):
+    """List or create roles"""
+    try:
+        # Try to get employee, but handle users without employee records (virtual admins)
+        employee = Employee.objects.filter(user=request.user).first()
+        
+        if employee:
+            org = employee.company.get_root_parent() if hasattr(employee.company, 'get_root_parent') else employee.company
+        else:
+            # For users without employee records, get their organization via subscription/other means
+            # or just return system roles
+            org = None
+        
+        if request.method == 'GET':
+            # Organization-specific roles + system roles
+            if org:
+                roles = Role.objects.filter(
+                    Q(organization=org) | Q(role_type='system'),
+                    is_active=True
+                ).order_by('name')
+            else:
+                # Just return system roles for users without org
+                roles = Role.objects.filter(role_type='system', is_active=True).order_by('name')
+            
+            serializer = RoleSerializer(roles, many=True)
+            return Response({'success': True, 'roles': serializer.data})
+            
+        elif request.method == 'POST':
+            # Only admins can create roles
+            if not employee or not employee.is_admin:
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+                
+            org = employee.company.get_root_parent() if hasattr(employee.company, 'get_root_parent') else employee.company
+            
+            with transaction.atomic():
+                serializer = RoleSerializer(data=request.data)
+                if serializer.is_valid():
+                    role = serializer.save(
+                        organization=org,
+                        role_type='custom',
+                        created_by=request.user
+                    )
+                    
+                    # Handle permissions mapping if provided
+                    permissions_data = request.data.get('permissions', [])
+                    for perm_item in permissions_data:
+                        RolePermission.objects.create(
+                            role=role,
+                            permission_id=perm_item.get('permission'),
+                            scope_id=perm_item.get('scope'),
+                            conditions=perm_item.get('conditions', {})
+                        )
+                        
+                    return Response({'success': True, 'id': str(role.id)}, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error(f"Error in role_list_create: {str(e)}")
+        return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def role_detail(request, pk):
+    """Manage individual role"""
+    try:
+        employee = get_object_or_404(Employee, user=request.user)
+        org = employee.company.get_root_parent()
+        
+        # Check if role exists and belongs to org (System roles are read-only)
+        role = get_object_or_404(Role, pk=pk)
+        
+        if request.method == 'GET':
+            serializer = RoleSerializer(role)
+            return Response({'success': True, 'role': serializer.data})
+            
+        # Prevent modifications to system roles
+        if role.role_type == 'system' and request.method != 'GET':
+            return Response({'error': 'System roles cannot be modified'}, status=status.HTTP_403_FORBIDDEN)
+            
+        if role.organization != org:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        if request.method in ['PUT', 'PATCH']:
+            serializer = RoleSerializer(role, data=request.data, partial=(request.method == 'PATCH'))
+            if serializer.is_valid():
+                with transaction.atomic():
+                    role = serializer.save(updated_by=request.user)
+                    
+                    # Handle permissions mapping update if provided
+                    if 'permissions' in request.data:
+                        # Clear existing and re-create (simple approach for now)
+                        RolePermission.objects.filter(role=role).delete()
+                        permissions_data = request.data.get('permissions', [])
+                        for perm_item in permissions_data:
+                            RolePermission.objects.create(
+                                role=role,
+                                permission_id=perm_item.get('permission'),
+                                scope_id=perm_item.get('scope'),
+                                conditions=perm_item.get('conditions', {})
+                            )
+                    
+                return Response({'success': True, 'message': 'Role updated'})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        elif request.method == 'DELETE':
+            role.delete()
+            return Response({'message': 'Role deleted'}, status=status.HTTP_204_NO_CONTENT)
+            
+    except Exception as e:
+        logger.error(f"Error in role_detail: {str(e)}")
         return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -847,13 +980,27 @@ def employee_detail(request, pk):
         
         elif request.method in ['PUT', 'PATCH']:
             allowed = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'date_of_birth', 'gender',
-                      'department', 'designation', 'status', 'employment_type', 'current_address', 'current_city']
+                      'department', 'designation', 'status', 'employment_type', 'current_address', 'current_city',
+                      'marital_status', 'blood_group', 'permanent_address', 'permanent_city', 'permanent_state',
+                      'permanent_pincode', 'current_state', 'current_pincode', 'pan_number', 'aadhar_number',
+                      'bank_name', 'bank_account_number', 'bank_ifsc', 'bank_branch']
             for field in allowed:
                 if field in request.data:
+                    value = request.data[field]
+                    # Handle empty strings for foreign keys
                     if field in ['department', 'designation']:
-                        setattr(emp, f'{field}_id', request.data[field])
+                        if value == '' or value is None:
+                            setattr(emp, f'{field}_id', None)
+                        else:
+                            setattr(emp, f'{field}_id', value)
+                    # Handle empty strings for date fields
+                    elif field == 'date_of_birth':
+                        if value == '' or value is None:
+                            setattr(emp, field, None)
+                        else:
+                            setattr(emp, field, value)
                     else:
-                        setattr(emp, field, request.data[field])
+                        setattr(emp, field, value)
             emp.updated_by = request.user
             emp.save()
             return Response({'success': True, 'message': 'Employee updated'})
@@ -862,8 +1009,10 @@ def employee_detail(request, pk):
             emp.delete()
             return Response({'message': 'Employee deleted'}, status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
+        import traceback
         logger.error(f"Error in employee_detail: {str(e)}")
-        return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(traceback.format_exc())
+        return Response({'error': f'Failed to process request: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ==================== EMPLOYEE DOCUMENTS ====================

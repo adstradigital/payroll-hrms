@@ -4,7 +4,8 @@ from django.contrib.auth.models import User
 from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
-    InviteCode, NotificationPreference, Role
+    InviteCode, NotificationPreference, Role, Module, Permission,
+    DataScope, RolePermission
 )
 
 
@@ -176,11 +177,42 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
         return obj.employees.filter(status='active').count()
 
 
+class ModuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Module
+        fields = ['id', 'name', 'code', 'description', 'icon', 'sort_order']
+
+
+class PermissionSerializer(serializers.ModelSerializer):
+    module_name = serializers.CharField(source='module.name', read_only=True)
+    
+    class Meta:
+        model = Permission
+        fields = ['id', 'module', 'module_name', 'name', 'code', 'action', 'description']
+
+
+class DataScopeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DataScope
+        fields = ['id', 'name', 'code', 'description', 'level']
+
+
+class RolePermissionSerializer(serializers.ModelSerializer):
+    permission_detail = PermissionSerializer(source='permission', read_only=True)
+    scope_name = serializers.CharField(source='scope.name', read_only=True)
+    
+    class Meta:
+        model = RolePermission
+        fields = ['id', 'permission', 'permission_detail', 'scope', 'scope_name', 'conditions']
+
+
 class RoleSerializer(serializers.ModelSerializer):
     """Role Serializer for designation mapping"""
+    permissions_data = RolePermissionSerializer(source='rolepermission_set', many=True, read_only=True)
+    
     class Meta:
         model = Role
-        fields = ['id', 'name', 'code', 'role_type', 'description']
+        fields = ['id', 'name', 'code', 'role_type', 'description', 'default_scope', 'permissions_data']
         read_only_fields = ['id']
 
 

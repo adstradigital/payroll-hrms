@@ -35,6 +35,7 @@ const menuItems = [
             { id: 'all-employees', label: 'All Employees', path: '/dashboard/employees' },
             { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments' },
             { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations' },
+            { id: 'roles-permissions', label: 'Roles & Permissions', path: '/dashboard/employees/roles' },
         ]
     },
     {
