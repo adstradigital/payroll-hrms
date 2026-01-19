@@ -74,6 +74,16 @@ export const getPayrollReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPO
 export const getLeaveReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_LEAVE, { params });
 export const getEmployeeReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_EMPLOYEE, { params });
 
+// Requests
+export const getDocumentRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, { params });
+export const createDocumentRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, data);
+
+export const getShiftRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SHIFT_REQUESTS, { params });
+export const createShiftRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SHIFT_REQUESTS, data);
+
+export const getWorkTypeRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, { params });
+export const createWorkTypeRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, data);
+
 // HRMS
 export const getAllAnnouncements = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ANNOUNCEMENTS);
 export const createAnnouncement = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ANNOUNCEMENTS, data);

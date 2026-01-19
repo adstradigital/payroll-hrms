@@ -61,6 +61,11 @@ export const CLIENTADMIN_ENDPOINTS = {
     PERMISSIONS: `${BASE_URL}/account/permissions/`,
     SCOPES: `${BASE_URL}/account/scopes/`,
 
+    // Requests
+    DOCUMENT_REQUESTS: `${BASE_URL}/account/employees/document-requests/`,
+    SHIFT_REQUESTS: `${BASE_URL}/account/employees/shift-requests/`,
+    WORK_TYPE_REQUESTS: `${BASE_URL}/account/employees/work-type-requests/`,
+
     // Attendance
     ATTENDANCE: `${BASE_URL}/attendance/`,
     CLOCK_IN: `${BASE_URL}/attendance/clock-in/`,

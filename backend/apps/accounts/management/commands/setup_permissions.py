@@ -103,6 +103,8 @@ class Command(BaseCommand):
                 {'name': 'Edit Employee Salary', 'code': 'edit_employee_salary', 'action': 'edit'},
                 {'name': 'View Employee Documents', 'code': 'view_employee_documents', 'action': 'view'},
                 {'name': 'Manage Employee Documents', 'code': 'manage_employee_documents', 'action': 'manage'},
+                {'name': 'View Work Type Requests', 'code': 'view_work_type_requests', 'action': 'view'},
+                {'name': 'Manage Work Type Requests', 'code': 'manage_work_type_requests', 'action': 'manage'},
             ],
             'attendance': [
                 {'name': 'Mark Attendance', 'code': 'mark_attendance', 'action': 'create'},
@@ -124,6 +126,8 @@ class Command(BaseCommand):
                 {'name': 'View Shifts', 'code': 'view_shifts', 'action': 'view'},
                 {'name': 'Manage Shifts', 'code': 'manage_shifts', 'action': 'manage'},
                 {'name': 'Assign Shifts', 'code': 'assign_shifts', 'action': 'edit'},
+                {'name': 'View Shift Requests', 'code': 'view_shift_requests', 'action': 'view'},
+                {'name': 'Manage Shift Requests', 'code': 'manage_shift_requests', 'action': 'manage'},
             ],
             'payroll': [
                 {'name': 'View Payroll', 'code': 'view_payroll', 'action': 'view'},
@@ -166,6 +170,8 @@ class Command(BaseCommand):
                 {'name': 'Upload Documents', 'code': 'upload_documents', 'action': 'create'},
                 {'name': 'Delete Documents', 'code': 'delete_documents', 'action': 'delete'},
                 {'name': 'Manage Document Templates', 'code': 'manage_templates', 'action': 'manage'},
+                {'name': 'View Document Requests', 'code': 'view_document_requests', 'action': 'view'},
+                {'name': 'Manage Document Requests', 'code': 'manage_document_requests', 'action': 'manage'},
             ],
             'reports': [
                 {'name': 'View Reports', 'code': 'view_reports', 'action': 'view'},
