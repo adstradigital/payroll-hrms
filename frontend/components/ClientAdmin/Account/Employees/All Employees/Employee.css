@@ -1,0 +1,7 @@
+/* Main Employee Module container styles */
+
+.employee-module {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}

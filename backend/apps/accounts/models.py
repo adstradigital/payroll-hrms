@@ -195,6 +195,14 @@ class Designation(BaseModel):
     
     is_active = models.BooleanField(default=True)
     is_managerial = models.BooleanField(default=False)
+    
+    # Permission roles associated with this designation
+    roles = models.ManyToManyField(
+        'Role', 
+        blank=True, 
+        related_name='designations',
+        help_text="Roles automatically granted to employees with this designation"
+    )
 
     class Meta:
         unique_together = ('company', 'code')
@@ -323,6 +331,7 @@ class Employee(BaseModel):
     # Employment Details
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', db_index=True)
     employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_TYPE, default='permanent')
+    is_admin = models.BooleanField(default=False, help_text="Designates whether the user has administrative access")
     
     date_of_joining = models.DateField(db_index=True)
     confirmation_date = models.DateField(null=True, blank=True)

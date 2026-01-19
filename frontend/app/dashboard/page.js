@@ -20,7 +20,7 @@ export default function DashboardPage() {
     ];
 
     return (
-        <Dashboard breadcrumbs={['Home', 'Dashboard']}>
+        <Dashboard breadcrumbs={['Home', 'Dashboard']} showGreeting={true}>
             {/* Stats Grid */}
             <div className="stats-grid">
                 {stats.map((stat, index) => (

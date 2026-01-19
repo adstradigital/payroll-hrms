@@ -1,10 +1,42 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.models import User
 from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
-    InviteCode, NotificationPreference
+    InviteCode, NotificationPreference, Role
 )
+
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Custom JWT Serializer to include user info and roles"""
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Get employee profile to check is_admin status
+        employee = getattr(self.user, 'employee_profile', None)
+        is_admin = False
+        if employee:
+            is_admin = employee.is_admin
+        elif self.user.is_superuser:
+            is_admin = True
+            
+        # Format user object for frontend
+        data['user'] = {
+            'id': str(self.user.id),
+            'email': self.user.email,
+            'name': f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username,
+            'role': 'admin' if is_admin else 'employee'
+        }
+        
+        # Also include organization if exists
+        if employee and employee.company:
+            data['organization'] = {
+                'id': str(employee.company.id),
+                'name': employee.company.name
+            }
+            
+        return data
 
 
 # ==================== USER SERIALIZERS ====================
@@ -140,19 +172,36 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
 
 # ==================== DESIGNATION SERIALIZERS ====================
 
+    def get_employee_count(self, obj):
+        return obj.employees.filter(status='active').count()
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    """Role Serializer for designation mapping"""
+    class Meta:
+        model = Role
+        fields = ['id', 'name', 'code', 'role_type', 'description']
+        read_only_fields = ['id']
+
+
 class DesignationListSerializer(serializers.ModelSerializer):
     """Designation List Serializer"""
     company_name = serializers.CharField(source='company.name', read_only=True)
     employee_count = serializers.SerializerMethodField()
+    roles = RoleSerializer(many=True, read_only=True)
     
     class Meta:
         model = Designation
         fields = [
             'id', 'company', 'company_name', 'name', 'code',
-            'level', 'job_grade', 'is_active', 'employee_count'
+            'level', 'job_grade', 'is_active', 'employee_count', 'roles'
         ]
         read_only_fields = ['id', 'company_name', 'employee_count']
     
+    def get_employee_count(self, obj):
+        return obj.employees.filter(status='active').count()
+
+
     def get_employee_count(self, obj):
         return obj.employees.filter(status='active').count()
 
@@ -163,19 +212,23 @@ class DesignationDetailSerializer(serializers.ModelSerializer):
     employee_count = serializers.SerializerMethodField()
     created_by = UserSerializer(read_only=True)
     updated_by = UserSerializer(read_only=True)
+    roles_data = RoleSerializer(source='roles', many=True, read_only=True)
     
     class Meta:
         model = Designation
         fields = [
             'id', 'company', 'company_name', 'name', 'code', 'description',
             'level', 'min_salary', 'max_salary', 'job_grade', 'is_active',
-            'is_managerial', 'employee_count', 'created_at', 'updated_at',
-            'created_by', 'updated_by'
+            'is_managerial', 'employee_count', 'roles', 'roles_data',
+            'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
         read_only_fields = [
             'id', 'company_name', 'employee_count', 'created_at', 'updated_at',
             'created_by', 'updated_by'
         ]
+        extra_kwargs = {
+            'roles': {'write_only': True, 'required': False}
+        }
     
     def get_employee_count(self, obj):
         return obj.employees.filter(status='active').count()
@@ -196,7 +249,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             'id', 'employee_id', 'full_name', 'first_name', 'last_name',
             'email', 'phone', 'company', 'company_name', 'department',
             'department_name', 'designation', 'designation_name', 'status',
-            'employment_type', 'date_of_joining', 'profile_photo'
+            'employment_type', 'is_admin', 'date_of_joining', 'profile_photo'
         ]
         read_only_fields = [
             'id', 'full_name', 'company_name', 'department_name', 'designation_name'
@@ -228,7 +281,7 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
             'current_address', 'current_city', 'current_state', 'current_country',
             'current_pincode', 'permanent_address', 'permanent_city', 'permanent_state',
             'permanent_country', 'permanent_pincode', 'status', 'employment_type',
-            'date_of_joining', 'confirmation_date', 'probation_period_months',
+            'is_admin', 'date_of_joining', 'confirmation_date', 'probation_period_months',
             'is_on_probation', 'resignation_date', 'last_working_date',
             'termination_date', 'termination_reason', 'profile_photo', 'resume',
             'pan_number', 'aadhar_number', 'passport_number', 'driving_license',

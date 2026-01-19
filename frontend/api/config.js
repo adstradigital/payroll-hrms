@@ -50,8 +50,12 @@ export const CLIENTADMIN_ENDPOINTS = {
     // Employees
     EMPLOYEES: `${BASE_URL}/account/employees/`,
     EMPLOYEE_DETAIL: (id) => `${BASE_URL}/account/employees/${id}/`,
+    GET_MY_PROFILE: `${BASE_URL}/account/employees/me/`,
     DEPARTMENTS: `${BASE_URL}/account/departments/`,
+    DEPARTMENT_DETAIL: (id) => `${BASE_URL}/account/departments/${id}/`,
     DESIGNATIONS: `${BASE_URL}/account/designations/`,
+    DESIGNATION_DETAIL: (id) => `${BASE_URL}/account/designations/${id}/`,
+    ROLES: `${BASE_URL}/account/roles/`,
 
     // Attendance
     ATTENDANCE: `${BASE_URL}/attendance/`,

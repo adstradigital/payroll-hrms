@@ -96,11 +96,11 @@ class PermissionChecker:
         return None  # No direct permission found
     
     def _check_role_permission(self, permission, scope_required, obj):
-        """Check permission through user roles"""
+        """Check permission through user roles (direct and designation-based)"""
         now = timezone.now()
         
-        # Get active user roles
-        user_roles = UserRole.objects.filter(
+        # 1. Get active direct user roles
+        direct_roles = UserRole.objects.filter(
             user=self.user,
             is_active=True,
             organization=self.organization
@@ -109,26 +109,44 @@ class PermissionChecker:
             models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
         ).select_related('role', 'scope_override')
         
-        for user_role in user_roles:
-            # Check if role has this permission
+        # 2. Get roles from user's designation
+        designation_roles = []
+        try:
+            employee = Employee.objects.select_related('designation').get(user=self.user)
+            if employee.designation:
+                designation_roles = employee.designation.roles.filter(is_active=True)
+        except Employee.DoesNotExist:
+            pass
+
+        # 3. Check direct roles first (they might have scope overrides)
+        for user_role in direct_roles:
             role_perm = RolePermission.objects.filter(
                 role=user_role.role,
                 permission=permission
             ).select_related('scope').first()
             
             if role_perm:
-                # Determine effective scope
                 effective_scope = (
                     user_role.scope_override.code if user_role.scope_override
                     else role_perm.scope.code
                 )
-                
-                # Check if scope is sufficient
                 if self._has_sufficient_scope(effective_scope, scope_required):
-                    # Check scope against object
                     if obj and not self._check_object_scope(obj, effective_scope, user_role):
                         continue
-                    
+                    return True
+
+        # 4. Check designation-based roles
+        for role in designation_roles:
+            role_perm = RolePermission.objects.filter(
+                role=role,
+                permission=permission
+            ).select_related('scope').first()
+            
+            if role_perm:
+                effective_scope = role_perm.scope.code
+                if self._has_sufficient_scope(effective_scope, scope_required):
+                    if obj and not self._check_object_scope(obj, effective_scope, None):
+                        continue
                     return True
         
         return False
@@ -210,15 +228,19 @@ class PermissionChecker:
             pass  # Don't fail on logging errors
     
     def get_user_permissions(self):
-        """Get all permissions for user"""
-        permissions = []
+        """Get all permissions for user (direct, role-based, and designation-based)"""
+        permissions_dict = {}  # Use dict to avoid duplicates
         
-        # Get from roles
+        # 1. Get from active direct roles
+        now = timezone.now()
         user_roles = UserRole.objects.filter(
             user=self.user,
             is_active=True,
             organization=self.organization
-        ).select_related('role')
+        ).filter(
+            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
+            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
+        ).select_related('role', 'scope_override')
         
         for user_role in user_roles:
             role_perms = RolePermission.objects.filter(
@@ -226,38 +248,127 @@ class PermissionChecker:
             ).select_related('permission', 'permission__module', 'scope')
             
             for rp in role_perms:
-                permissions.append({
-                    'permission': rp.permission.code,
-                    'name': rp.permission.name,
-                    'module': rp.permission.module.name,
-                    'scope': rp.scope.code
-                })
+                scope = user_role.scope_override.code if user_role.scope_override else rp.scope.code
+                perm_code = rp.permission.code
+                
+                # Keep highest scope if permission exists
+                if perm_code not in permissions_dict or self._has_sufficient_scope(scope, permissions_dict[perm_code]['scope']):
+                    permissions_dict[perm_code] = {
+                        'permission': perm_code,
+                        'name': rp.permission.name,
+                        'module': rp.permission.module.name,
+                        'scope': scope,
+                        'source': f"Role: {user_role.role.name}"
+                    }
         
-        # Get direct permissions
+        # 2. Get from designation-based roles
+        try:
+            employee = Employee.objects.select_related('designation').get(user=self.user)
+            if employee.designation:
+                designation_roles = employee.designation.roles.filter(is_active=True)
+                for role in designation_roles:
+                    role_perms = RolePermission.objects.filter(
+                        role=role
+                    ).select_related('permission', 'permission__module', 'scope')
+                    
+                    for rp in role_perms:
+                        perm_code = rp.permission.code
+                        scope = rp.scope.code
+                        
+                        if perm_code not in permissions_dict or self._has_sufficient_scope(scope, permissions_dict[perm_code]['scope']):
+                            permissions_dict[perm_code] = {
+                                'permission': perm_code,
+                                'name': rp.permission.name,
+                                'module': rp.permission.module.name,
+                                'scope': scope,
+                                'source': f"Designation: {employee.designation.name}"
+                            }
+        except Employee.DoesNotExist:
+            pass
+        
+        # 3. Get direct permissions
         direct_perms = UserPermission.objects.filter(
             user=self.user,
             is_active=True,
             grant_type='grant',
             organization=self.organization
+        ).filter(
+            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
+            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
         ).select_related('permission', 'permission__module', 'scope')
         
         for dp in direct_perms:
-            permissions.append({
-                'permission': dp.permission.code,
-                'name': dp.permission.name,
-                'module': dp.permission.module.name,
-                'scope': dp.scope.code
-            })
+            perm_code = dp.permission.code
+            scope = dp.scope.code
+            
+            if perm_code not in permissions_dict or self._has_sufficient_scope(scope, permissions_dict[perm_code]['scope']):
+                permissions_dict[perm_code] = {
+                    'permission': perm_code,
+                    'name': dp.permission.name,
+                    'module': dp.permission.module.name,
+                    'scope': scope,
+                    'source': 'Direct Grant'
+                }
         
-        return permissions
-    
+        # 4. Handle revokes (removing from the set)
+        revoked_perms = UserPermission.objects.filter(
+            user=self.user,
+            is_active=True,
+            grant_type='revoke',
+            organization=self.organization
+        ).values_list('permission__code', flat=True)
+        
+        for code in revoked_perms:
+            if code in permissions_dict:
+                del permissions_dict[code]
+        
+        return list(permissions_dict.values())
+
     def get_user_roles(self):
-        """Get all roles for user"""
-        return UserRole.objects.filter(
+        """Get all roles for user (direct and designation-based)"""
+        roles_info = []
+        
+        # Direct roles
+        now = timezone.now()
+        direct_roles = UserRole.objects.filter(
             user=self.user,
             is_active=True,
             organization=self.organization
+        ).filter(
+            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
+            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
         ).select_related('role', 'scope_override')
+        
+        for ur in direct_roles:
+            roles_info.append({
+                'id': ur.role.id,
+                'name': ur.role.name,
+                'code': ur.role.code,
+                'type': ur.role.role_type,
+                'source': 'direct',
+                'scope_override': ur.scope_override.code if ur.scope_override else None
+            })
+            
+        # Designation roles
+        try:
+            employee = Employee.objects.select_related('designation').get(user=self.user)
+            if employee.designation:
+                designation_roles = employee.designation.roles.filter(is_active=True)
+                for role in designation_roles:
+                    # Avoid duplicates if already directly assigned
+                    if not any(r['id'] == role.id for r in roles_info):
+                        roles_info.append({
+                            'id': role.id,
+                            'name': role.name,
+                            'code': role.code,
+                            'type': role.role_type,
+                            'source': 'designation',
+                            'designation': employee.designation.name
+                        })
+        except Employee.DoesNotExist:
+            pass
+            
+        return roles_info
 
 
 # ==================== DECORATORS ====================

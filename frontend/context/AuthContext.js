@@ -1,16 +1,19 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
+import { logout as apiLogout } from '@/api/api_clientadmin';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
 
     useEffect(() => {
-        // Check for existing session in cookies/localStorage
+        // ... existing useEffect logic ...
         const savedUser = Cookies.get('user');
         if (savedUser) {
             try {
@@ -19,12 +22,12 @@ export function AuthProvider({ children }) {
                 console.error('Failed to parse user cookie', err);
             }
         } else {
-            // DEV MODE: Set a default user so the UI is not empty
+            // DEV MODE fallback
             setUser({
                 name: 'Dev Admin',
                 email: 'admin@example.com',
                 company: 'HR Nexus Demo',
-                subscription_plan: 'both', // Enables both HRMS and Payroll
+                subscription_plan: 'both',
                 role: 'owner'
             });
         }
@@ -33,15 +36,22 @@ export function AuthProvider({ children }) {
 
     const login = (userData) => {
         setUser(userData);
-        Cookies.set('user', JSON.stringify(userData), { expires: 7 }); // Save for 7 days
+        Cookies.set('user', JSON.stringify(userData), { expires: 7 });
     };
 
-    const logout = () => {
-        setUser(null);
-        Cookies.remove('user');
-        Cookies.remove('token');
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+    const logout = async () => {
+        try {
+            await apiLogout();
+        } catch (error) {
+            console.error('Backend logout failed:', error);
+        } finally {
+            setUser(null);
+            Cookies.remove('user');
+            Cookies.remove('token');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            router.push('/login');
+        }
     };
 
     const updateSubscription = (plan) => {

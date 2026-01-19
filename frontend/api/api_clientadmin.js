@@ -19,6 +19,7 @@ export const updateOrganization = (data) => axiosInstance.put(CLIENTADMIN_ENDPOI
 // Employees
 export const getAllEmployees = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEES, { params });
 export const getEmployeeById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DETAIL(id));
+export const getMyProfile = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.GET_MY_PROFILE);
 export const createEmployee = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.EMPLOYEES, data);
 export const updateEmployee = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DETAIL(id), data);
 export const deleteEmployee = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DETAIL(id));
@@ -26,8 +27,15 @@ export const deleteEmployee = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS
 // Departments & Designations
 export const getAllDepartments = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DEPARTMENTS);
 export const createDepartment = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DEPARTMENTS, data);
+export const updateDepartment = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.DEPARTMENT_DETAIL(id), data);
+export const deleteDepartment = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.DEPARTMENT_DETAIL(id));
+
 export const getAllDesignations = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DESIGNATIONS);
 export const createDesignation = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DESIGNATIONS, data);
+export const updateDesignation = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id), data);
+export const deleteDesignation = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id));
+
+export const getRoles = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ROLES);
 
 // Attendance
 export const getAllAttendance = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE, { params });

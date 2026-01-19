@@ -14,14 +14,21 @@ import logging
 import secrets
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
     InviteCode, NotificationPreference
 )
 from apps.subscriptions.models import Package, Subscription, Payment, FeatureUsage
+from .serializers import MyTokenObtainPairSerializer
 
 logger = logging.getLogger(__name__)
+
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    """Custom Token View to use our enhanced serializer"""
+    serializer_class = MyTokenObtainPairSerializer
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -103,7 +110,8 @@ def register_organization(request):
                 first_name=full_name.split()[0] if full_name else '',
                 last_name=' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else '',
                 email=email, phone=phone, date_of_joining=timezone.now().date(),
-                status='active', employment_type='permanent', created_by=user
+                status='active', employment_type='permanent', 
+                is_admin=True, created_by=user
             )
             
             subsidiary_companies = []
@@ -133,9 +141,14 @@ def register_organization(request):
                     'refresh': str(refresh),
                     'access': str(refresh.access_token),
                 },
-                'user': {'id': str(user.id), 'email': user.email, 'name': full_name},
+                'user': {
+                    'id': str(user.id), 
+                    'email': user.email, 
+                    'name': full_name,
+                    'role': 'admin' # First user is always admin
+                },
                 'organization': {'id': str(main_org.id), 'name': main_org.name, 'slug': main_org.slug},
-                'employee': {'id': str(admin_employee.id), 'employee_id': admin_employee.employee_id},
+                'employee': {'id': str(admin_employee.id), 'employee_id': admin_employee.employee_id, 'is_admin': True},
                 'subscription': {'id': str(subscription.id), 'package': trial_package.name,
                                'status': subscription.status, 'trial_end_date': str(subscription.trial_end_date),
                                'days_remaining': subscription.days_remaining},
@@ -640,24 +653,22 @@ def designation_list_create(request):
     try:
         if request.method == 'GET':
             company_id = request.query_params.get('company', None)
-            queryset = Designation.objects.select_related('company')
+            queryset = Designation.objects.select_related('company').prefetch_related('roles')
             if company_id:
                 queryset = queryset.filter(company_id=company_id)
             
             paginator = StandardResultsSetPagination()
             paginated = paginator.paginate_queryset(queryset, request)
             
-            data = [{'id': str(d.id), 'name': d.name, 'code': d.code, 'level': d.level,
-                    'is_active': d.is_active} for d in paginated]
-            return paginator.get_paginated_response(data)
+            serializer = DesignationListSerializer(paginated, many=True)
+            return paginator.get_paginated_response(serializer.data)
         
         elif request.method == 'POST':
-            desig = Designation.objects.create(
-                company_id=request.data.get('company'), name=request.data.get('name'),
-                code=request.data.get('code', ''), level=request.data.get('level', 1),
-                is_active=True, created_by=request.user
-            )
-            return Response({'success': True, 'id': str(desig.id)}, status=status.HTTP_201_CREATED)
+            serializer = DesignationDetailSerializer(data=request.data)
+            if serializer.is_valid():
+                desig = serializer.save(created_by=request.user)
+                return Response({'success': True, 'id': str(desig.id)}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         logger.error(f"Error in designation_list_create: {str(e)}")
         return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -668,20 +679,18 @@ def designation_list_create(request):
 def designation_detail(request, pk):
     """Designation detail operations"""
     try:
-        desig = get_object_or_404(Designation, pk=pk)
+        desig = get_object_or_404(Designation.objects.select_related('company').prefetch_related('roles'), pk=pk)
         
         if request.method == 'GET':
-            data = {'id': str(desig.id), 'name': desig.name, 'code': desig.code, 'description': desig.description,
-                   'level': desig.level, 'is_active': desig.is_active}
-            return Response({'success': True, 'designation': data})
+            serializer = DesignationDetailSerializer(desig)
+            return Response({'success': True, 'designation': serializer.data})
         
         elif request.method in ['PUT', 'PATCH']:
-            for field in ['name', 'code', 'description', 'level', 'is_active']:
-                if field in request.data:
-                    setattr(desig, field, request.data[field])
-            desig.updated_by = request.user
-            desig.save()
-            return Response({'success': True, 'message': 'Designation updated'})
+            serializer = DesignationDetailSerializer(desig, data=request.data, partial=(request.method == 'PATCH'))
+            if serializer.is_valid():
+                serializer.save(updated_by=request.user)
+                return Response({'success': True, 'message': 'Designation updated'})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         elif request.method == 'DELETE':
             desig.delete()
@@ -691,7 +700,63 @@ def designation_detail(request, pk):
         return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def role_list(request):
+    """List all available roles for mapping"""
+    try:
+        roles = Role.objects.filter(is_active=True).order_by('name')
+        serializer = RoleSerializer(roles, many=True)
+        return Response({'success': True, 'roles': serializer.data})
+    except Exception as e:
+        logger.error(f"Error in role_list: {str(e)}")
+        return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # ==================== EMPLOYEE MANAGEMENT ====================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_my_profile(request):
+    """Get the profile of the currently logged-in user"""
+    try:
+        try:
+            employee = Employee.objects.select_related('company', 'department', 'designation', 'reporting_manager').get(user=request.user)
+            data = {
+                'id': str(employee.id), 'employee_id': employee.employee_id, 'full_name': employee.full_name,
+                'first_name': employee.first_name, 'middle_name': employee.middle_name, 'last_name': employee.last_name,
+                'email': employee.email, 'phone': employee.phone, 'date_of_birth': str(employee.date_of_birth) if employee.date_of_birth else None,
+                'gender': employee.gender, 'company': {'id': str(employee.company.id), 'name': employee.company.name},
+                'department': {'id': str(employee.department.id), 'name': employee.department.name} if employee.department else None,
+                'designation': {'id': str(employee.designation.id), 'name': employee.designation.name} if employee.designation else None,
+                'status': employee.status, 'employment_type': employee.employment_type,
+                'date_of_joining': str(employee.date_of_joining), 'age': employee.age, 'tenure_in_days': employee.tenure_in_days
+            }
+            return Response({'success': True, 'employee': data})
+        except Employee.DoesNotExist:
+            # Fallback for users without an employee record (like the registering Admin)
+            # Find the organization they created
+            main_org = Organization.objects.filter(created_by=request.user).first()
+            
+            data = {
+                'id': None,
+                'user_id': str(request.user.id),
+                'full_name': request.user.get_full_name() or request.user.username,
+                'first_name': request.user.first_name,
+                'last_name': request.user.last_name,
+                'email': request.user.email,
+                'status': 'active',
+                'designation_name': 'Administrator',
+                'is_admin': True,
+                'role': 'admin',
+                'is_virtual': True,
+                'company': {'id': str(main_org.id), 'name': main_org.name} if main_org else None
+            }
+            return Response({'success': True, 'employee': data})
+    except Exception as e:
+        logger.error(f"Error in get_my_profile: {str(e)}")
+        return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -723,17 +788,41 @@ def employee_list_create(request):
             return paginator.get_paginated_response(data)
         
         elif request.method == 'POST':
+            # Handle empty strings for foreign keys
+            company_id = request.data.get('company')
+            dept_id = request.data.get('department')
+            desig_id = request.data.get('designation')
+            user_id = request.data.get('user')
+            
+            # Clean empty strings
+            if dept_id == '': dept_id = None
+            if desig_id == '': desig_id = None
+            if user_id == '': user_id = None
+            
+            if not company_id:
+                return Response({'error': 'Company is required'}, status=status.HTTP_400_BAD_REQUEST)
+
             emp = Employee.objects.create(
-                company_id=request.data.get('company'), employee_id=request.data.get('employee_id'),
-                first_name=request.data.get('first_name'), last_name=request.data.get('last_name', ''),
-                email=request.data.get('email'), phone=request.data.get('phone', ''),
-                department_id=request.data.get('department'), designation_id=request.data.get('designation'),
-                date_of_joining=request.data.get('date_of_joining'), status='active', created_by=request.user
+                company_id=company_id, 
+                user_id=user_id,
+                employee_id=request.data.get('employee_id'),
+                first_name=request.data.get('first_name'), 
+                last_name=request.data.get('last_name', ''),
+                email=request.data.get('email'), 
+                phone=request.data.get('phone', ''),
+                department_id=dept_id, 
+                designation_id=desig_id,
+                date_of_joining=request.data.get('date_of_joining') or timezone.now().date(),
+                status='active', 
+                is_admin=request.data.get('is_admin', False),
+                created_by=request.user
             )
             return Response({'success': True, 'id': str(emp.id), 'employee_id': emp.employee_id}, status=status.HTTP_201_CREATED)
     except Exception as e:
+        import traceback
         logger.error(f"Error in employee_list_create: {str(e)}")
-        return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(traceback.format_exc())
+        return Response({'error': f'Failed to process request: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])

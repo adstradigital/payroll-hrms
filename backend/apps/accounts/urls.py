@@ -6,7 +6,7 @@ app_name = 'account'
 
 urlpatterns = [
     # ==================== AUTHENTICATION & REGISTRATION ====================
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/login/', views.MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/register/', views.register_organization, name='register_organization'),
     path('auth/activate/', views.activate_employee, name='activate_employee'),
@@ -14,6 +14,9 @@ urlpatterns = [
     # ==================== PACKAGES ====================
     path('packages/', views.package_list, name='package_list'),
     path('packages/<uuid:package_id>/', views.package_detail, name='package_detail'),
+    
+    # ==================== ROLES ====================
+    path('roles/', views.role_list, name='role_list'),
     
     # ==================== SUBSCRIPTION ====================
     path('subscription/', views.subscription_detail, name='subscription_detail'),
@@ -41,6 +44,7 @@ urlpatterns = [
     path('designations/<uuid:pk>/', views.designation_detail, name='designation_detail'),
     
     # ==================== EMPLOYEE ====================
+    path('employees/me/', views.get_my_profile, name='get_my_profile'),
     path('employees/', views.employee_list_create, name='employee_list_create'),
     path('employees/<uuid:pk>/', views.employee_detail, name='employee_detail'),
     
