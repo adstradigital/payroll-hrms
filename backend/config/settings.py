@@ -72,14 +72,12 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
 
-    # Local apps - Core (shared)
+    # Local apps
     'apps.accounts',
+    # Local apps - Core (shared)
     'apps.subscriptions',
-    'apps.core',
     'apps.attendance',
     'apps.leave',
-    
-    # Local apps - Modules
     'apps.payroll',
     'apps.hrms',
     'apps.reports',
