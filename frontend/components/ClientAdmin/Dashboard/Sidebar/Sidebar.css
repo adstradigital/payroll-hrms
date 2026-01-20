@@ -96,11 +96,21 @@
     font-weight: var(--font-weight-medium);
 }
 
+/* Default (Light) Hover */
 .sidebar__item:hover {
     background: var(--bg-tertiary);
-    color: var(--text-primary);
+    color: #0f172a !important;
+    /* Force dark text in light mode */
 }
 
+/* Dark Mode Hover */
+[data-theme="dark"] .sidebar__item:hover {
+    background: var(--bg-secondary);
+    color: #f1f5f9 !important;
+    /* Force light text in dark mode */
+}
+
+/* Active State */
 .sidebar__item--active {
     background: var(--brand-primary);
     color: var(--text-inverse) !important;
@@ -128,6 +138,10 @@
     color: var(--brand-primary);
 }
 
+[data-theme="dark"] .sidebar__item:hover .sidebar__item-icon {
+    color: #f59e0b;
+}
+
 .sidebar__item-label {
     flex: 1;
     text-align: left;
@@ -135,6 +149,10 @@
 
 .sidebar__item-arrow {
     color: var(--text-muted);
+}
+
+[data-theme="dark"] .sidebar__item-arrow {
+    color: #94a3b8;
 }
 
 /* Submenu */
@@ -160,8 +178,15 @@
 }
 
 .sidebar__subitem:hover {
-    color: var(--text-primary);
+    color: #0f172a !important;
+    /* Force dark text */
     background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .sidebar__subitem:hover {
+    color: #f1f5f9 !important;
+    /* Force light text */
+    background: var(--bg-secondary);
 }
 
 .sidebar__subitem--active {
@@ -170,7 +195,8 @@
 }
 
 [data-theme="dark"] .sidebar__subitem--active {
-    color: var(--brand-primary);
+    color: #f59e0b;
+    /* Amber in dark mode */
 }
 
 .sidebar__subitem-dot {
@@ -183,6 +209,11 @@
 .sidebar__subitem--active .sidebar__subitem-dot {
     background: var(--brand-primary);
     box-shadow: 0 0 8px var(--brand-primary);
+}
+
+[data-theme="dark"] .sidebar__subitem--active .sidebar__subitem-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 8px #f59e0b;
 }
 
 /* User Section */
@@ -246,4 +277,11 @@
 .sidebar__logout-btn:hover {
     color: var(--color-danger);
     background: var(--color-danger-light);
+}
+
+/* Specific Dark Mode overrides for better contrast */
+[data-theme="dark"] .sidebar__item:hover,
+[data-theme="dark"] .sidebar__subitem:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    /* Subtle white overlay */
 }

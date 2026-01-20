@@ -11,6 +11,7 @@ import './ClockAttendanceWidget.css';
 export default function ClockAttendanceWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false); // NEW: Badge collapse state
+    const [isMounted, setIsMounted] = useState(false); // NEW: Prevent initial transition
     const [time, setTime] = useState(new Date());
     const [activeTab, setActiveTab] = useState('attendance');
 
@@ -69,10 +70,24 @@ export default function ClockAttendanceWidget() {
         }
     };
 
+    // Load saved state on mount
+    useEffect(() => {
+        const savedState = localStorage.getItem('clockWidgetCollapsed');
+        if (savedState) {
+            setIsCollapsed(JSON.parse(savedState));
+        }
+        // Enable transitions after initial render
+        requestAnimationFrame(() => {
+            setTimeout(() => setIsMounted(true), 100);
+        });
+    }, []);
+
     // Handle collapse toggle (left chevron click)
     const handleCollapseToggle = (e) => {
         e.stopPropagation();
-        setIsCollapsed(!isCollapsed);
+        const newState = !isCollapsed;
+        setIsCollapsed(newState);
+        localStorage.setItem('clockWidgetCollapsed', JSON.stringify(newState));
     };
 
     // Handle opening the drawer (clicking on the main badge content)
@@ -106,7 +121,7 @@ export default function ClockAttendanceWidget() {
             {/* Badge - Closed State (can be collapsed or expanded) */}
             {!isOpen && (
                 <div
-                    className={`clock-badge ${isClockedIn ? 'is-active' : ''} ${isCollapsed ? 'is-collapsed' : ''}`}
+                    className={`clock-badge ${isClockedIn ? 'is-active' : ''} ${isCollapsed ? 'is-collapsed' : ''} ${!isMounted ? 'no-transition' : ''}`}
                 >
                     {/* Collapse/Expand Handle - Always visible */}
                     <div
