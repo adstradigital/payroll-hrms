@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -96,7 +96,38 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const { hasHRMS, hasPayroll } = usePermissions();
-    const [expandedItems, setExpandedItems] = useState(['employees', 'payroll']);
+    const [expandedItems, setExpandedItems] = useState(() => {
+        // Initial state: opened items by default + items that are parents of the current path
+        const defaultExpanded = ['attendance'];
+
+        menuItems.forEach(item => {
+            if (item.children && !defaultExpanded.includes(item.id)) {
+                if (item.children.some(child => pathname.startsWith(child.path))) {
+                    defaultExpanded.push(item.id);
+                }
+            }
+        });
+        return defaultExpanded;
+    });
+
+    // Auto-expand parent if a child is active (useful for direct navigation or URL changes)
+    useEffect(() => {
+        const itemsToExpand = [...expandedItems];
+        let changed = false;
+
+        menuItems.forEach(item => {
+            if (item.children && !itemsToExpand.includes(item.id)) {
+                if (item.children.some(child => pathname.startsWith(child.path))) {
+                    itemsToExpand.push(item.id);
+                    changed = true;
+                }
+            }
+        });
+
+        if (changed) {
+            setExpandedItems(itemsToExpand);
+        }
+    }, [pathname]);
 
     const toggleExpand = (itemId) => {
         setExpandedItems(prev =>
