@@ -96,8 +96,13 @@
    LIGHT THEME (Default)
    ======================================== */
 
+/* ========================================
+   LIGHT THEME (Default)
+   ======================================== */
+
 [data-theme="light"],
-:root {
+:root,
+.light {
     /* Backgrounds */
     --bg-primary: #f1f5f9;
     /* Slate 100 */
@@ -152,7 +157,8 @@
    DARK THEME (Black Theme)
    ======================================== */
 
-[data-theme="dark"] {
+[data-theme="dark"],
+.dark {
     /* Backgrounds */
     --bg-primary: #000000;
     /* True Black */

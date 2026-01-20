@@ -4,6 +4,7 @@
 
 /* Import theme variables */
 @import './theme.css';
+@import './transitions.css';
 
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -239,7 +240,8 @@ p {
 }
 
 .btn-primary:hover {
-  background: var(--brand-primary-hover);
+  background: var(--brand-primary-hover) !important;
+  color: var(--text-inverse) !important;
 }
 
 .btn-secondary {

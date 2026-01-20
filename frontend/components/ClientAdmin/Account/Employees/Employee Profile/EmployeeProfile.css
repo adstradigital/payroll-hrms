@@ -188,6 +188,13 @@
     margin-bottom: var(--spacing-sm);
 }
 
+/* Specific button overrides for header actions to prevent hover issues */
+.profile-header-actions .btn-primary:hover {
+    background-color: var(--brand-primary-hover) !important;
+    color: var(--text-inverse) !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
 /* Layout */
 .profile-body-layout {
     display: grid;
@@ -490,6 +497,13 @@
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary-glass:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
 }
 
 .btn-icon-glass {
@@ -499,6 +513,12 @@
     border-radius: var(--radius-md);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon-glass:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* Animations */
