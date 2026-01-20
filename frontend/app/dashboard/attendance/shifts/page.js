@@ -1,7 +1,6 @@
 'use client';
 
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
-import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
 import { Clock } from 'lucide-react';
 
 export default function ShiftsPage() {
@@ -11,13 +10,12 @@ export default function ShiftsPage() {
             subtitle="Define and manage company work shifts"
             breadcrumbs={['Dashboard', 'Attendance', 'Shifts']}
         >
-            <ModuleGuard module="HRMS">
-                <div className="card text-center" style={{ padding: 'var(--spacing-2xl)' }}>
+            <div className="card text-center" style={{ padding: 'var(--spacing-2xl)' }}>
                     <Clock size={48} style={{ color: 'var(--brand-primary)', marginBottom: 'var(--spacing-md)' }} />
                     <h3>Shift Configuration Coming Soon</h3>
                     <p className="text-muted">You will be able to create General, Night, and rotational shifts here.</p>
                 </div>
-            </ModuleGuard>
         </Dashboard>
     );
 }
+

@@ -1,6 +1,7 @@
 'use client';
 
 import { FileText, Download, Calendar, User } from 'lucide-react';
+import '../Attendance.css';
 
 const mockRecords = [
     { id: 1, employee: 'John Doe', date: '2026-01-19', checkIn: '09:05 AM', checkOut: '18:15 PM', breakTime: '45 mins', totalTime: '8h 25m', status: 'Completed' },
@@ -24,45 +25,41 @@ export default function WorkRecords() {
                 </div>
                 <div className="space-y-1.5 flex-1">
                     <label className="text-xs text-slate-400 ml-1">Start Date</label>
-                    <input type="date" className="w-full bg-slate-900 border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-indigo-500" defaultValue="2026-01-01" />
-                </div>
-                <div className="space-y-1.5 flex-1">
-                    <label className="text-xs text-slate-400 ml-1">End Date</label>
-                    <input type="date" className="w-full bg-slate-900 border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-indigo-500" defaultValue="2026-01-31" />
+                    <input type="date" className="w-full bg-slate-900 border border-white/10 rounded-lg py-2 px-4 text-sm text-white outline-none" defaultValue="2026-01-01" />
                 </div>
                 <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors">
                     Filter Records
                 </button>
             </div>
 
-            <div className="card border border-white/5 bg-white/5 rounded-xl overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-white/5">
-                        <tr className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Check In</th>
-                            <th className="p-4">Check Out</th>
-                            <th className="p-4">Break Duration</th>
-                            <th className="p-4">Net Work Time</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4 text-right">Details</th>
+            <div className="att-table-container">
+                <table className="att-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Break</th>
+                            <th>Net Work Time</th>
+                            <th>Status</th>
+                            <th className="text-right">Details</th>
                         </tr>
                     </thead>
-                    <tbody className="text-sm text-slate-300">
+                    <tbody>
                         {mockRecords.map(record => (
-                            <tr key={record.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                <td className="p-4 font-medium">{record.date}</td>
-                                <td className="p-4 text-emerald-400">{record.checkIn}</td>
-                                <td className="p-4 text-rose-400">{record.checkOut}</td>
+                            <tr key={record.id}>
+                                <td className="font-medium">{record.date}</td>
+                                <td className="text-emerald">{record.checkIn}</td>
+                                <td className="text-rose">{record.checkOut}</td>
                                 <td className="p-4">{record.breakTime}</td>
-                                <td className="p-4 font-semibold text-white">{record.totalTime}</td>
-                                <td className="p-4">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${record.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                <td className="font-semibold text-white">{record.totalTime}</td>
+                                <td>
+                                    <span className={`badge-round uppercase ${record.status === 'Completed' ? 'bg-emerald-dim text-emerald' : 'bg-amber-dim text-amber'}`}>
                                         {record.status}
                                     </span>
                                 </td>
-                                <td className="p-4 text-right">
-                                    <button className="text-slate-500 hover:text-indigo-400 transition-colors">
+                                <td className="text-right">
+                                    <button className="text-slate-500 hover:text-indigo transition-colors">
                                         <FileText size={18} />
                                     </button>
                                 </td>

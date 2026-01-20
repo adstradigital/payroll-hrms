@@ -28,6 +28,14 @@ attendance_check_out = AttendanceViewSet.as_view({'post': 'check_out'})
 attendance_bulk_mark = AttendanceViewSet.as_view({'post': 'bulk_mark'})
 attendance_daily_summary = AttendanceViewSet.as_view({'get': 'daily_summary'})
 attendance_employee_monthly = AttendanceViewSet.as_view({'get': 'employee_monthly'})
+attendance_dashboard_stats = AttendanceViewSet.as_view({'get': 'dashboard_stats'})
+attendance_offline_employees = AttendanceViewSet.as_view({'get': 'offline_employees'})
+attendance_on_break = AttendanceViewSet.as_view({'get': 'on_break'})
+attendance_overtime_pending = AttendanceViewSet.as_view({'get': 'overtime_pending'})
+attendance_to_validate = AttendanceViewSet.as_view({'get': 'to_validate', 'post': 'to_validate'})
+attendance_analytics = AttendanceViewSet.as_view({'get': 'analytics'})
+attendance_department_overtime = AttendanceViewSet.as_view({'get': 'department_overtime'})
+
 
 # Holiday URLs
 holiday_list = HolidayViewSet.as_view({'get': 'list', 'post': 'create'})
@@ -55,6 +63,13 @@ urlpatterns = [
     path('api/attendance/bulk-mark/', attendance_bulk_mark, name='attendance_bulk_mark'),
     path('api/attendance/daily-summary/', attendance_daily_summary, name='attendance_daily_summary'),
     path('api/attendance/employee-monthly/', attendance_employee_monthly, name='attendance_employee_monthly'),
+    path('api/attendance/dashboard-stats/', attendance_dashboard_stats, name='attendance_dashboard_stats'),
+    path('api/attendance/offline-employees/', attendance_offline_employees, name='attendance_offline_employees'),
+    path('api/attendance/on-break/', attendance_on_break, name='attendance_on_break'),
+    path('api/attendance/overtime-pending/', attendance_overtime_pending, name='attendance_overtime_pending'),
+    path('api/attendance/to-validate/', attendance_to_validate, name='attendance_to_validate'),
+    path('api/attendance/analytics/', attendance_analytics, name='attendance_analytics'),
+    path('api/attendance/department-overtime/', attendance_department_overtime, name='attendance_department_overtime'),
 
     # Holidays
     path('api/holidays/', holiday_list, name='holiday_list'),

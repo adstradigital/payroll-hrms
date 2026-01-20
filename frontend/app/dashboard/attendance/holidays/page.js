@@ -1,7 +1,6 @@
 'use client';
 
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
-import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
 import { Calendar } from 'lucide-react';
 
 export default function HolidaysPage() {
@@ -11,13 +10,12 @@ export default function HolidaysPage() {
             subtitle="Manage public and company holidays"
             breadcrumbs={['Dashboard', 'Attendance', 'Holidays']}
         >
-            <ModuleGuard module="HRMS">
-                <div className="card text-center" style={{ padding: 'var(--spacing-2xl)' }}>
+            <div className="card text-center" style={{ padding: 'var(--spacing-2xl)' }}>
                     <Calendar size={48} style={{ color: 'var(--color-success)', marginBottom: 'var(--spacing-md)' }} />
                     <h3>Holiday Calendar Coming Soon</h3>
                     <p className="text-muted">Define the annual holiday list for your employees.</p>
                 </div>
-            </ModuleGuard>
         </Dashboard>
     );
 }
+

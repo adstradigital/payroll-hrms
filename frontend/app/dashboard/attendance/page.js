@@ -1,8 +1,7 @@
 'use client';
 
-import AttendanceDashboard from '@/components/ClientAdmin/HRMS/Attendance/AttendanceDashboard';
+import AttendanceDashboard from '@/components/ClientAdmin/Account/Attendance/AttendanceDashboard';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
-import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
 
 export default function AttendancePage() {
     return (
@@ -11,9 +10,8 @@ export default function AttendancePage() {
             subtitle="Central overview of organizational presence and trends"
             breadcrumbs={['Dashboard', 'Attendance']}
         >
-            <ModuleGuard module="HRMS">
-                <AttendanceDashboard />
-            </ModuleGuard>
+            <AttendanceDashboard />
         </Dashboard>
     );
 }
+

@@ -214,6 +214,277 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    # ---------------- DASHBOARD STATISTICS ----------------
+    @action(detail=False, methods=['get'])
+    def dashboard_stats(self, request):
+        try:
+            today = timezone.localdate()
+            attendance_date = request.query_params.get('date', today)
+            
+            # Get all employees count
+            total_employees = Employee.objects.filter(is_active=True).count()
+            
+            # Get today's attendance records
+            today_attendances = Attendance.objects.filter(date=attendance_date)
+            
+            # Calculate statistics
+            total_present = today_attendances.filter(status='present').count()
+            on_time = today_attendances.filter(is_late=False, status='present').count()
+            late_come = today_attendances.filter(is_late=True).count()
+            
+            # Calculate percentage
+            attendance_percentage = (total_present / total_employees * 100) if total_employees > 0 else 0
+            
+            return Response({
+                'date': attendance_date,
+                'total_employees': total_employees,
+                'total_present': total_present,
+                'attendance_percentage': round(attendance_percentage, 2),
+                'on_time': on_time,
+                'late_come': late_come,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ---------------- OFFLINE EMPLOYEES ----------------
+    @action(detail=False, methods=['get'])
+    def offline_employees(self, request):
+        try:
+            today = timezone.localdate()
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 6))
+            
+            # Get all active employees
+            all_employees = Employee.objects.filter(is_active=True)
+            
+            # Get employees who checked in today
+            checked_in_ids = Attendance.objects.filter(
+                date=today,
+                check_in_time__isnull=False
+            ).values_list('employee_id', flat=True)
+            
+            # Get offline employees
+            offline_employees = all_employees.exclude(id__in=checked_in_ids)
+            
+            # Pagination
+            start = (page - 1) * page_size
+            end = start + page_size
+            total = offline_employees.count()
+            total_pages = (total + page_size - 1) // page_size
+            
+            employees_data = []
+            for emp in offline_employees[start:end]:
+                employees_data.append({
+                    'id': str(emp.id),
+                    'name': emp.full_name,
+                    'employee_id': emp.employee_id,
+                    'status': 'Expected',  # Can be customized based on shift or other logic
+                    'avatar': emp.full_name[0].upper() if emp.full_name else 'U'
+                })
+            
+            return Response({
+                'employees': employees_data,
+                'page': page,
+                'page_size': page_size,
+                'total': total,
+                'total_pages': total_pages
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ---------------- ON BREAK EMPLOYEES ----------------
+    @action(detail=False, methods=['get'])
+    def on_break(self, request):
+        try:
+            # Get employees currently on break (break started but not ended)
+            from .models import AttendanceBreak
+            
+            active_breaks = AttendanceBreak.objects.filter(
+                end_time__isnull=True
+            ).select_related('attendance__employee')
+            
+            employees_data = []
+            for brk in active_breaks:
+                employees_data.append({
+                    'id': str(brk.attendance.employee.id),
+                    'name': brk.attendance.employee.full_name,
+                    'employee_id': brk.attendance.employee.employee_id,
+                    'break_start': brk.start_time,
+                    'break_type': brk.break_type if hasattr(brk, 'break_type') else 'Break'
+                })
+            
+            return Response({
+                'count': len(employees_data),
+                'employees': employees_data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ---------------- OVERTIME PENDING APPROVAL ----------------
+    @action(detail=False, methods=['get'])
+    def overtime_pending(self, request):
+        try:
+            # Get attendance records with overtime but not approved
+            pending_overtime = Attendance.objects.filter(
+                overtime_hours__gt=0,
+                status='present'
+            ).exclude(
+                remarks__icontains='approved'
+            ).select_related('employee')[:10]
+            
+            overtime_data = []
+            for att in pending_overtime:
+                overtime_data.append({
+                    'id': str(att.id),
+                    'employee': {
+                        'id': str(att.employee.id),
+                        'name': att.employee.full_name,
+                        'employee_id': att.employee.employee_id
+                    },
+                    'date': att.date,
+                    'overtime_hours': float(att.overtime_hours) if att.overtime_hours else 0,
+                    'total_hours': float(att.total_hours) if att.total_hours else 0
+                })
+            
+            return Response({
+                'count': len(overtime_data),
+                'records': overtime_data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ---------------- ATTENDANCE VALIDATION ----------------
+    @action(detail=False, methods=['get', 'post'])
+    def to_validate(self, request):
+        try:
+            if request.method == 'GET':
+                # Get attendance records that need validation
+                # (e.g., manual entries, late check-ins needing approval)
+                pending_validation = Attendance.objects.filter(
+                    check_in_time__isnull=False,
+                    status='present'
+                ).exclude(
+                    remarks__icontains='validated'
+                ).select_related('employee').order_by('-date')[:10]
+                
+                validation_data = []
+                for att in pending_validation:
+                    validation_data.append({
+                        'id': str(att.id),
+                        'employee': {
+                            'id': str(att.employee.id),
+                            'name': att.employee.full_name,
+                            'employee_id': att.employee.employee_id,
+                            'avatar': att.employee.full_name[0].upper() if att.employee.full_name else 'U'
+                        },
+                        'date': att.date,
+                        'check_in': att.check_in_time.strftime('%H:%M') if att.check_in_time else None,
+                        'in_date': att.date
+                    })
+                
+                return Response({
+                    'count': len(validation_data),
+                    'records': validation_data
+                }, status=status.HTTP_200_OK)
+            
+            elif request.method == 'POST':
+                # Validate an attendance record
+                attendance_id = request.data.get('attendance_id')
+                if not attendance_id:
+                    return Response({'error': 'attendance_id required'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                attendance = get_object_or_404(Attendance, pk=attendance_id)
+                attendance.remarks = 'Validated'
+                attendance.save()
+                
+                return Response({
+                    'message': 'Attendance validated successfully',
+                    'attendance_id': str(attendance.id)
+                }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ---------------- ANALYTICS DATA ----------------
+    @action(detail=False, methods=['get'])
+    def analytics(self, request):
+        try:
+            period = request.query_params.get('period', 'Day')  # Day, Week, Month
+            today = timezone.localdate()
+            
+            if period == 'Day':
+                # Last 7 days
+                from datetime import timedelta
+                dates = [(today - timedelta(days=i)) for i in range(6, -1, -1)]
+                
+                analytics_data = []
+                for d in dates:
+                    day_attendances = Attendance.objects.filter(date=d)
+                    total = day_attendances.count()
+                    on_time = day_attendances.filter(is_late=False, status='present').count()
+                    late = day_attendances.filter(is_late=True).count()
+                    early_out = 0  # Can be calculated if you have early_out field
+                    
+                    analytics_data.append({
+                        'date': d.strftime('%Y-%m-%d'),
+                        'label': d.strftime('%a'),  # Mon, Tue, etc.
+                        'on_time': on_time,
+                        'late_come': late,
+                        'early_out': early_out,
+                        'total': total,
+                        'percentage': round((on_time / total * 100) if total > 0 else 0, 1)
+                    })
+                
+                return Response({
+                    'period': period,
+                    'data': analytics_data
+                }, status=status.HTTP_200_OK)
+            
+            # Add Week and Month logic if needed
+            return Response({'error': 'Invalid period'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ---------------- DEPARTMENT OVERTIME CHART ----------------
+    @action(detail=False, methods=['get'])
+    def department_overtime(self, request):
+        try:
+            month = int(request.query_params.get('month', date.today().month))
+            year = int(request.query_params.get('year', date.today().year))
+            
+            # Get overtime by department
+            from django.db.models import Sum
+            from apps.accounts.models import Department
+            
+            departments = Department.objects.all()
+            overtime_data = []
+            
+            for dept in departments:
+                overtime_sum = Attendance.objects.filter(
+                    employee__department=dept,
+                    date__month=month,
+                    date__year=year
+                ).aggregate(
+                    total_overtime=Sum('overtime_hours')
+                )['total_overtime'] or 0
+                
+                if overtime_sum > 0:
+                    overtime_data.append({
+                        'department': dept.name,
+                        'overtime_hours': float(overtime_sum),
+                        'color': '#3b82f6' if 'Manager' in dept.name else '#ec4899'
+                    })
+            
+            return Response({
+                'month': month,
+                'year': year,
+                'data': overtime_data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 # ================== HOLIDAYS ==================
 class HolidayViewSet(viewsets.ModelViewSet):

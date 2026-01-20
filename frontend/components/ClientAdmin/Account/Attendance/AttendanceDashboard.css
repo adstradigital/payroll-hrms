@@ -1,0 +1,424 @@
+/* ============================================
+   ATTENDANCE DASHBOARD - MODERN UI
+   ============================================ */
+
+.attendance-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    animation: fadeIn 0.5s ease-in-out;
+    padding: 1rem;
+}
+
+/* ============================================
+   MAIN GRID LAYOUT
+   ============================================ */
+
+.dashboard-main-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (min-width: 1280px) {
+    .dashboard-main-grid {
+        grid-template-columns: 350px 1fr 300px;
+        /* Offline | Hours | Break */
+    }
+}
+
+/* ============================================
+   COMPONENT SPECIFIC STYLES
+   ============================================ */
+
+/* Analytics Card */
+.analytics-card .card-header {
+    margin-bottom: 2rem;
+}
+
+.analytics-chart {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 200px;
+    gap: 0.5rem;
+}
+
+.analytics-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.analytics-bar {
+    width: 100%;
+    max-width: 40px;
+    background: linear-gradient(180deg, var(--brand-primary) 0%, rgba(99, 102, 241, 0.5) 100%);
+    border-radius: 6px 6px 0 0;
+    transition: height 1s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    min-height: 4px;
+}
+
+.analytics-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* Offline Employees */
+.offline-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.offline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.offline-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: var(--bg-tertiary);
+    transition: background 0.2s;
+}
+
+.offline-item:hover {
+    background: var(--bg-hover);
+}
+
+.employee-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    border: 2px solid var(--border-color);
+}
+
+.employee-info {
+    flex: 1;
+}
+
+.employee-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.employee-status {
+    font-size: 0.75rem;
+    color: #ef4444;
+    font-weight: 500;
+}
+
+/* Hours Chart */
+.hours-chart-container {
+    height: 250px;
+    position: relative;
+    padding-left: 2rem;
+    margin-top: 1rem;
+}
+
+.y-axis-labels {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.hours-bars-new {
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+}
+
+.hour-bar-group-new {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 32px;
+    flex-shrink: 0;
+}
+
+.hour-bar-stack {
+    width: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.bar-segment {
+    width: 100%;
+    transition: height 0.6s ease;
+}
+
+.bar-segment--pink {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+}
+
+.bar-segment--cyan {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+.hour-label-new {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    transform: rotate(-45deg);
+    white-space: nowrap;
+    margin-top: 10px;
+}
+
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.legend-dot--pink {
+    background: #ec4899;
+}
+
+.legend-dot--cyan {
+    background: #06b6d4;
+}
+
+/* ============================================
+   VALIDATION TABLE (Full Width)
+   ============================================ */
+
+.validation-card-fullwidth {
+    grid-column: 1 / -1;
+}
+
+.validation-table-fullwidth-wrapper {
+    overflow-x: auto;
+}
+
+.validation-table-fullwidth {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.validation-table-fullwidth th {
+    text-align: left;
+    padding: 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.validation-table-fullwidth td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.employee-cell-full {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.employee-avatar-md {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.employee-name-md {
+    font-weight: 600;
+}
+
+.employee-id-md {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.hour-badge-full {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.hour-badge--pending {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.hour-badge--work {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.validate-btn-full {
+    padding: 0.5rem 1rem;
+    background: var(--brand-primary);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.validate-all-btn {
+    padding: 0.5rem 1.25rem;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ============================================
+   BOTTOM GRID
+   ============================================ */
+
+.dashboard-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-bottom-grid {
+        grid-template-columns: 1fr 400px;
+    }
+}
+
+/* On Break */
+.break-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.break-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 0.5rem;
+}
+
+.break-time {
+    font-family: monospace;
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+/* Overtime Pending */
+.overtime-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.overtime-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 0.5rem;
+}
+
+/* Empty States */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.empty-icon {
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Pie Chart */
+.dept-overtime-card {
+    min-height: 400px;
+}
+
+.pie-chart-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.pie-chart {
+    width: 200px;
+    height: 200px;
+    margin-bottom: 1.5rem;
+}
+
+.pie-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+}
