@@ -1,0 +1,275 @@
+/* ============================================
+   MY ATTENDANCE - ULTRA PREMIUM UI
+   ============================================ */
+
+.my-attendance-section {
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    padding-bottom: 5rem;
+}
+
+/* Header & Filter Bar */
+.ma-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.ma-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+}
+
+.ma-legend-bar {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.5rem 1rem;
+    border-radius: 99px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ma-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ma-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.ma-dot::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    opacity: 0.4;
+    filter: blur(2px);
+}
+
+.ma-dot.green {
+    background: #22c55e;
+}
+
+.ma-dot.green::after {
+    background: #22c55e;
+}
+
+.ma-dot.red {
+    background: #f43f5e;
+}
+
+.ma-dot.red::after {
+    background: #f43f5e;
+}
+
+.ma-dot.yellow {
+    background: #eab308;
+}
+
+.ma-dot.yellow::after {
+    background: #eab308;
+}
+
+.ma-dot.blue {
+    background: #3b82f6;
+}
+
+.ma-dot.blue::after {
+    background: #3b82f6;
+}
+
+.ma-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: linear-gradient(145deg, var(--bg-secondary), rgba(30, 41, 59, 0.4));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.ma-filter-btn:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(145deg, var(--bg-tertiary), rgba(30, 41, 59, 0.6));
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+/* Premium Table */
+.ma-table-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+.ma-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.ma-table th {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(12px);
+    text-align: left;
+    padding: 1.5rem 1.5rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.ma-table td {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    vertical-align: middle;
+    background: transparent;
+    transition: background 0.2s;
+}
+
+.ma-table tr {
+    transition: background 0.2s ease;
+}
+
+.ma-table tr:hover td {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.03), transparent);
+}
+
+/* Status Indicator Border */
+.ma-table td:first-child {
+    position: relative;
+    padding-left: 1.75rem;
+}
+
+.ma-table td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: transparent;
+    transition: width 0.2s ease;
+}
+
+.ma-table tr:hover td:first-child::before {
+    width: 6px;
+}
+
+/* Row Status Colors - Glowing */
+.status-validated td:first-child::before {
+    background: #22c55e;
+    box-shadow: 4px 0 12px rgba(34, 197, 94, 0.3);
+}
+
+.status-not-validated td:first-child::before {
+    background: #f43f5e;
+    box-shadow: 4px 0 12px rgba(244, 63, 94, 0.3);
+}
+
+.status-requested td:first-child::before {
+    background: #eab308;
+    box-shadow: 4px 0 12px rgba(234, 179, 8, 0.3);
+}
+
+.status-approved td:first-child::before {
+    background: #3b82f6;
+    box-shadow: 4px 0 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Employee Cell */
+.ma-emp-cell {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ma-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #475569, #334155);
+    color: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ma-emp-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ma-emp-name {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.ma-emp-id {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+/* Badges & Text Styles */
+.ma-shift-badge {
+    display: inline-flex;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ma-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.ma-overtime {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: #facc15;
+}
+
+.ma-pending {
+    font-family: 'JetBrains Mono', monospace;
+    color: #f87171;
+}
+
+/* Floating Action Button Removed per user request */

@@ -1,82 +1,81 @@
-'use client';
+import { useState } from 'react';
+import { Filter, MoreVertical, Plus } from 'lucide-react';
+import './MyAttendance.css';
 
-import { Calendar, Clock, MapPin, CheckCircle } from 'lucide-react';
-import '../Attendance.css';
-
-const mockPersonalHistory = [
-    { date: '19 Jan 2026', day: 'Monday', in: '09:02', out: '18:05', status: 'Present', hours: '9.0' },
-    { date: '18 Jan 2026', day: 'Sunday', in: '-', out: '-', status: 'Weekly Off', hours: '-' },
-    { date: '17 Jan 2026', day: 'Saturday', in: '-', out: '-', status: 'Weekly Off', hours: '-' },
-    { date: '16 Jan 2026', day: 'Friday', in: '08:58', out: '18:15', status: 'Present', hours: '9.3' },
-    { date: '15 Jan 2026', day: 'Thursday', in: '09:45', out: '18:00', status: 'Late', hours: '8.2' },
+const mockAttendanceData = [
+    { id: 1, name: 'Adam Luis', empId: 'PEP00', date: '21/01/2026', day: 'Wednesday', checkIn: '08:30', inDate: '21/01/2026', checkOut: '12:49', outDate: '20/01/2026', shift: 'Regular Shift', workType: 'Work From Office', minHour: '08:15', atWork: '11:54', pending: '00:00', overtime: '01:30', status: 'validated' },
+    { id: 2, name: 'Adam Luis', empId: 'PEP00', date: '20/01/2026', day: 'Tuesday', checkIn: '00:53', inDate: '20/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '08:15', atWork: '00:00', pending: '08:15', overtime: '00:00', status: 'validated' },
+    { id: 3, name: 'Adam Luis', empId: 'PEP00', date: '19/01/2026', day: 'Monday', checkIn: '07:45', inDate: '19/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '00:00', atWork: '00:00', pending: '00:00', overtime: '00:00', status: 'validated' },
+    { id: 4, name: 'Adam Luis', empId: 'PEP00', date: '18/01/2026', day: 'Sunday', checkIn: '14:26', inDate: '18/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '00:00', atWork: '00:00', pending: '00:00', overtime: '00:00', status: 'not-validated' },
+    { id: 5, name: 'Adam Luis', empId: 'PEP00', date: '17/01/2026', day: 'Saturday', checkIn: '03:02', inDate: '17/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '08:15', atWork: '00:00', pending: '08:15', overtime: '00:00', status: 'validated' },
+    { id: 6, name: 'Adam Luis', empId: 'PEP00', date: '16/01/2026', day: 'Friday', checkIn: '09:47', inDate: '16/01/2026', checkOut: '12:59', outDate: '16/01/2026', shift: 'Regular Shift', workType: 'None', minHour: '08:15', atWork: '03:12', pending: '05:03', overtime: '00:00', status: 'requested' },
+    { id: 7, name: 'Adam Luis', empId: 'PEP00', date: '15/01/2026', day: 'Thursday', checkIn: '08:30', inDate: '15/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '00:00', atWork: '00:00', pending: '00:00', overtime: '00:00', status: 'approved' },
 ];
 
 export default function MyAttendance() {
     return (
-        <div className="my-attendance">
-            <div className="stats-grid stats-grid--4 mb-8">
-                <div className="att-card">
-                    <p className="summary-item__label uppercase font-bold mb-1">Today's In Time</p>
-                    <p className="text-xl font-bold text-white">09:02 AM</p>
-                </div>
-                <div className="att-card">
-                    <p className="summary-item__label uppercase font-bold mb-1">Weekly Hours</p>
-                    <p className="text-xl font-bold text-white">45.5 Hrs</p>
-                </div>
-                <div className="att-card">
-                    <p className="summary-item__label uppercase font-bold mb-1">Leaves Used</p>
-                    <p className="text-xl font-bold text-white">2.0 Days</p>
-                </div>
-                <div className="att-card att-card--premium flex-center cursor-pointer hover:opacity-90 transition-opacity">
-                    <div className="flex items-center gap-2 text-white font-bold">
-                        <Clock size={20} /> Punch Out
+        <div className="my-attendance-section">
+            <div className="ma-header">
+                <h2 className="ma-title">My Attendances</h2>
+                <div className="flex items-center gap-6">
+                    <div className="ma-legend-bar">
+                        <div className="ma-legend-item"><span className="ma-dot green"></span> Validated</div>
+                        <div className="ma-legend-item"><span className="ma-dot red"></span> Not validated</div>
+                        <div className="ma-legend-item"><span className="ma-dot yellow"></span> Requested</div>
+                        <div className="ma-legend-item"><span className="ma-dot blue"></span> Approved request</div>
                     </div>
+                    <button className="ma-filter-btn">
+                        <Filter size={16} /> Filter
+                    </button>
                 </div>
             </div>
 
-            <div className="att-card overflow-hidden p-0">
-                <div className="p-6 border-b border-white/5 flex-between">
-                    <h3 className="text-lg font-semibold text-white">Personal Attendance History</h3>
-                    <div className="flex gap-4">
-                        <button className="text-xs text-slate-400 hover:text-white transition-colors uppercase font-bold">Dashboard</button>
-                        <button className="text-xs text-slate-400 hover:text-white transition-colors uppercase font-bold">Monthly</button>
-                    </div>
-                </div>
-                <div className="att-table-container border-0 rounded-none">
-                    <table className="att-table">
-                        <thead>
-                            <tr className="bg-white/5">
-                                <th>Date / Day</th>
-                                <th>Check In</th>
-                                <th>Check Out</th>
-                                <th>Status</th>
-                                <th>Total Hours</th>
+            <div className="ma-table-container">
+                <table className="ma-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>Shift</th>
+                            <th>Work Type</th>
+                            <th>Min Hour</th>
+                            <th>At Work</th>
+                            <th>Pending Hour</th>
+                            <th>Overtime</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {mockAttendanceData.map(row => (
+                            <tr key={row.id} className={`status-${row.status}`}>
+                                <td>
+                                    <div className="ma-emp-cell">
+                                        <div className="ma-avatar">AL</div>
+                                        <div className="ma-emp-details">
+                                            <span className="ma-emp-name">{row.name}</span>
+                                            <span className="ma-emp-id">({row.empId})</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{row.date}</td>
+                                <td><span className="ma-shift-badge">{row.shift}</span></td>
+                                <td className="text-sm text-slate-400">{row.workType}</td>
+                                <td className="ma-time">{row.minHour}</td>
+                                <td className="ma-time text-emerald">{row.atWork}</td>
+                                <td className="ma-pending">{row.pending}</td>
+                                <td className="ma-overtime">{row.overtime}</td>
+                                <td>
+                                    <button className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5">
+                                        <MoreVertical size={16} />
+                                    </button>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {mockPersonalHistory.map((row, idx) => (
-                                <tr key={idx}>
-                                    <td>
-                                        <div className="font-medium text-white">{row.date}</div>
-                                        <div className="text-[10px] text-slate-500 p-0.5 bg-white/5 rounded w-fit mt-1 uppercase font-bold">{row.day}</div>
-                                    </td>
-                                    <td className="text-emerald font-mono">{row.in}</td>
-                                    <td className="text-rose font-mono">{row.out}</td>
-                                    <td>
-                                        <span className={`badge-round uppercase ${row.status === 'Present' ? 'bg-emerald-dim text-emerald' :
-                                                row.status === 'Late' ? 'bg-amber-dim text-amber' :
-                                                    'bg-white/10 text-slate-400'
-                                            }`}>
-                                            {row.status}
-                                        </span>
-                                    </td>
-                                    <td className="font-bold">{row.hours}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                        ))}
+                    </tbody>
+                </table>
             </div>
+
+
         </div>
     );
 }

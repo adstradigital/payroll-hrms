@@ -3,8 +3,13 @@
 import { X } from 'lucide-react';
 import './CreateAttendanceModal.css';
 
-export default function CreateAttendanceModal({ isOpen, onClose }) {
+export default function CreateAttendanceModal({ isOpen, onClose, onRequest }) {
     if (!isOpen) return null;
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onRequest();
+    };
 
     return (
         <div className="modal-overlay" onClick={(e) => {
@@ -19,7 +24,7 @@ export default function CreateAttendanceModal({ isOpen, onClose }) {
                 </div>
 
                 <div className="modal-body">
-                    <form className="form-grid">
+                    <form className="form-grid" onSubmit={handleSubmit}>
                         {/* Employee */}
                         <div className="form-group">
                             <label className="form-label">Employee <span className="required-star">*</span></label>
