@@ -36,6 +36,9 @@ const menuItems = [
             { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments' },
             { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations' },
             { id: 'roles-permissions', label: 'Roles & Permissions', path: '/dashboard/employees/roles' },
+            { id: 'document-requests', label: 'Document Requests', path: '/dashboard/employees/document-requests' },
+            { id: 'shift-requests', label: 'Shift Requests', path: '/dashboard/employees/shift-requests' },
+            { id: 'work-type-requests', label: 'Work Type Requests', path: '/dashboard/employees/work-type-requests' },
         ]
     },
     {

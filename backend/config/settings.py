@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'apps.payroll',
     'apps.hrms',
     'apps.reports',
+    'apps.requests',
 ]
 
 # Custom User Model - uncomment if you create a custom User class

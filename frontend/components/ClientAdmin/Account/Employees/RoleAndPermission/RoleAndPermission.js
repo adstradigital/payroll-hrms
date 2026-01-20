@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Shield, Check, Search, Save, AlertCircle, ChevronDown, ChevronRight, Layers, Lock, Unlock, Crown
 } from 'lucide-react';
@@ -18,6 +18,7 @@ export default function RoleAndPermission() {
     // Selection
     const [selectedDesignation, setSelectedDesignation] = useState(null);
     const [selectedPermissions, setSelectedPermissions] = useState({}); // { permId: scopeId }
+    const [initialPermissionsSnapshot, setInitialPermissionsSnapshot] = useState({}); // To track changes
 
     // UI State
     const [groupedPermissions, setGroupedPermissions] = useState({});
@@ -89,6 +90,7 @@ export default function RoleAndPermission() {
             permMap[dp.permission] = dp.scope;
         });
         setSelectedPermissions(permMap);
+        setInitialPermissionsSnapshot(permMap);
     };
 
     const togglePermission = (permId, defaultScopeId) => {
@@ -160,7 +162,10 @@ export default function RoleAndPermission() {
 
             showNotification('success', `Permissions updated for ${selectedDesignation.name}`);
 
-            // Refresh data to ensure sync
+            // Update snapshot to current state so button disables
+            setInitialPermissionsSnapshot({ ...selectedPermissions });
+
+            // Refresh data to ensure sync (optional, might not be needed if we trust local state)
             fetchData();
         } catch (error) {
             console.error('Error saving permissions:', error);
@@ -180,9 +185,26 @@ export default function RoleAndPermission() {
         d.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Check for changes
+    const hasChanges = useMemo(() => {
+        if (!selectedDesignation) return false;
+
+        const currentKeys = Object.keys(selectedPermissions);
+        const initialKeys = Object.keys(initialPermissionsSnapshot);
+
+        if (currentKeys.length !== initialKeys.length) return true;
+
+        for (const key of currentKeys) {
+            if (initialPermissionsSnapshot[key] !== selectedPermissions[key]) {
+                return true;
+            }
+        }
+        return false;
+    }, [selectedPermissions, initialPermissionsSnapshot, selectedDesignation]);
+
     if (loading) {
         return (
-            <div className="rp-container theme-black-gold">
+            <div className="rp-container">
                 <div className="rp-loading">
                     <div className="rp-spinner"></div>
                     <p>Loading permissions data...</p>
@@ -192,7 +214,7 @@ export default function RoleAndPermission() {
     }
 
     return (
-        <div className="rp-container theme-black-gold">
+        <div className="rp-container">
             {notification && (
                 <div className={`rp-notification ${notification.type} animate-slide-in`}>
                     {notification.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
@@ -218,10 +240,11 @@ export default function RoleAndPermission() {
                         <button
                             className="rp-btn-primary"
                             onClick={handleSave}
-                            disabled={saving}
+                            disabled={saving || !hasChanges}
+                            style={{ opacity: (saving || !hasChanges) ? 0.6 : 1, cursor: (saving || !hasChanges) ? 'not-allowed' : 'pointer' }}
                         >
                             {saving ? <div className="spinner-small"></div> : <Save size={18} />}
-                            {saving ? 'Saving...' : 'Save Changes'}
+                            {saving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
                         </button>
                     </div>
                 )}

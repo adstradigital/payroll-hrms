@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views
+from apps.requests import views as req_views
 
 app_name = 'account'
 
@@ -63,4 +64,9 @@ urlpatterns = [
     # ==================== EMPLOYEE EXPERIENCE ====================
     path('employees/<uuid:employee_id>/experience/', views.employee_experience_list_create, name='employee_experience_list_create'),
     path('employees/<uuid:employee_id>/experience/<uuid:pk>/', views.employee_experience_detail, name='employee_experience_detail'),
+
+    # ==================== REQUESTS ====================
+    path('employees/document-requests/', req_views.DocumentRequestListCreate.as_view(), name='document_request_list'),
+    path('employees/shift-requests/', req_views.ShiftRequestListCreate.as_view(), name='shift_request_list'),
+    path('employees/work-type-requests/', req_views.WorkTypeRequestListCreate.as_view(), name='work_type_request_list'),
 ]
