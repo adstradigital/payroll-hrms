@@ -25,8 +25,9 @@ from apps.subscriptions.models import Package, Subscription, Payment, FeatureUsa
 from .serializers import (
     MyTokenObtainPairSerializer, ModuleSerializer, PermissionSerializer,
     DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
-    DesignationListSerializer, DesignationDetailSerializer
+    DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer
 )
+from .permissions import is_client_admin, require_admin, require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -642,11 +643,32 @@ def department_list_create(request):
             return paginator.get_paginated_response(data)
         
         elif request.method == 'POST':
+            # Determine company
+            company_id = request.data.get('company')
+            if not company_id:
+                current_employee = Employee.objects.filter(user=request.user).first()
+                if current_employee:
+                    company_id = current_employee.company_id
+                else:
+                    org = Organization.objects.filter(created_by=request.user).first()
+                    company_id = org.id if org else None
+
+            if not company_id:
+                return Response({'error': 'Company identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            code = request.data.get('code', '')
+            if Department.objects.filter(company_id=company_id, code=code).exists():
+                return Response({'error': f'Department with code "{code}" already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
             dept = Department.objects.create(
-                company_id=request.data.get('company'), name=request.data.get('name'),
-                code=request.data.get('code', ''), description=request.data.get('description', ''),
-                parent_id=request.data.get('parent'), head_id=request.data.get('head'),
-                is_active=True, created_by=request.user
+                company_id=company_id,
+                name=request.data.get('name'),
+                code=code,
+                description=request.data.get('description', ''),
+                parent_id=request.data.get('parent'),
+                head_id=request.data.get('head') if request.data.get('head') else None,
+                is_active=request.data.get('is_active', True),
+                created_by=request.user
             )
             return Response({'success': True, 'id': str(dept.id)}, status=status.HTTP_201_CREATED)
     except Exception as e:
@@ -664,16 +686,25 @@ def department_detail(request, pk):
         if request.method == 'GET':
             data = {'id': str(dept.id), 'name': dept.name, 'code': dept.code, 'description': dept.description,
                    'company': str(dept.company_id), 'parent': str(dept.parent_id) if dept.parent else None,
-                   'head': str(dept.head_id) if dept.head else None, 'is_active': dept.is_active}
+                   'head': str(dept.head_id) if dept.head else None, 'is_active': dept.is_active,
+                   'budget': dept.budget}
             return Response({'success': True, 'department': data})
         
         elif request.method in ['PUT', 'PATCH']:
-            for field in ['name', 'code', 'description', 'is_active']:
+            for field in ['name', 'code', 'description', 'is_active', 'budget']:
                 if field in request.data:
                     setattr(dept, field, request.data[field])
+            
+            # Handle head separately as it's a foreign key
+            if 'head' in request.data:
+                head_id = request.data.get('head')
+                dept.head_id = head_id if head_id else None
+
             dept.updated_by = request.user
             dept.save()
-            return Response({'success': True, 'message': 'Department updated'})
+            # Return full serialized data so frontend can update the UI
+            serializer = DepartmentListSerializer(dept)
+            return Response({'success': True, **serializer.data})
         
         elif request.method == 'DELETE':
             dept.delete()
@@ -690,6 +721,10 @@ def department_detail(request, pk):
 def designation_list_create(request):
     """List or create designations"""
     try:
+        # POST requires admin access
+        if request.method == 'POST' and not is_client_admin(request.user):
+            return Response({'error': 'Admin access required to manage designations'}, status=status.HTTP_403_FORBIDDEN)
+        
         if request.method == 'GET':
             # Isolate data by user's company
             current_employee = Employee.objects.filter(user=request.user).first()
@@ -776,6 +811,8 @@ def designation_permissions(request, pk):
                         scope_id=scope_id,
                         conditions=perm_data.get('conditions', {})
                     )
+                else:
+                    logger.warning(f"[designation_permissions] Skipping permission save: Missing ID or Scope. Data: {perm_data}")
             
             desig.updated_by = request.user
             desig.save()
@@ -977,11 +1014,124 @@ def get_my_profile(request):
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_my_permissions(request):
+    """
+    Get the current user's permissions based on:
+    1. If admin/org creator -> All permissions
+    2. Otherwise -> Permissions from designation's mapped roles
+    """
+    try:
+        logger.info(f"[get_my_permissions] Fetching permissions for user: {request.user}")
+        
+        # Check if user is admin
+        if is_client_admin(request.user):
+            logger.info(f"[get_my_permissions] User is admin - returning all permissions")
+            # Return all permissions
+            all_perms = Permission.objects.filter(is_active=True).select_related('module')
+            permissions = [
+                {
+                    'code': p.code,
+                    'name': p.name,
+                    'module': p.module.name,
+                    'module_code': p.module.code,
+                    'scope': 'organization'  # Admins have org-wide scope
+                }
+                for p in all_perms
+            ]
+            return Response({
+                'success': True,
+                'is_admin': True,
+                'role': 'admin',
+                'permissions': permissions,
+                'permission_codes': [p['code'] for p in permissions]
+            })
+        
+        # Get employee's designation and its roles
+        try:
+            employee = Employee.objects.select_related('designation').get(user=request.user)
+        except Employee.DoesNotExist:
+            logger.warning(f"[get_my_permissions] No employee record found")
+            return Response({
+                'success': True,
+                'is_admin': False,
+                'role': 'employee',
+                'permissions': [],
+                'permission_codes': []
+            })
+        
+        permissions = []
+        permission_codes = set()
+        
+        if employee.designation:
+            logger.info(f"[get_my_permissions] Employee designation: {employee.designation.name}")
+            
+            # Get roles mapped to designation
+            roles = employee.designation.roles.filter(is_active=True)
+            logger.info(f"[get_my_permissions] Mapped roles: {[r.name for r in roles]}")
+            
+            for role in roles:
+                # Get permissions from each role
+                role_perms = RolePermission.objects.filter(role=role).select_related(
+                    'permission', 'permission__module', 'scope'
+                )
+                for rp in role_perms:
+                    if rp.permission.code not in permission_codes:
+                        permission_codes.add(rp.permission.code)
+                        permissions.append({
+                            'code': rp.permission.code,
+                            'name': rp.permission.name,
+                            'module': rp.permission.module.name,
+                            'module_code': rp.permission.module.code,
+                            'scope': rp.scope.code if rp.scope else 'self',
+                            'source_role': role.name
+                        })
+            
+            # Also check direct designation permissions
+            desig_perms = DesignationPermission.objects.filter(
+                designation=employee.designation
+            ).select_related('permission', 'permission__module', 'scope')
+            
+            for dp in desig_perms:
+                if dp.permission.code not in permission_codes:
+                    permission_codes.add(dp.permission.code)
+                    permissions.append({
+                        'code': dp.permission.code,
+                        'name': dp.permission.name,
+                        'module': dp.permission.module.name,
+                        'module_code': dp.permission.module.code,
+                        'scope': dp.scope.code if dp.scope else 'self',
+                        'source': 'direct'
+                    })
+        
+        logger.info(f"[get_my_permissions] Total permissions: {len(permissions)}")
+        
+        return Response({
+            'success': True,
+            'is_admin': False,
+            'role': 'employee',
+            'designation': employee.designation.name if employee.designation else None,
+            'permissions': permissions,
+            'permission_codes': list(permission_codes)
+        })
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"[get_my_permissions] Error: {str(e)}")
+        logger.error(traceback.format_exc())
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def employee_list_create(request):
     """List or create employees"""
     try:
+        # POST requires admin access
+        if request.method == 'POST' and not is_client_admin(request.user):
+            return Response({'error': 'Admin access required to create employees'}, status=status.HTTP_403_FORBIDDEN)
+        
         if request.method == 'GET':
             # Determine the user's company to enforce isolation
             current_employee = Employee.objects.filter(user=request.user).first()
@@ -1026,23 +1176,68 @@ def employee_list_create(request):
         
         elif request.method == 'POST':
             # Handle empty strings for foreign keys
-            company_id = request.data.get('company')
+            # Handle empty strings for foreign keys
             dept_id = request.data.get('department')
             desig_id = request.data.get('designation')
-            user_id = request.data.get('user')
+            user_id = request.data.get('user')  # Direct user ID if provided
             
             # Clean empty strings
             if dept_id == '': dept_id = None
             if desig_id == '': desig_id = None
             if user_id == '': user_id = None
+
+            # Infer Company ID
+            company_id = request.data.get('company')
+            if not company_id:
+                current_employee = Employee.objects.filter(user=request.user).first()
+                if current_employee:
+                    company_id = current_employee.company_id
+                else:
+                    org = Organization.objects.filter(created_by=request.user).first()
+                    company_id = org.id if org else None
             
             if not company_id:
                 return Response({'error': 'Company is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+             # Handle User Account Creation
+            username = request.data.get('username')
+            password = request.data.get('password')
+            enable_login = request.data.get('enable_login')
+
+            if enable_login and username and (password or not user_id):
+                # If creating new user or updating
+                if User.objects.filter(username=username).exists():
+                     return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                try:
+                    user = User.objects.create_user(username=username, email=request.data.get('email'), password=password)
+                    user_id = user.id
+                    logger.info(f"[employee_create] Created user: {username} (ID: {user_id})")
+                except Exception as e:
+                    logger.error(f"[employee_create] Failed to create user: {str(e)}")
+                    return Response({'error': f'Failed to create user account: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Generate employee_id if not provided
+            employee_id_val = request.data.get('employee_id', '').strip()
+            if not employee_id_val:
+                # Auto-generate: EMP + timestamp + random digits
+                import random
+                employee_id_val = f"EMP{timezone.now().strftime('%y%m%d')}{random.randint(1000, 9999)}"
+                logger.info(f"[employee_create] Auto-generated employee_id: {employee_id_val}")
+
+            logger.info(f"[employee_create] Creating employee with data:")
+            logger.info(f"  - company_id: {company_id}")
+            logger.info(f"  - employee_id: {employee_id_val}")
+            logger.info(f"  - first_name: {request.data.get('first_name')}")
+            logger.info(f"  - email: {request.data.get('email')}")
+            logger.info(f"  - department_id: {dept_id}")
+            logger.info(f"  - designation_id: {desig_id}")
+            logger.info(f"  - is_admin: {request.data.get('is_admin', False)}")
+
             emp = Employee.objects.create(
                 company_id=company_id, 
                 user_id=user_id,
-                employee_id=request.data.get('employee_id'),
+                employee_id=employee_id_val,
                 first_name=request.data.get('first_name'), 
                 last_name=request.data.get('last_name', ''),
                 email=request.data.get('email'), 
@@ -1054,11 +1249,12 @@ def employee_list_create(request):
                 is_admin=request.data.get('is_admin', False),
                 created_by=request.user
             )
+            logger.info(f"[employee_create] ✓ SUCCESS: Created employee {emp.full_name} (ID: {emp.id})")
             return Response({'success': True, 'id': str(emp.id), 'employee_id': emp.employee_id}, status=status.HTTP_201_CREATED)
     except Exception as e:
         import traceback
-        logger.error(f"Error in employee_list_create: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"[employee_list_create] ✗ ERROR: {str(e)}")
+        logger.error(f"[employee_list_create] Traceback:\n{traceback.format_exc()}")
         return Response({'error': f'Failed to process request: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -1078,7 +1274,10 @@ def employee_detail(request, pk):
                 'department': {'id': str(emp.department.id), 'name': emp.department.name} if emp.department else None,
                 'designation': {'id': str(emp.designation.id), 'name': emp.designation.name} if emp.designation else None,
                 'status': emp.status, 'employment_type': emp.employment_type,
-                'date_of_joining': str(emp.date_of_joining), 'age': emp.age, 'tenure_in_days': emp.tenure_in_days
+                'date_of_joining': str(emp.date_of_joining), 'age': emp.age, 'tenure_in_days': emp.tenure_in_days,
+                # User account info
+                'has_user_account': emp.user is not None,
+                'username': emp.user.username if emp.user else None
             }
             return Response({'success': True, 'employee': data})
         
@@ -1105,9 +1304,44 @@ def employee_detail(request, pk):
                             setattr(emp, field, value)
                     else:
                         setattr(emp, field, value)
+            
+            # Handle User Account Creation/Update
+            enable_login = request.data.get('enable_login')
+            username = request.data.get('username')
+            password = request.data.get('password')
+            
+            if enable_login:
+                if not emp.user:
+                    # Employee doesn't have a user account, create one
+                    if not username:
+                        username = emp.email  # Default to email as username
+                    
+                    if User.objects.filter(username=username).exists():
+                        return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    if not password:
+                        return Response({'error': 'Password is required for new user account'}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    try:
+                        user = User.objects.create_user(
+                            username=username, 
+                            email=emp.email, 
+                            password=password,
+                            first_name=emp.first_name,
+                            last_name=emp.last_name or ''
+                        )
+                        emp.user = user
+                    except Exception as e:
+                        return Response({'error': f'Failed to create user account: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    # Employee already has a user account, update password if provided
+                    if password:
+                        emp.user.set_password(password)
+                        emp.user.save()
+            
             emp.updated_by = request.user
             emp.save()
-            return Response({'success': True, 'message': 'Employee updated'})
+            return Response({'success': True, 'message': 'Employee updated', 'has_user': emp.user is not None})
         
         elif request.method == 'DELETE':
             emp.delete()

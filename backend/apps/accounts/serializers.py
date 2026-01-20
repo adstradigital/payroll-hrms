@@ -14,28 +14,51 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         
-        # Get employee profile to check is_admin status
+        # Import here to avoid circular imports
+        from .permissions import is_client_admin, is_org_creator
+        
+        # Get employee profile
         employee = getattr(self.user, 'employee_profile', None)
-        is_admin = False
-        if employee:
-            is_admin = employee.is_admin
-        elif self.user.is_superuser:
-            is_admin = True
+        
+        # Determine if user is admin
+        user_is_admin = is_client_admin(self.user)
+        user_is_org_creator = is_org_creator(self.user)
+        
+        # Determine role name
+        if user_is_org_creator:
+            role_name = 'Administrator'
+        elif employee and employee.is_admin:
+            role_name = 'Admin'
+        elif employee and employee.designation:
+            role_name = employee.designation.name
+        else:
+            role_name = 'Employee'
             
         # Format user object for frontend
         data['user'] = {
             'id': str(self.user.id),
             'email': self.user.email,
             'name': f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username,
-            'role': 'admin' if is_admin else 'employee'
+            'role': 'admin' if user_is_admin else 'employee',
+            'role_name': role_name,
+            'is_admin': user_is_admin,
+            'is_org_creator': user_is_org_creator
         }
         
-        # Also include organization if exists
+        # Include organization info
         if employee and employee.company:
             data['organization'] = {
                 'id': str(employee.company.id),
                 'name': employee.company.name
             }
+        elif user_is_org_creator:
+            # Get org for org creator
+            org = Organization.objects.filter(created_by=self.user).first()
+            if org:
+                data['organization'] = {
+                    'id': str(org.id),
+                    'name': org.name
+                }
             
         return data
 
@@ -126,15 +149,16 @@ class DepartmentListSerializer(serializers.ModelSerializer):
     """Department List Serializer"""
     company_name = serializers.CharField(source='company.name', read_only=True)
     parent_name = serializers.CharField(source='parent.name', read_only=True)
+    head_name = serializers.CharField(source='head.full_name', read_only=True)
     employee_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Department
         fields = [
-            'id', 'company', 'company_name', 'name', 'code',
-            'parent', 'parent_name', 'is_active', 'employee_count'
+            'id', 'company', 'company_name', 'name', 'code', 'description',
+            'parent', 'parent_name', 'head', 'head_name', 'is_active', 'employee_count', 'budget'
         ]
-        read_only_fields = ['id', 'company_name', 'parent_name', 'employee_count']
+        read_only_fields = ['id', 'company_name', 'parent_name', 'head_name', 'employee_count']
     
     def get_employee_count(self, obj):
         return obj.get_employee_count()

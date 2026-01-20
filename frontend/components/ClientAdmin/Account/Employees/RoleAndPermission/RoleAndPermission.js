@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Shield, Check, Search, Save, AlertCircle, ChevronDown, ChevronRight, Layers, Lock, Unlock, Crown
+    Shield, Check, Search, Save, AlertCircle, ChevronDown, ChevronRight,
+    Layers, Lock, User, Users, Globe
 } from 'lucide-react';
 import {
     getPermissions, getScopes, getAllDesignations, updateDesignationPermissions
@@ -18,7 +19,10 @@ export default function RoleAndPermission() {
     // Selection
     const [selectedDesignation, setSelectedDesignation] = useState(null);
     const [selectedPermissions, setSelectedPermissions] = useState({}); // { permId: scopeId }
-    const [initialPermissionsSnapshot, setInitialPermissionsSnapshot] = useState({}); // To track changes
+
+    // Simple Mode State: "Access Level"
+    // 1 = Self (Standard), 3 = Department (Manager), 6 = Organization (Admin)
+    const [accessLevel, setAccessLevel] = useState('1');
 
     // UI State
     const [groupedPermissions, setGroupedPermissions] = useState({});
@@ -42,115 +46,102 @@ export default function RoleAndPermission() {
 
             setPermissions(permsRes.data.permissions || []);
             setScopes(scopesRes.data.scopes || []);
+            setDesignations(desigRes.data.results || desigRes.data || []);
 
-            const desigs = desigRes.data.results || desigRes.data || [];
-            setDesignations(desigs);
-
-            // If we have a selected designation, update it with fresh data
-            if (selectedDesignation) {
-                const refreshedDesig = desigs.find(d => d.id === selectedDesignation.id);
-                if (refreshedDesig) {
-                    handleDesignationSelect(refreshedDesig, false);
-                }
-            } else if (desigs.length > 0) {
-                // Auto-select first designation
-                handleDesignationSelect(desigs[0]);
-            }
-
-            // Group permissions by module
+            // Group permissions
             const grouped = (permsRes.data.permissions || []).reduce((acc, perm) => {
-                const moduleName = perm.module_name || 'Other';
+                // Friendly Name formatting
+                const moduleName = perm.module_name.replace(/_/g, ' ').toUpperCase() || 'GENERAL';
                 if (!acc[moduleName]) acc[moduleName] = [];
                 acc[moduleName].push(perm);
                 return acc;
             }, {});
+
             setGroupedPermissions(grouped);
 
-            // Auto-expand all modules
+            // Auto-expand all
             const allExpanded = {};
             Object.keys(grouped).forEach(key => { allExpanded[key] = true; });
             setExpandedModules(allExpanded);
+
         } catch (error) {
             console.error('Error fetching data:', error);
-            showNotification('error', 'Failed to load data');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDesignationSelect = (desig, updateState = true) => {
-        if (updateState) {
-            setSelectedDesignation(desig);
-            setNotification(null);
-        }
+    const handleDesignationSelect = (desig) => {
+        setSelectedDesignation(desig);
 
-        // Build permission map from designation permissions
+        // Convert API permissions to local map
         const permMap = {};
+        let highestScopeLevel = 0;
+
         (desig.permissions_data || []).forEach(dp => {
             permMap[dp.permission] = dp.scope;
+
+            // Try to guess the "Access Level" based on existing permissions
+            const scopeObj = scopes.find(s => s.id === dp.scope);
+            if (scopeObj && scopeObj.level > highestScopeLevel) {
+                highestScopeLevel = scopeObj.level;
+            }
         });
+
         setSelectedPermissions(permMap);
-        setInitialPermissionsSnapshot(permMap);
+
+        // Auto-set the Access Level dropdown based on data
+        if (highestScopeLevel >= 6) setAccessLevel('6'); // Organization
+        else if (highestScopeLevel >= 3) setAccessLevel('3'); // Department
+        else setAccessLevel('1'); // Self
     };
 
-    const togglePermission = (permId, defaultScopeId) => {
+    // Helper to get scope ID based on "Simple Level"
+    const getCurrentScopeId = () => {
+        // Find scope code matching our simple level
+        // Level 1 = 'self', Level 3 = 'department', Level 6 = 'organization'
+        const targetCode = accessLevel === '6' ? 'organization' : (accessLevel === '3' ? 'department' : 'self');
+        const scope = scopes.find(s => s.code === targetCode) || scopes[0];
+        return scope?.id;
+    };
+
+    const togglePermission = (permId) => {
+        const scopeId = getCurrentScopeId();
+
         setSelectedPermissions(prev => {
             const newPerms = { ...prev };
             if (newPerms[permId]) {
-                delete newPerms[permId]; // Remove permission
+                delete newPerms[permId];
             } else {
-                newPerms[permId] = defaultScopeId; // Add with default scope
+                if (scopeId) newPerms[permId] = scopeId;
             }
             return newPerms;
         });
     };
 
-    const changeScope = (permId, scopeId) => {
-        setSelectedPermissions(prev => ({
-            ...prev,
-            [permId]: scopeId
-        }));
-    };
+    // When user changes "Access Level" (Standard vs Manager vs Admin)
+    const handleAccessLevelChange = (newLevel) => {
+        setAccessLevel(newLevel);
 
-    const toggleModule = (moduleName) => {
-        setExpandedModules(prev => ({
-            ...prev,
-            [moduleName]: !prev[moduleName]
-        }));
-    };
+        // OPTIONAL: Update all currently selected permissions to this new scope
+        const newScopeCode = newLevel === '6' ? 'organization' : (newLevel === '3' ? 'department' : 'self');
+        const newScopeId = scopes.find(s => s.code === newScopeCode)?.id;
 
-    const handleModuleToggle = (e, moduleName, modulePerms) => {
-        e.stopPropagation(); // Prevent accordion toggle
-
-        // Check if all are currently selected
-        const allSelected = modulePerms.every(p => selectedPermissions[p.id]);
-
-        setSelectedPermissions(prev => {
-            const newPerms = { ...prev };
-
-            if (allSelected) {
-                // Deselect all in this module
-                modulePerms.forEach(p => {
-                    delete newPerms[p.id];
+        if (newScopeId) {
+            setSelectedPermissions(prev => {
+                const updated = {};
+                Object.keys(prev).forEach(permId => {
+                    updated[permId] = newScopeId;
                 });
-            } else {
-                // Select all in this module with default scope
-                const defaultScopeId = scopes[0]?.id;
-                if (defaultScopeId) {
-                    modulePerms.forEach(p => {
-                        newPerms[p.id] = defaultScopeId;
-                    });
-                }
-            }
-            return newPerms;
-        });
+                return updated;
+            });
+        }
     };
 
     const handleSave = async () => {
         if (!selectedDesignation) return;
         setSaving(true);
         try {
-            // Convert map to array { permission: uuid, scope: uuid }
             const permissionsList = Object.entries(selectedPermissions).map(([permId, scopeId]) => ({
                 permission: permId,
                 scope: scopeId
@@ -160,250 +151,131 @@ export default function RoleAndPermission() {
                 permissions: permissionsList
             });
 
-            showNotification('success', `Permissions updated for ${selectedDesignation.name}`);
+            setNotification({ type: 'success', message: 'Saved successfully!' });
+            setTimeout(() => setNotification(null), 3000);
 
-            // Update snapshot to current state so button disables
-            setInitialPermissionsSnapshot({ ...selectedPermissions });
-
-            // Refresh data to ensure sync (optional, might not be needed if we trust local state)
+            // Refresh data to keep sync
             fetchData();
         } catch (error) {
-            console.error('Error saving permissions:', error);
-            showNotification('error', 'Failed to save permissions');
+            setNotification({ type: 'error', message: 'Failed to save.' });
         } finally {
             setSaving(false);
         }
     };
 
-    const showNotification = (type, message) => {
-        setNotification({ type, message });
-        setTimeout(() => setNotification(null), 3000);
-    };
-
-    // Filter designations
-    const filteredDesignations = designations.filter(d =>
-        d.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // Check for changes
-    const hasChanges = useMemo(() => {
-        if (!selectedDesignation) return false;
-
-        const currentKeys = Object.keys(selectedPermissions);
-        const initialKeys = Object.keys(initialPermissionsSnapshot);
-
-        if (currentKeys.length !== initialKeys.length) return true;
-
-        for (const key of currentKeys) {
-            if (initialPermissionsSnapshot[key] !== selectedPermissions[key]) {
-                return true;
-            }
-        }
-        return false;
-    }, [selectedPermissions, initialPermissionsSnapshot, selectedDesignation]);
-
-    if (loading) {
-        return (
-            <div className="rp-container">
-                <div className="rp-loading">
-                    <div className="rp-spinner"></div>
-                    <p>Loading permissions data...</p>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <div className="rp-loading">Loading...</div>;
 
     return (
         <div className="rp-container">
             {notification && (
-                <div className={`rp-notification ${notification.type} animate-slide-in`}>
-                    {notification.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+                <div className={`rp-notification ${notification.type}`}>
                     {notification.message}
                 </div>
             )}
 
             <div className="rp-header">
-                <div className="rp-title-section">
-                    <div className="rp-icon-box">
-                        <Crown size={28} />
-                    </div>
-                    <div>
-                        <h1>Roles & Permissions</h1>
-                        <p>Configure access levels and security scopes</p>
-                    </div>
+                <div>
+                    <h1>Access Control</h1>
+                    <p>Manage what each Job Title can see and do.</p>
                 </div>
                 {selectedDesignation && (
-                    <div className="rp-actions">
-                        <span className="rp-status-badge">
-                            {Object.keys(selectedPermissions).length} Active Permissions
-                        </span>
-                        <button
-                            className="rp-btn-primary"
-                            onClick={handleSave}
-                            disabled={saving || !hasChanges}
-                            style={{ opacity: (saving || !hasChanges) ? 0.6 : 1, cursor: (saving || !hasChanges) ? 'not-allowed' : 'pointer' }}
-                        >
-                            {saving ? <div className="spinner-small"></div> : <Save size={18} />}
-                            {saving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
-                        </button>
-                    </div>
+                    <button className="rp-btn-primary" onClick={handleSave} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
                 )}
             </div>
 
             <div className="rp-split-view">
-                {/* Left Panel: Designation List */}
+                {/* Left: Job Titles */}
                 <div className="rp-left-panel">
                     <div className="rp-panel-search">
                         <Search size={18} />
                         <input
-                            type="text"
-                            placeholder="Search Roles..."
+                            placeholder="Search Job Titles..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={e => setSearchTerm(e.target.value)}
                         />
                     </div>
                     <div className="rp-desig-list-scroll">
-                        <div className="rp-list-header">DESIGNATIONS</div>
-                        {filteredDesignations.map(desig => (
+                        {designations.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase())).map(desig => (
                             <div
                                 key={desig.id}
                                 className={`rp-desig-item ${selectedDesignation?.id === desig.id ? 'active' : ''}`}
                                 onClick={() => handleDesignationSelect(desig)}
                             >
-                                <div className="rp-desig-avatar">
-                                    {desig.name.charAt(0)}
-                                </div>
+                                <div className="rp-desig-avatar">{desig.name.charAt(0)}</div>
                                 <div className="rp-desig-info">
                                     <span className="rp-desig-name">{desig.name}</span>
-                                    <span className="rp-desig-count">
-                                        {(desig.permissions_data?.length || 0) + (selectedDesignation?.id === desig.id ? Object.keys(selectedPermissions).length - (desig.permissions_data?.length || 0) : 0)} permissions
-                                    </span>
+                                    <span className="rp-desig-count">{desig.employee_count || 0} Employees</span>
                                 </div>
-                                {selectedDesignation?.id === desig.id && <ChevronRight size={16} className="rp-active-indicator" />}
+                                <ChevronRight size={16} />
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Right Panel: Permissions Matrix */}
+                {/* Right: Permissions */}
                 <div className="rp-right-panel">
                     {selectedDesignation ? (
                         <div className="rp-permissions-wrapper">
                             <div className="rp-panel-header">
                                 <div className="rp-ph-content">
                                     <h2>{selectedDesignation.name}</h2>
-                                    <p className="rp-subtitle">Manage module access and data visibility</p>
+                                    <p className="rp-subtitle">Configure access rights</p>
                                 </div>
-                                <div className="rp-security-badge">
-                                    <Shield size={14} /> Security Level: High
+
+                                {/* THE SIMPLIFIED ACCESS LEVEL SWITCHER */}
+                                <div className="rp-access-level-control">
+                                    <label>Access Level:</label>
+                                    <select
+                                        value={accessLevel}
+                                        onChange={(e) => handleAccessLevelChange(e.target.value)}
+                                        className="rp-level-select"
+                                    >
+                                        <option value="1">👤 Standard (Own Data Only)</option>
+                                        <option value="3">👥 Manager (Department Data)</option>
+                                        <option value="6">🏢 Admin (All Company Data)</option>
+                                    </select>
                                 </div>
                             </div>
 
                             <div className="rp-modules-list">
-                                {Object.entries(groupedPermissions).sort().map(([module, modulePerms]) => {
-                                    const selectedCount = modulePerms.filter(p => selectedPermissions[p.id]).length;
-                                    const isAllSelected = selectedCount === modulePerms.length && modulePerms.length > 0;
-
-                                    return (
-                                        <div key={module} className={`rp-module-group ${expandedModules[module] ? 'expanded' : ''}`}>
-                                            <div
-                                                className="rp-module-header"
-                                                onClick={() => toggleModule(module)}
-                                            >
-                                                <div className="rp-module-title">
-                                                    {/* Select All Checkbox */}
-                                                    <div
-                                                        className="checkbox-wrapper"
-                                                        onClick={(e) => handleModuleToggle(e, module, modulePerms)}
-                                                        style={{ marginRight: '12px' }}
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isAllSelected}
-                                                            readOnly
-                                                        />
-                                                        <div className="custom-checkbox">
-                                                            {isAllSelected && <Check size={12} strokeWidth={4} />}
-                                                        </div>
-                                                    </div>
-
-                                                    {expandedModules[module] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                                                    <span>{module}</span>
-                                                </div>
-                                                <div className="rp-module-meta">
-                                                    <div className="rp-progress-bar">
-                                                        <div
-                                                            className="rp-progress-fill"
-                                                            style={{ width: `${(selectedCount / modulePerms.length) * 100}%` }}
-                                                        ></div>
-                                                    </div>
-                                                    <span className="rp-module-badge">
-                                                        {selectedCount} / {modulePerms.length}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div className="rp-module-content">
-                                                {modulePerms.map(perm => {
-                                                    const isSelected = !!selectedPermissions[perm.id];
-                                                    return (
-                                                        <div key={perm.id} className={`rp-perm-row ${isSelected ? 'selected' : ''}`}>
-                                                            <div className="rp-perm-check">
-                                                                <div className="checkbox-wrapper">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        id={`perm-${perm.id}`}
-                                                                        checked={isSelected}
-                                                                        onChange={() => togglePermission(perm.id, scopes[0]?.id)}
-                                                                    />
-                                                                    <label htmlFor={`perm-${perm.id}`} className="custom-checkbox">
-                                                                        {isSelected && <Check size={12} strokeWidth={4} />}
-                                                                    </label>
-                                                                </div>
-                                                                <div className="rp-perm-text">
-                                                                    <label htmlFor={`perm-${perm.id}`} className="rp-perm-name">{perm.name}</label>
-                                                                    <p className="rp-perm-desc">{perm.description || 'Access control for this feature'}</p>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="rp-scope-container">
-                                                                {isSelected ? (
-                                                                    <div className="rp-select-wrapper">
-                                                                        <Unlock size={14} className="rp-scope-icon" />
-                                                                        <select
-                                                                            value={selectedPermissions[perm.id]}
-                                                                            onChange={(e) => changeScope(perm.id, e.target.value)}
-                                                                        >
-                                                                            {scopes.map(scope => (
-                                                                                <option key={scope.id} value={scope.id}>
-                                                                                    {scope.name}
-                                                                                </option>
-                                                                            ))}
-                                                                        </select>
-                                                                        <ChevronDown size={14} className="rp-select-arrow" />
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="rp-locked-state">
-                                                                        <Lock size={14} /> <span>Restricted</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
+                                {Object.entries(groupedPermissions).map(([module, modulePerms]) => (
+                                    <div key={module} className="rp-module-group expanded">
+                                        <div className="rp-module-header">
+                                            <span className="rp-module-title-text">{module}</span>
                                         </div>
-                                    );
-                                })}
+                                        <div className="rp-module-content">
+                                            {modulePerms.map(perm => {
+                                                const isSelected = !!selectedPermissions[perm.id];
+                                                return (
+                                                    <div key={perm.id}
+                                                        className={`rp-perm-row ${isSelected ? 'selected' : ''}`}
+                                                        onClick={() => togglePermission(perm.id)}
+                                                    >
+                                                        <div className="rp-perm-check">
+                                                            <div className={`custom-checkbox ${isSelected ? 'checked' : ''}`}>
+                                                                {isSelected && <Check size={12} />}
+                                                            </div>
+                                                            <div className="rp-perm-text">
+                                                                <span className="rp-perm-name">
+                                                                    {perm.name.replace(/Can view/i, 'View').replace(/Can add/i, 'Add')}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     ) : (
                         <div className="rp-placeholder">
-                            <div className="rp-placeholder-icon">
-                                <Layers size={64} />
-                            </div>
-                            <h3>Select a Designation</h3>
-                            <p>Choose a role from the sidebar to configure permissions.</p>
+                            <Layers size={48} />
+                            <h3>Select a Job Title</h3>
+                            <p>Select a designation on the left to set permissions.</p>
                         </div>
                     )}
                 </div>

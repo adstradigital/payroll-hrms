@@ -6,7 +6,7 @@ import {
     X, Building2, DollarSign, CheckCircle,
     Clock, FolderOpen, LayoutGrid, List, AlertCircle
 } from 'lucide-react';
-import { getAllDepartments, createDepartment, updateDepartment, deleteDepartment } from '@/api/api_clientadmin';
+import { getAllDepartments, createDepartment, updateDepartment, deleteDepartment, getAllEmployees } from '@/api/api_clientadmin';
 import './Departments.css';
 
 // --- MOCK API & DATA (Augmenting real API) ---
@@ -25,12 +25,12 @@ const MOCK_STATS = {
 };
 
 // Helper: Merge API data with mock stats
+// Helper: Merge API data with mock stats
 const mergeWithMockData = (dept) => ({
     ...dept,
-    budget: dept.budget || (Math.floor(Math.random() * 500) + 500) + ',000',
-    budget_used: dept.budget_used || (Math.floor(Math.random() * 400)) + ',000',
-    head: dept.head_name || 'Unassigned',
-    employee_count: dept.employee_count || Math.floor(Math.random() * 20),
+    name: dept.name || 'Unnamed Dep',
+    head_name: dept.head_name || 'Unassigned',
+    employee_count: dept.employee_count || 0,
     projects: dept.projects || MOCK_STATS.projects,
     employees: dept.employees || MOCK_STATS.employees
 });
@@ -43,9 +43,11 @@ const DepartmentProfile = ({ department, onClose, onEdit }) => {
 
     if (!department) return null;
 
-    const budgetTotal = parseInt(department.budget.replace(/,/g, ''));
-    const budgetUsed = parseInt(department.budget_used?.replace(/,/g, '') || '0');
-    const budgetPercent = Math.min(100, Math.round((budgetUsed / budgetTotal) * 100));
+    // Safe budget parsing
+    const safeBudget = (department.budget || '0').toString();
+    const budgetTotal = parseInt(safeBudget.replace(/,/g, ''));
+    const budgetUsed = parseInt((department.budget_used || '0').toString().replace(/,/g, '') || '0');
+    const budgetPercent = budgetTotal > 0 ? Math.min(100, Math.round((budgetUsed / budgetTotal) * 100)) : 0;
 
     return (
         <div className="modal-overlay">
@@ -96,10 +98,10 @@ const DepartmentProfile = ({ department, onClose, onEdit }) => {
                                     <h4 className="stat-label">Head of Department</h4>
                                     <div className="flex items-center gap-3">
                                         <div className="head-avatar" style={{ width: '40px', height: '40px', fontSize: '1rem' }}>
-                                            {department.head?.charAt(0) || '?'}
+                                            {department.head_name?.charAt(0) || '?'}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-lg">{department.head}</p>
+                                            <p className="font-bold text-lg">{department.head_name}</p>
                                             <p className="text-sm text-secondary">Department Lead</p>
                                         </div>
                                     </div>
@@ -112,7 +114,7 @@ const DepartmentProfile = ({ department, onClose, onEdit }) => {
                                     </div>
                                     <div className="stat-box">
                                         <div className="stat-label"><CheckCircle size={14} /> Status</div>
-                                        <p className="stat-value" style={{ color: department.is_active ? 'var(--color-success)' : 'var(--text-muted)' }}>
+                                        <p className="stat-value" style={{ color: department.is_active ? 'var(--color-success)' : 'var(--text-secondary)' }}>
                                             {department.is_active ? 'Active' : 'Inactive'}
                                         </p>
                                     </div>
@@ -212,6 +214,22 @@ const DepartmentForm = ({ department, onClose, onSuccess }) => {
         head: ''
     });
     const [loading, setLoading] = useState(false);
+    const [availableEmployees, setAvailableEmployees] = useState([]);
+
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            try {
+                const res = await getAllEmployees({ status: 'active' });
+                if (res.data) {
+                    // Check if it's paginated
+                    setAvailableEmployees(res.data.results || res.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch employees", error);
+            }
+        };
+        fetchEmployees();
+    }, []);
 
     useEffect(() => {
         if (department) {
@@ -228,24 +246,50 @@ const DepartmentForm = ({ department, onClose, onSuccess }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log("Submitting Department Form...");
         setLoading(true);
         try {
             const payload = {
                 name: formData.name,
                 code: formData.code,
                 description: formData.description,
-                is_active: formData.is_active
+                is_active: formData.is_active,
+                budget: formData.budget || null,
+                head: formData.head || null
             };
+
             let response;
             if (department) {
+                console.log("Updating department:", department.id);
                 response = await updateDepartment(department.id, payload);
             } else {
+                console.log("Creating new department");
                 response = await createDepartment(payload);
             }
-            onSuccess({ ...response.data, budget: formData.budget, head: formData.head }, !!department);
+
+            console.log("Response received:", response);
+
+            if (response && response.data) {
+                // Find head name for immediate display update
+                const selectedHead = availableEmployees.find(e => e.id === formData.head);
+                const headName = selectedHead
+                    ? `${selectedHead.first_name || ''} ${selectedHead.last_name || ''}`.trim() || selectedHead.email
+                    : '';
+
+                onSuccess({
+                    ...formData,
+                    ...response.data,
+                    budget: formData.budget,
+                    head: formData.head,
+                    head_name: headName
+                }, !!department);
+            } else {
+                throw new Error("Invalid response from server");
+            }
+
         } catch (error) {
             console.error("Failed to save department", error);
-            // In a real app, use toast here
+            alert("Error saving department: " + (error.response?.data?.error || error.message));
         } finally {
             setLoading(false);
         }
@@ -296,8 +340,19 @@ const DepartmentForm = ({ department, onClose, onSuccess }) => {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Department Head</label>
-                            <input type="text" value={formData.head} onChange={e => setFormData({ ...formData, head: e.target.value })}
-                                className="form-input" placeholder="Optional (Demo)" />
+                            <select value={formData.head || ''} onChange={e => setFormData({ ...formData, head: e.target.value })}
+                                className="form-select">
+                                <option value="">Select a Head...</option>
+                                {availableEmployees.map(emp => {
+                                    const name = `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.email || 'Unknown Employee';
+                                    const designation = emp.designation_name ? ` - ${emp.designation_name}` : '';
+                                    return (
+                                        <option key={emp.id} value={emp.id}>
+                                            {name}{designation}
+                                        </option>
+                                    );
+                                })}
+                            </select>
                         </div>
                     </div>
 
@@ -340,8 +395,15 @@ export default function Departments() {
             setLoading(true);
             const res = await getAllDepartments();
             if (res.data) {
-                const augmentedData = res.data.map(mergeWithMockData);
-                setDepartments(augmentedData);
+                // Handle paginated response or direct array
+                const rawData = res.data.results || res.data;
+                if (Array.isArray(rawData)) {
+                    const augmentedData = rawData.map(mergeWithMockData);
+                    setDepartments(augmentedData);
+                } else {
+                    console.error("Unexpected API response format:", res.data);
+                    setDepartments([]);
+                }
             } else {
                 setDepartments([]);
             }
@@ -465,7 +527,7 @@ export default function Departments() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td><div className="text-sm font-medium">{dept.head}</div></td>
+                                        <td><div className="text-sm font-medium">{dept.head_name}</div></td>
                                         <td><div className="flex items-center gap-1.5 text-sm text-secondary"><Users size={14} /> {dept.employee_count}</div></td>
                                         <td style={{ width: '200px' }}>
                                             <div className="flex justify-between text-xs mb-1 text-muted">
@@ -519,13 +581,18 @@ export default function Departments() {
                                 </div>
                                 <div className="stat-box">
                                     <div className="stat-label"><DollarSign size={12} /> Budget</div>
-                                    <span className="stat-value">${parseInt((dept.budget || '0').replace(/,/g, '')).toLocaleString().slice(0, 4)}k</span>
+                                    <span className="stat-value">
+                                        ${(() => {
+                                            const val = parseInt((dept.budget || '0').replace(/,/g, ''));
+                                            return val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val;
+                                        })()}
+                                    </span>
                                 </div>
                             </div>
                             <div className="card-footer">
                                 <div className="head-info">
-                                    <div className="head-avatar">{dept.head?.charAt(0) || '?'}</div>
-                                    <span className="head-name">Head: <strong>{dept.head}</strong></span>
+                                    <div className="head-avatar">{dept.head_name?.charAt(0) || '?'}</div>
+                                    <span className="head-name">Head: <strong>{dept.head_name}</strong></span>
                                 </div>
                                 <span onClick={() => setViewDetail(dept.id)} className="btn-view-details">View Details</span>
                             </div>
