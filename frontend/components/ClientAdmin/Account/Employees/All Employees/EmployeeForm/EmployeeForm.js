@@ -35,7 +35,7 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
         employee_id: '',
         department: '',
         designation: '',
-        employment_type: 'full_time',
+        employment_type: 'permanent',
         date_of_joining: new Date().toISOString().split('T')[0],
         status: 'active',
 
@@ -105,6 +105,10 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+
+        console.log('[EmployeeForm] 📤 Submitting employee form');
+        console.log('[EmployeeForm] Mode:', employeeId ? 'UPDATE' : 'CREATE');
+
         try {
             // Prepare payload - only send password if it's set or if it's a new user with login enabled
             const payload = { ...formData };
@@ -117,16 +121,28 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
                 delete payload.password;
             }
 
+            console.log('[EmployeeForm] 📦 Payload:', payload);
+
+            let response;
             if (employeeId) {
-                await updateEmployee(employeeId, payload);
+                console.log('[EmployeeForm] Calling updateEmployee:', employeeId);
+                response = await updateEmployee(employeeId, payload);
             } else {
-                await createEmployee(payload);
+                console.log('[EmployeeForm] Calling createEmployee');
+                response = await createEmployee(payload);
             }
+
+            console.log('[EmployeeForm] ✅ Success:', response?.data);
             onSuccess();
             onClose();
         } catch (error) {
-            console.error('Error saving employee:', error);
-            alert('Failed to save employee. Please check required fields.');
+            console.error('[EmployeeForm] ❌ Error saving employee:', error);
+            console.error('[EmployeeForm] Error response:', error.response?.data);
+            console.error('[EmployeeForm] Error status:', error.response?.status);
+            console.error('[EmployeeForm] Full error:', error);
+
+            const errorMsg = error.response?.data?.error || 'Failed to save employee. Please check required fields.';
+            alert(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -247,10 +263,11 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
                                     <div className="form-group">
                                         <label>Employment Type</label>
                                         <select name="employment_type" value={formData.employment_type} onChange={handleChange} className="form-control">
-                                            <option value="full_time">Full Time</option>
+                                            <option value="permanent">Permanent</option>
                                             <option value="part_time">Part Time</option>
                                             <option value="contract">Contract</option>
                                             <option value="intern">Intern</option>
+                                            <option value="consultant">Consultant</option>
                                         </select>
                                     </div>
                                     <div className="form-group">

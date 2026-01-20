@@ -44,6 +44,7 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setStatus('loading');
+        console.log('[Login] 📤 Attempting login with:', { email: formData.email });
 
         try {
             // Call real API
@@ -52,10 +53,28 @@ export default function Login() {
                 password: formData.password
             });
 
+            console.log('[Login] ✅ Login successful');
+            console.log('[Login] 📦 Full response:', response.data);
+
             // Store JWT tokens
             const { access, refresh } = response.data;
             localStorage.setItem('accessToken', access);
             localStorage.setItem('refreshToken', refresh);
+
+            // Log user info
+            const user = response.data.user;
+            console.log('[Login] 👤 User Info:');
+            console.log('  - ID:', user.id);
+            console.log('  - Email:', user.email);
+            console.log('  - Name:', user.name);
+            console.log('  - Role:', user.role);
+            console.log('  - Role Name:', user.role_name);
+            console.log('  - Is Admin:', user.is_admin);
+            console.log('  - Is Org Creator:', user.is_org_creator);
+
+            if (response.data.organization) {
+                console.log('[Login] 🏢 Organization:', response.data.organization);
+            }
 
             // Update AuthContext
             login({
@@ -72,6 +91,10 @@ export default function Login() {
                 router.push('/dashboard');
             }, 500);
         } catch (err) {
+            console.error('[Login] ❌ Login failed:', err);
+            console.error('[Login] Error response:', err.response?.data);
+            console.error('[Login] Error status:', err.response?.status);
+
             setStatus('error');
             const errorMsg = err.response?.data?.detail ||
                 err.response?.data?.error ||

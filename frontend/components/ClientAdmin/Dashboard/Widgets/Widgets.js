@@ -90,8 +90,8 @@ export const MiniCalendar = () => {
                 </div>
             </div>
             <div className="mini-calendar__grid">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                    <div key={d} className="calendar-weekday">{d}</div>
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
+                    <div key={`weekday-${idx}`} className="calendar-weekday">{d}</div>
                 ))}
                 {days.map((d, i) => (
                     <div key={i} className={`calendar-day ${d.type} ${d.isToday ? 'is-today' : ''} ${d.isWeekend ? 'is-weekend' : ''} ${d.hasEvent ? 'has-event' : ''}`}>

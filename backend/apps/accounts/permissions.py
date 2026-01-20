@@ -1,18 +1,142 @@
-"""
-Permission Checker Utility
-
-Provides PermissionChecker class, decorators, and helper functions
-for checking user permissions in the HRMS application.
-"""
-
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from django.db import models
 from functools import wraps
-from .models import (
-    UserRole, UserPermission, RolePermission, Permission,
-    DataScope, PermissionAuditLog, Employee
-)
+from rest_framework.response import Response
+from rest_framework import status as http_status
+import logging
+import traceback
+
+# Set up logger for this module
+logger = logging.getLogger(__name__)
+
+# Import models here to avoid circular imports at module level
+def _get_models():
+    from .models import (
+        UserRole, UserPermission, RolePermission, Permission,
+        DataScope, PermissionAuditLog, Employee, Organization
+    )
+    return {
+        'UserRole': UserRole,
+        'UserPermission': UserPermission,
+        'RolePermission': RolePermission,
+        'Permission': Permission,
+        'DataScope': DataScope,
+        'PermissionAuditLog': PermissionAuditLog,
+        'Employee': Employee,
+        'Organization': Organization
+    }
+
+
+# ==================== QUICK HELPER FUNCTIONS ====================
+
+def is_org_creator(user):
+    """Check if user is the organization creator (super admin)"""
+    try:
+        if not user or not user.is_authenticated:
+            logger.debug(f"[is_org_creator] User not authenticated: {user}")
+            return False
+        
+        models = _get_models()
+        Organization = models['Organization']
+        
+        result = Organization.objects.filter(created_by=user).exists()
+        logger.info(f"[is_org_creator] User: {user.username} (ID: {user.id}) -> {result}")
+        
+        # Also log the orgs this user created
+        if result:
+            orgs = Organization.objects.filter(created_by=user).values_list('name', 'id')
+            logger.info(f"[is_org_creator] User created orgs: {list(orgs)}")
+        
+        return result
+    except Exception as e:
+        logger.error(f"[is_org_creator] ERROR: {str(e)}")
+        logger.error(traceback.format_exc())
+        return False
+
+
+def is_client_admin(user):
+    """
+    Check if user is a Client Administrator.
+    Returns True if:
+    - User is a Django superuser, OR
+    - User is the organization creator, OR
+    - User's employee record has is_admin=True
+    """
+    try:
+        logger.info(f"[is_client_admin] ===== Checking admin status for user =====")
+        
+        if not user:
+            logger.warning(f"[is_client_admin] User is None")
+            return False
+            
+        if not user.is_authenticated:
+            logger.warning(f"[is_client_admin] User not authenticated")
+            return False
+        
+        logger.info(f"[is_client_admin] User: {user.username} (ID: {user.id})")
+        logger.info(f"[is_client_admin] is_superuser: {user.is_superuser}")
+        logger.info(f"[is_client_admin] is_staff: {user.is_staff}")
+        
+        # Superusers are always admins
+        if user.is_superuser:
+            logger.info(f"[is_client_admin] ✓ GRANTED: User is superuser")
+            return True
+        
+        # Check if org creator
+        if is_org_creator(user):
+            logger.info(f"[is_client_admin] ✓ GRANTED: User is org creator")
+            return True
+        
+        # Check employee is_admin flag
+        models = _get_models()
+        Employee = models['Employee']
+        
+        try:
+            employee = Employee.objects.select_related('company', 'designation').get(user=user)
+            logger.info(f"[is_client_admin] Found employee: {employee.full_name} (ID: {employee.id})")
+            logger.info(f"[is_client_admin] employee.is_admin: {employee.is_admin}")
+            logger.info(f"[is_client_admin] employee.company: {employee.company.name if employee.company else 'None'}")
+            logger.info(f"[is_client_admin] employee.designation: {employee.designation.name if employee.designation else 'None'}")
+            
+            if employee.is_admin:
+                logger.info(f"[is_client_admin] ✓ GRANTED: Employee has is_admin=True")
+                return True
+        except Employee.DoesNotExist:
+            logger.warning(f"[is_client_admin] No employee record found for user {user.username}")
+        except Exception as e:
+            logger.error(f"[is_client_admin] Error fetching employee: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        logger.info(f"[is_client_admin] ✗ DENIED: User is not an admin")
+        return False
+        
+    except Exception as e:
+        logger.error(f"[is_client_admin] CRITICAL ERROR: {str(e)}")
+        logger.error(traceback.format_exc())
+        return False
+
+
+def require_admin():
+    """
+    Decorator for DRF views to require client admin access.
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            logger.info(f"[require_admin] Checking admin for: {request.user} on {request.method} {request.path}")
+            
+            if not is_client_admin(request.user):
+                logger.warning(f"[require_admin] ✗ ACCESS DENIED for user {request.user}")
+                return Response(
+                    {'error': 'Admin access required'},
+                    status=http_status.HTTP_403_FORBIDDEN
+                )
+            
+            logger.info(f"[require_admin] ✓ ACCESS GRANTED for user {request.user}")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 class PermissionChecker:
@@ -23,6 +147,7 @@ class PermissionChecker:
         self.organization = organization
         self.log = log
         self._cache = {}
+        self._models = _get_models()  # Lazy load models
         
     def has_permission(self, permission_code, scope_required='self', obj=None, **kwargs):
         """
@@ -37,6 +162,8 @@ class PermissionChecker:
         Returns:
             bool - True if user has permission
         """
+        logger.debug(f"[PermissionChecker] Checking '{permission_code}' with scope '{scope_required}'")
+        
         cache_key = f"{permission_code}:{scope_required}"
         if cache_key in self._cache:
             return self._cache[cache_key]
@@ -48,10 +175,12 @@ class PermissionChecker:
         if self.log:
             self._log_permission_check(permission_code, result, scope_required)
         
+        logger.debug(f"[PermissionChecker] Result for '{permission_code}': {result}")
         return result
     
     def _check_permission(self, permission_code, scope_required, obj, **kwargs):
         """Internal permission checking logic"""
+        Permission = self._models['Permission']
         try:
             permission = Permission.objects.get(code=permission_code, is_active=True)
         except Permission.DoesNotExist:

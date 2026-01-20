@@ -50,6 +50,7 @@ urlpatterns = [
     
     # ==================== EMPLOYEE ====================
     path('employees/me/', views.get_my_profile, name='get_my_profile'),
+    path('employees/me/permissions/', views.get_my_permissions, name='get_my_permissions'),
     path('employees/', views.employee_list_create, name='employee_list_create'),
     path('employees/<uuid:pk>/', views.employee_detail, name='employee_detail'),
     

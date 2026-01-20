@@ -19,23 +19,27 @@ const menuItems = [
         label: 'Dashboard',
         icon: LayoutDashboard,
         path: '/dashboard',
+        permission: 'dashboard.view', // Everyone can see dashboard
     },
     {
         id: 'profile',
         label: 'My Profile',
         icon: User,
         path: '/dashboard/profile',
+        // No permission needed - everyone can see their own profile
     },
     {
         id: 'employees',
         label: 'Employees',
         icon: Users,
         path: '/dashboard/employees',
+        permission: 'employees.view', // Need employee view permission
+        adminOnly: false, // Not admin-only, but needs permission
         children: [
-            { id: 'all-employees', label: 'All Employees', path: '/dashboard/employees' },
-            { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments' },
-            { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations' },
-            { id: 'roles-permissions', label: 'Roles & Permissions', path: '/dashboard/employees/roles' },
+            { id: 'all-employees', label: 'All Employees', path: '/dashboard/employees', permission: 'employees.view' },
+            { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments', permission: 'employees.view' },
+            { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations', permission: 'employees.view' },
+            { id: 'roles-permissions', label: 'Roles & Permissions', path: '/dashboard/employees/roles', adminOnly: true },
             { id: 'document-requests', label: 'Document Requests', path: '/dashboard/employees/document-requests' },
             { id: 'shift-requests', label: 'Shift Requests', path: '/dashboard/employees/shift-requests' },
             { id: 'work-type-requests', label: 'Work Type Requests', path: '/dashboard/employees/work-type-requests' },
@@ -46,11 +50,12 @@ const menuItems = [
         label: 'Attendance',
         icon: CheckCircle2,
         path: '/dashboard/attendance',
+        permission: 'attendance.view',
         children: [
             { id: 'att-dashboard', label: 'Dashboard', path: '/dashboard/attendance' },
-            { id: 'att-biometric', label: 'Biometric Devices', path: '/dashboard/attendance/biometric' },
-            { id: 'att-attendances', label: 'Attendances', path: '/dashboard/attendance/list' },
-            { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests' },
+            { id: 'att-biometric', label: 'Biometric Devices', path: '/dashboard/attendance/biometric', adminOnly: true },
+            { id: 'att-attendances', label: 'Attendances', path: '/dashboard/attendance/list', permission: 'attendance.manage' },
+            { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests', permission: 'attendance.approve' },
             { id: 'att-hour-account', label: 'Hour Account', path: '/dashboard/attendance/hour-account' },
             { id: 'att-work-records', label: 'Work Records', path: '/dashboard/attendance/work-records' },
             { id: 'att-activities', label: 'Attendance Activities', path: '/dashboard/attendance/activities' },
@@ -63,9 +68,10 @@ const menuItems = [
         label: 'Leave Management',
         icon: Calendar,
         path: '/dashboard/leave',
+        permission: 'leave.view',
         children: [
-            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave' },
-            { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types' },
+            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave', permission: 'leave.view' },
+            { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types', adminOnly: true },
             { id: 'leave-balance', label: 'Leave Balance', path: '/dashboard/leave/balance' },
         ]
     },
@@ -74,10 +80,11 @@ const menuItems = [
         label: 'Payroll',
         icon: Wallet,
         path: '/dashboard/payroll',
+        permission: 'payroll.view',
         children: [
-            { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure' },
+            { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
             { id: 'payslips', label: 'Payslips', path: '/dashboard/payroll/payslips' },
-            { id: 'run-payroll', label: 'Run Payroll', path: '/dashboard/payroll/run' },
+            { id: 'run-payroll', label: 'Run Payroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
         ]
     },
     {
@@ -85,6 +92,7 @@ const menuItems = [
         label: 'Reports',
         icon: FileText,
         path: '/dashboard/reports',
+        permission: 'reports.view',
     },
 
     {
@@ -92,13 +100,14 @@ const menuItems = [
         label: 'Settings',
         icon: Settings,
         path: '/dashboard/settings',
+        adminOnly: true, // Only admins can access settings
     },
 ];
 
 export default function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
-    const { hasHRMS, hasPayroll } = usePermissions();
+    const { hasHRMS, hasPayroll, hasPermission, isAdmin } = usePermissions();
     const [expandedItems, setExpandedItems] = useState(() => {
         // Initial state: opened items by default + items that are parents of the current path
         const defaultExpanded = ['attendance'];
@@ -150,11 +159,30 @@ export default function Sidebar() {
     };
 
     const filteredMenuItems = menuItems.filter(item => {
-        if (!item.module) return true;
-        if (item.module === 'HRMS') return hasHRMS;
-        if (item.module === 'Payroll') return hasPayroll;
+        // 1. Check Subscription Plan
+        if (item.module === 'HRMS' && !hasHRMS) return false;
+        if (item.module === 'Payroll' && !hasPayroll) return false;
+
+        // 2. Check Admin-Only items
+        if (item.adminOnly && !isAdmin) return false;
+
+        // 3. Check Granular Permission
+        if (item.permission && !hasPermission(item.permission)) {
+            return false;
+        }
+
         return true;
     });
+
+    // Also filter children based on permissions
+    const filterChildren = (children) => {
+        if (!children) return [];
+        return children.filter(child => {
+            if (child.adminOnly && !isAdmin) return false;
+            if (child.permission && !hasPermission(child.permission)) return false;
+            return true;
+        });
+    };
 
     return (
         <aside className="sidebar">
@@ -193,7 +221,7 @@ export default function Sidebar() {
 
                                     {isExpanded && (
                                         <div className="sidebar__submenu">
-                                            {item.children.map(child => (
+                                            {filterChildren(item.children).map(child => (
                                                 <Link
                                                     key={child.id}
                                                     href={child.path}
