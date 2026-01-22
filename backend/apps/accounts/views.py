@@ -635,14 +635,17 @@ def department_list_create(request):
             elif company_id:
                 queryset = queryset.filter(company_id=company_id)
             
+            # Use specific serializer for list
             paginator = StandardResultsSetPagination()
             paginated = paginator.paginate_queryset(queryset, request)
-            
-            data = [{'id': str(d.id), 'name': d.name, 'code': d.code, 'company_name': d.company.name,
-                    'is_active': d.is_active} for d in paginated]
-            return paginator.get_paginated_response(data)
+            serializer = DepartmentListSerializer(paginated, many=True)
+            return paginator.get_paginated_response(serializer.data)
         
         elif request.method == 'POST':
+            # Check permission - simple check for now
+            if not is_client_admin(request.user) and not is_org_creator(request.user):
+                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
             # Determine company
             company_id = request.data.get('company')
             if not company_id:
@@ -656,21 +659,20 @@ def department_list_create(request):
             if not company_id:
                 return Response({'error': 'Company identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            code = request.data.get('code', '')
-            if Department.objects.filter(company_id=company_id, code=code).exists():
-                return Response({'error': f'Department with code "{code}" already exists'}, status=status.HTTP_400_BAD_REQUEST)
-
-            dept = Department.objects.create(
-                company_id=company_id,
-                name=request.data.get('name'),
-                code=code,
-                description=request.data.get('description', ''),
-                parent_id=request.data.get('parent'),
-                head_id=request.data.get('head') if request.data.get('head') else None,
-                is_active=request.data.get('is_active', True),
-                created_by=request.user
-            )
-            return Response({'success': True, 'id': str(dept.id)}, status=status.HTTP_201_CREATED)
+            # Use serializer for validation and save
+            # We need to inject company into data or context, or handle in perform_create equivalent
+            # But here we can just update the data before passing to serializer or save manually with serializer validation
+            
+            data = request.data.copy()
+            data['company'] = company_id
+            
+            serializer = DepartmentDetailSerializer(data=data) # Use Detail serializer for creation to accept all fields
+            if serializer.is_valid():
+                dept = serializer.save(created_by=request.user)
+                # Return serialized data matches frontend expectation
+                return Response({'success': True, 'id': str(dept.id), **DepartmentListSerializer(dept).data}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
     except Exception as e:
         logger.error(f"Error in department_list_create: {str(e)}")
         return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -684,27 +686,17 @@ def department_detail(request, pk):
         dept = get_object_or_404(Department, pk=pk)
         
         if request.method == 'GET':
-            data = {'id': str(dept.id), 'name': dept.name, 'code': dept.code, 'description': dept.description,
-                   'company': str(dept.company_id), 'parent': str(dept.parent_id) if dept.parent else None,
-                   'head': str(dept.head_id) if dept.head else None, 'is_active': dept.is_active,
-                   'budget': dept.budget}
-            return Response({'success': True, 'department': data})
+            serializer = DepartmentDetailSerializer(dept)
+            return Response({'success': True, 'department': serializer.data})
         
         elif request.method in ['PUT', 'PATCH']:
-            for field in ['name', 'code', 'description', 'is_active', 'budget']:
-                if field in request.data:
-                    setattr(dept, field, request.data[field])
-            
-            # Handle head separately as it's a foreign key
-            if 'head' in request.data:
-                head_id = request.data.get('head')
-                dept.head_id = head_id if head_id else None
-
-            dept.updated_by = request.user
-            dept.save()
-            # Return full serialized data so frontend can update the UI
-            serializer = DepartmentListSerializer(dept)
-            return Response({'success': True, **serializer.data})
+            serializer = DepartmentDetailSerializer(dept, data=request.data, partial=(request.method == 'PATCH'))
+            if serializer.is_valid():
+                dept = serializer.save(updated_by=request.user)
+                # Return data in list format for consistent UI update if needed, or Detail format
+                # The frontend expects 'success': True, and likely the updated object data
+                return Response({'success': True, **DepartmentListSerializer(dept).data})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         elif request.method == 'DELETE':
             dept.delete()
