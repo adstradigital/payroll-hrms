@@ -38,7 +38,6 @@ export default function Register() {
         email: '',
         phone: '',
         employeeCount: '1-50',
-        password: '',
     });
 
 
@@ -104,13 +103,9 @@ export default function Register() {
                 throw new Error("Please fill in all required fields.");
             }
 
-            // Generate a temporary password if not provided
-            const tempPassword = formData.password || Math.random().toString(36).slice(-8) + 'A1!';
-
-            // Call real API
+            // No password sent - credentials will be generated upon approval
             const response = await apiRegister({
                 email: formData.email,
-                password: tempPassword,
                 organizationName: formData.organizationName,
                 fullName: formData.fullName,
                 phone: formData.phone,
@@ -119,23 +114,10 @@ export default function Register() {
                 companies: isMultiCompany ? formData.companies.filter(c => c.name.trim()) : []
             });
 
-            // Store JWT tokens
-            const { access, refresh } = response.data.tokens;
-            localStorage.setItem('accessToken', access);
-            localStorage.setItem('refreshToken', refresh);
-
-            // On success, use AuthContext's login and redirect
-            login({
-                name: formData.fullName,
-                email: formData.email,
-                company: formData.organizationName,
-                role: 'owner',
-                ...response.data.user
-            });
-
             setStatus('success');
+            // Don't auto-login - registration requires approval
             setTimeout(() => {
-                router.push('/dashboard');
+                alert('Registration submitted! You will receive your login credentials via email once approved.');
             }, 500);
         } catch (err) {
             setStatus('error');
@@ -416,25 +398,6 @@ export default function Register() {
                                 </div>
                             </div>
 
-                            {/* Password Field */}
-                            <div className="auth-field">
-                                <label htmlFor="password" className="auth-field__label">Create Password</label>
-                                <div className="auth-field__input-wrapper">
-                                    <div className="auth-field__icon">
-                                        <LockIcon size={20} />
-                                    </div>
-                                    <input
-                                        id="password"
-                                        name="password"
-                                        type="password"
-                                        required
-                                        placeholder="••••••••"
-                                        className="auth-field__input"
-                                        value={formData.password}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                            </div>
                         </div>
 
                         {/* Submit Button */}

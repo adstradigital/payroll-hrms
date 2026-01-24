@@ -17,10 +17,11 @@ const axiosInstance = axios.create({
 // Request Interceptor
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Skip Authorization header for login and register routes
+        // Skip Authorization header for login, register, and public routes
         const isAuthRoute = config.url.includes('/auth/login') ||
             config.url.includes('/auth/register') ||
-            config.url.includes('/auth/token/refresh');
+            config.url.includes('/auth/token/refresh') ||
+            config.url.includes('/registrations/submit');
 
         if (!isAuthRoute) {
             const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;

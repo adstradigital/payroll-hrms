@@ -110,7 +110,7 @@ export default function Sidebar() {
     const { hasHRMS, hasPayroll, hasPermission, isAdmin } = usePermissions();
     const [expandedItems, setExpandedItems] = useState(() => {
         // Initial state: opened items by default + items that are parents of the current path
-        const defaultExpanded = ['attendance'];
+        const defaultExpanded = [];
 
         menuItems.forEach(item => {
             if (item.children && !defaultExpanded.includes(item.id)) {

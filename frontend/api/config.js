@@ -22,6 +22,7 @@ export const UPLOADS_URL = 'http://127.0.0.1:8000/media/uploads';
 // SUPER ADMIN ENDPOINTS
 // =============================================================================
 export const SUPERADMIN_ENDPOINTS = {
+    LOGIN: `${BASE_URL}/account/auth/super-admin/login/`,
     ORGANIZATIONS: `${BASE_URL}/organizations/`,
     ORGANIZATION_DETAIL: (id) => `${BASE_URL}/organizations/${id}/`,
     SUBSCRIPTIONS: `${BASE_URL}/subscriptions/`,
@@ -30,6 +31,12 @@ export const SUPERADMIN_ENDPOINTS = {
     USER_DETAIL: (id) => `${BASE_URL}/account/users/${id}/`,
     ANALYTICS: `${BASE_URL}/reports/analytics/`,
     DASHBOARD_STATS: `${BASE_URL}/reports/dashboard-stats/`,
+
+    // Organization Registration Approvals
+    PENDING_REGISTRATIONS: `${BASE_URL}/account/registrations/`,
+    REGISTRATION_DETAIL: (id) => `${BASE_URL}/account/registrations/${id}/`,
+    APPROVE_REGISTRATION: (id) => `${BASE_URL}/account/registrations/${id}/approve/`,
+    REJECT_REGISTRATION: (id) => `${BASE_URL}/account/registrations/${id}/reject/`,
 };
 
 // =============================================================================
@@ -39,6 +46,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     // Auth
     LOGIN: `${BASE_URL}/account/auth/login/`,
     REGISTER: `${BASE_URL}/account/auth/register/`,
+    SUBMIT_REGISTRATION: `${BASE_URL}/account/registrations/submit/`,
     LOGOUT: `${BASE_URL}/account/auth/logout/`,
     REFRESH_TOKEN: `${BASE_URL}/account/auth/token/refresh/`,
     FORGOT_PASSWORD: `${BASE_URL}/account/auth/forgot-password/`,
@@ -60,6 +68,9 @@ export const CLIENTADMIN_ENDPOINTS = {
     ROLE_DETAIL: (id) => `${BASE_URL}/account/roles/${id}/`,
     PERMISSIONS: `${BASE_URL}/account/permissions/`,
     SCOPES: `${BASE_URL}/account/scopes/`,
+    EMPLOYEE_DOCUMENTS: (id) => `${BASE_URL}/account/employees/${id}/documents/`,
+    EMPLOYEE_DOCUMENT_DETAIL: (empId, docId) => `${BASE_URL}/account/employees/${empId}/documents/${docId}/`,
+
 
     // Requests
     DOCUMENT_REQUESTS: `${BASE_URL}/account/employees/document-requests/`,
@@ -87,6 +98,8 @@ export const CLIENTADMIN_ENDPOINTS = {
     PAYSLIPS: `${BASE_URL}/payroll/payslips/`,
     PAYSLIP_DETAIL: (id) => `${BASE_URL}/payroll/payslips/${id}/`,
     SALARY_COMPONENTS: `${BASE_URL}/payroll/components/`,
+    SALARY_STRUCTURES: `${BASE_URL}/payroll/structures/`,
+    SALARY_STRUCTURE_DETAIL: (id) => `${BASE_URL}/payroll/structures/${id}/`,
 
     // Reports
     REPORTS_ATTENDANCE: `${BASE_URL}/reports/attendance/`,

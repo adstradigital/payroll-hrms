@@ -5,6 +5,9 @@
 import axiosInstance from './axiosInstance';
 import { SUPERADMIN_ENDPOINTS } from './config';
 
+// Authentication
+export const superAdminLogin = (credentials) => axiosInstance.post(SUPERADMIN_ENDPOINTS.LOGIN, credentials);
+
 // Organizations
 export const getAllOrganizations = (params) => axiosInstance.get(SUPERADMIN_ENDPOINTS.ORGANIZATIONS, { params });
 export const getOrganizationById = (id) => axiosInstance.get(SUPERADMIN_ENDPOINTS.ORGANIZATION_DETAIL(id));

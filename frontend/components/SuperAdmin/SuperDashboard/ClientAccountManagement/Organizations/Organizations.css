@@ -1,0 +1,201 @@
+.orgs-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.orgs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.orgs-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.orgs-subtitle {
+    font-size: 0.875rem;
+    color: #71717a;
+    max-width: 600px;
+}
+
+.btn-primary-nexus {
+    background-color: white;
+    color: black;
+    font-weight: 700;
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary-nexus:hover {
+    background-color: #e4e4e7;
+    transform: translateY(-2px);
+}
+
+/* Orgs Grid */
+.orgs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.org-card-premium {
+    background-color: rgba(24, 24, 27, 0.5);
+    border: 1px solid #18181b;
+    border-radius: 24px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.org-card-premium:hover {
+    border-color: #27272a;
+    background-color: rgba(39, 39, 42, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+.card-top-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.org-avatar-large {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #27272a 0%, #18181b 100%);
+    border: 1px solid #3f3f46;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05);
+}
+
+.org-status-badge {
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.org-status-active {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+
+.org-status-pending {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.org-info-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.org-name-heading {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    transition: color 0.2s ease;
+}
+
+.org-card-premium:hover .org-name-heading {
+    color: #f59e0b;
+}
+
+.plan-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8125rem;
+    color: #71717a;
+}
+
+.org-metrics-row {
+    display: flex;
+    gap: 12px;
+    padding: 16px 0;
+    border-top: 1px solid #18181b;
+}
+
+.metric-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.text-right-align {
+    text-align: right;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
+
+.metric-box-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #52525b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.metric-box-flex {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.metric-box-value {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #d4d4d8;
+}
+
+.card-footer-action {
+    padding-top: 12px;
+}
+
+.btn-view-details {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    background-color: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 12px;
+    color: #a1a1aa;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-view-details:hover {
+    background-color: #27272a;
+    color: white;
+}

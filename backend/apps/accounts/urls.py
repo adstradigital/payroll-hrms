@@ -7,7 +7,9 @@ app_name = 'account'
 
 urlpatterns = [
     # ==================== AUTHENTICATION & REGISTRATION ====================
+    # ==================== AUTHENTICATION & REGISTRATION ====================
     path('auth/login/', views.MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/super-admin/login/', views.SuperAdminTokenObtainPairView.as_view(), name='super_admin_login'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/register/', views.register_organization, name='register_organization'),
     path('auth/activate/', views.activate_employee, name='activate_employee'),
@@ -27,8 +29,19 @@ urlpatterns = [
     path('subscription/upgrade/', views.upgrade_subscription, name='upgrade_subscription'),
     path('subscription/cancel/', views.cancel_subscription, name='cancel_subscription'),
     
+    # ==================== SUPER ADMIN ====================
+    path('users/', views.user_list, name='user_list'),
+    
+    # ==================== ORGANIZATION REGISTRATION APPROVALS ====================
+    path('registrations/submit/', views.submit_organization_registration, name='submit_registration'),
+    path('registrations/', views.pending_registrations_list, name='pending_registrations'),
+    path('registrations/<uuid:pk>/', views.registration_detail, name='registration_detail'),
+    path('registrations/<uuid:pk>/approve/', views.approve_registration, name='approve_registration'),
+    path('registrations/<uuid:pk>/reject/', views.reject_registration, name='reject_registration'),
+
     # ==================== ORGANIZATION ====================
     path('organization/', views.organization_detail, name='organization_detail'),
+
     
     # ==================== INVITE CODES ====================
     path('invites/', views.invite_list, name='invite_list'),
@@ -68,6 +81,9 @@ urlpatterns = [
 
     # ==================== REQUESTS ====================
     path('employees/document-requests/', req_views.DocumentRequestListCreate.as_view(), name='document_request_list'),
+    path('employees/document-requests/<uuid:pk>/submit/', req_views.submit_document, name='submit_document'),
+    path('employees/document-requests/<uuid:pk>/approve/', req_views.approve_document_request, name='approve_document_request'),
+    path('employees/document-requests/<uuid:pk>/reject/', req_views.reject_document_request, name='reject_document_request'),
     path('employees/shift-requests/', req_views.ShiftRequestListCreate.as_view(), name='shift_request_list'),
     path('employees/work-type-requests/', req_views.WorkTypeRequestListCreate.as_view(), name='work_type_request_list'),
 ]
