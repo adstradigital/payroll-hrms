@@ -64,6 +64,47 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
         
         return Response({'message': f'Created {created} leave balance records'})
 
+    @action(detail=False, methods=['post'])
+    def run_accrual(self, request):
+        """Run periodic leave accrual for all active employees"""
+        from django.db.models import F
+        from datetime import date
+        
+        company_id = request.data.get('company')
+        if not company_id:
+            return Response({'error': 'company parameter required'}, status=400)
+            
+        today = date.today()
+        leave_types = LeaveType.objects.filter(company_id=company_id, is_active=True)
+        accrued_count = 0
+        
+        for lt in leave_types:
+            if lt.accrual_type == 'monthly':
+                # Accrue 1/12th of annual leaves
+                accrual_amount = lt.days_per_year / 12
+                
+                # Update all balances for this leave type and year
+                balances = LeaveBalance.objects.filter(
+                    leave_type=lt,
+                    year=today.year
+                )
+                
+                # For employees without balance, we should create one? 
+                # Usually allocate handles initial creation.
+                
+                updated = balances.update(allocated=F('allocated') + accrual_amount)
+                accrued_count += updated
+            
+            elif lt.accrual_type == 'quarterly' and today.month in [1, 4, 7, 10]:
+                accrual_amount = lt.days_per_year / 4
+                updated = LeaveBalance.objects.filter(
+                    leave_type=lt,
+                    year=today.year
+                ).update(allocated=F('allocated') + accrual_amount)
+                accrued_count += updated
+                
+        return Response({'message': f'Accrued leaves for {accrued_count} records'})
+
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.select_related(
@@ -119,13 +160,78 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=False, methods=['get'])
-    def pending(self, request):
-        """Get all pending leave requests"""
-        company = request.query_params.get('company')
-        pending = self.queryset.filter(status='pending')
-        if company:
-            pending = pending.filter(employee__company_id=company)
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel a leave request and restore balance"""
+        leave_request = self.get_object()
         
-        serializer = self.get_serializer(pending, many=True)
-        return Response(serializer.data)
+        if leave_request.status == 'cancelled':
+            return Response({'error': 'Leave is already cancelled'}, status=400)
+            
+        if leave_request.status == 'rejected':
+            return Response({'error': 'Rejected leave cannot be cancelled'}, status=400)
+            
+        old_status = leave_request.status
+        leave_request.status = 'cancelled'
+        leave_request.save()
+        
+        # Restore balance
+        try:
+            balance = LeaveBalance.objects.get(
+                employee=leave_request.employee,
+                leave_type=leave_request.leave_type,
+                year=leave_request.start_date.year
+            )
+            
+            if old_status == 'pending':
+                balance.pending -= leave_request.days_count
+            elif old_status == 'approved':
+                balance.used -= leave_request.days_count
+                
+            balance.save()
+            return Response({'message': 'Leave cancelled and balance restored'})
+        except LeaveBalance.DoesNotExist:
+            return Response({'message': 'Leave cancelled (no balance record found to restore)'})
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get leave statistics for dashboard"""
+        from django.db.models import Count
+        from datetime import date, timedelta
+        
+        company_id = request.query_params.get('company')
+        employee_id = request.query_params.get('employee')
+        
+        queryset = self.queryset
+        if company_id:
+            queryset = queryset.filter(employee__company_id=company_id)
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+            
+        today = date.today()
+        
+        # Basic counts
+        stats = {
+            'pending': queryset.filter(status='pending').count(),
+            'approved': queryset.filter(status='approved').count(),
+            'rejected': queryset.filter(status='rejected').count(),
+            'on_leave_today': queryset.filter(
+                status='approved',
+                start_date__lte=today,
+                end_date__gte=today
+            ).count(),
+        }
+        
+        # Leave type distribution
+        type_dist = queryset.values('leave_type__name').annotate(count=Count('id'))
+        stats['type_distribution'] = {item['leave_type__name']: item['count'] for item in type_dist}
+        
+        # Monthly trends (Past 6 months)
+        six_months_ago = today - timedelta(days=180)
+        recent_requests = queryset.filter(created_at__date__gte=six_months_ago)
+        
+        # Simple recent requests (last 5)
+        recent_list = queryset.order_by('-created_at')[:5]
+        stats['recent_requests'] = LeaveRequestSerializer(recent_list, many=True).data
+        
+        return Response(stats)

@@ -1,70 +1,143 @@
 'use client';
 
-import { FileText, Download, Calendar, User } from 'lucide-react';
-import '../Attendance.css';
+import { useState } from 'react';
+import { Download, Filter, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import './WorkRecords.css';
 
-const mockRecords = [
-    { id: 1, employee: 'John Doe', date: '2026-01-19', checkIn: '09:05 AM', checkOut: '18:15 PM', breakTime: '45 mins', totalTime: '8h 25m', status: 'Completed' },
-    { id: 2, employee: 'John Doe', date: '2026-01-18', checkIn: '08:55 AM', checkOut: '18:05 PM', breakTime: '60 mins', totalTime: '8h 10m', status: 'Completed' },
-    { id: 3, employee: 'John Doe', date: '2026-01-17', checkIn: '09:15 AM', checkOut: '17:30 PM', breakTime: '30 mins', totalTime: '7h 45m', status: 'Incomplete' },
+const mockEmployees = [
+    { id: 'PEP00', name: 'Kiran Kishor', status: ['L', '', 'A', 'L', 'L', 'L', 'A', 'P', 'A', 'A', 'P', 'P', 'P', 'L', 'P', 'P', 'P', 'P', 'P', 'P', 'P'] },
+    { id: '567', name: 'Afsal', status: ['', 'A', 'A', '', '', 'A', 'A', '', 'L', 'A', '', '', 'A', 'A', 'A', 'A', 'A', '', '', 'A'] },
+    { id: 'PEP03', name: 'Sunsreekumar', status: ['', 'A', 'A', '', '', 'A', 'A', '', 'P', 'A', '', '', 'A', 'A', 'A', '!'] },
+    { id: 'PEP04', name: 'Jagathu', status: ['', 'A', 'P', '', '', 'A', 'A', '', 'A', 'A', '', '', 'A', 'A', 'L', 'A', 'A'], meta: 'TERMINATED' },
+    { id: 'PEP05', name: 'Ankit Pokhrel', status: ['', '', '', '', '', '', '', '', 'L', '', '', '', '', '', '!', ''] },
+    { id: 'PEP06', name: 'Ravi Kumar', status: [] },
+    { id: 'PEP07', name: 'Priya Sharma', status: ['L'] },
+    { id: 'PEP08', name: 'Rahul Verma', status: [] },
+    { id: 'PEP09', name: 'Vikram Singh', status: ['', 'A', 'A', '', '', 'A', 'A', '', 'A', 'A', '', '', 'A', 'A', 'A', 'A', 'A'] },
+    { id: 'PEP10', name: 'Amit Patel', status: ['', 'A', 'A', '', '', 'A', 'A', '', 'A', 'A', '', '', 'A', 'A', 'A', '', '', '', '', 'A'] },
 ];
 
 export default function WorkRecords() {
+    const days = Array.from({ length: 31 }, (_, i) => i + 1);
+
+    const getStatusClass = (status) => {
+        if (status === 'P') return 'wr-cell-bubble p';
+        if (status === 'L') return 'wr-cell-bubble l';
+        if (status === 'A') return 'wr-cell-bubble a';
+        if (status === '!') return 'wr-cell-bubble conflict';
+        if (status === 'H') return 'wr-cell-bubble h';
+        if (status === 'O') return 'wr-cell-bubble o';
+        return 'wr-cell-bubble empty';
+    };
+
+    const getTooltip = (status, date) => {
+        if (!status) return `No Record - Jan ${date}`;
+        const map = {
+            'P': `Present • 09:00 - 18:00 • Jan ${date}`,
+            'L': `Leave • Jan ${date}`,
+            'A': `Absent • Jan ${date}`,
+            '!': `Conflict Alert • Jan ${date}`,
+            'H': `Half Day • 09:00 - 13:00 • Jan ${date}`,
+            'O': `On Leave (Present) • Jan ${date}`
+        };
+        return map[status] || status;
+    };
+
+    const calculateStats = (statusArray) => {
+        const stats = { P: 0, L: 0, A: 0, Conflict: 0 };
+        statusArray.forEach(s => {
+            if (s === 'P') stats.P++;
+            if (s === 'L') stats.L++;
+            if (s === 'A') stats.A++;
+            if (s === '!') stats.Conflict++;
+        });
+        return stats;
+    };
+
     return (
-        <div className="work-records space-y-6">
-            <div className="flex flex-col md:flex-row gap-4 items-end bg-white/5 p-4 rounded-xl border border-white/5">
-                <div className="space-y-1.5 flex-1">
-                    <label className="text-xs text-slate-400 ml-1">Select Employee</label>
-                    <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                        <select className="w-full bg-slate-900 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500 appearance-none">
-                            <option>John Doe (EMP001)</option>
-                            <option>Jane Smith (EMP002)</option>
+        <div className="work-records-section">
+            {/* Header Area */}
+            <div className="wr-header">
+                <div className="wr-title-area">
+                    <h2>Work Records</h2>
+                    <p className="text-muted text-sm mt-1">Monthly attendance overview and status</p>
+                </div>
+                <div className="wr-meta-area">
+                    <div className="wr-date-display">Date: Jan. 20, 2026</div>
+                    <div className="wr-month-picker">
+                        <label>Month</label>
+                        <select defaultValue="January, 2026">
+                            <option>January, 2026</option>
+                            <option>February, 2026</option>
                         </select>
+                        <Calendar size={16} className="text-slate-400" />
                     </div>
                 </div>
-                <div className="space-y-1.5 flex-1">
-                    <label className="text-xs text-slate-400 ml-1">Start Date</label>
-                    <input type="date" className="w-full bg-slate-900 border border-white/10 rounded-lg py-2 px-4 text-sm text-white outline-none" defaultValue="2026-01-01" />
-                </div>
-                <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors">
-                    Filter Records
-                </button>
             </div>
 
-            <div className="att-table-container">
-                <table className="att-table">
+            {/* Toolbar & Legend */}
+            <div className="wr-toolbar">
+                <div className="wr-toolbar-left">
+                    <button className="wr-export-btn">
+                        <Download size={16} /> Export
+                    </button>
+                    <button className="wr-filter-btn">
+                        <Filter size={16} /> Filter
+                    </button>
+                </div>
+
+                <div className="wr-legend">
+                    <div className="legend-item"><span className="legend-dot present"></span> Present</div>
+                    <div className="legend-item"><span className="legend-dot half-day"></span> Half Day</div>
+                    <div className="legend-item"><span className="legend-dot on-leave-att"></span> Excused</div>
+                    <div className="legend-item"><span className="legend-dot leave"></span> Leave</div>
+                    <div className="legend-item"><span className="legend-dot absent"></span> Absent</div>
+                    <div className="legend-item"><span className="legend-dot conflict"></span> Conflict</div>
+                </div>
+            </div>
+
+            {/* Timeline Grid Table */}
+            <div className="wr-grid-container">
+                <table className="wr-table">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Check In</th>
-                            <th>Check Out</th>
-                            <th>Break</th>
-                            <th>Net Work Time</th>
-                            <th>Status</th>
-                            <th className="text-right">Details</th>
+                            <th className="emp-col sticky-col">Employee</th>
+                            <th className="stat-col sticky-col-2">Days</th>
+                            <th className="stat-col">Late</th>
+                            <th className="stat-col">Abs</th>
+                            {days.map(d => <th key={d}>{d}</th>)}
                         </tr>
                     </thead>
                     <tbody>
-                        {mockRecords.map(record => (
-                            <tr key={record.id}>
-                                <td className="font-medium">{record.date}</td>
-                                <td className="text-emerald">{record.checkIn}</td>
-                                <td className="text-rose">{record.checkOut}</td>
-                                <td className="p-4">{record.breakTime}</td>
-                                <td className="font-semibold text-white">{record.totalTime}</td>
-                                <td>
-                                    <span className={`badge-round uppercase ${record.status === 'Completed' ? 'bg-emerald-dim text-emerald' : 'bg-amber-dim text-amber'}`}>
-                                        {record.status}
-                                    </span>
-                                </td>
-                                <td className="text-right">
-                                    <button className="text-slate-500 hover:text-indigo transition-colors">
-                                        <FileText size={18} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                        {mockEmployees.map(emp => {
+                            const stats = calculateStats(emp.status);
+                            return (
+                                <tr key={emp.id}>
+                                    <td className="emp-name-cell sticky-col">
+                                        <div className="emp-info">
+                                            <span className="emp-name">{emp.name}</span>
+                                            <span className="emp-id">{emp.id}</span>
+                                            {emp.meta && <span className="emp-badge terminated">{emp.meta}</span>}
+                                        </div>
+                                    </td>
+                                    <td className="stat-cell sticky-col-2 font-bold text-emerald">{stats.P}</td>
+                                    <td className="stat-cell text-amber">{Math.floor(Math.random() * 3)}</td>
+                                    <td className="stat-cell text-rose">{stats.A}</td>
+                                    {days.map((day, idx) => (
+                                        <td key={day} className="timeline-cell">
+                                            {emp.status[idx] && (
+                                                <div
+                                                    className={getStatusClass(emp.status[idx])}
+                                                    title={getTooltip(emp.status[idx], day)}
+                                                >
+                                                    {emp.status[idx]}
+                                                </div>
+                                            )}
+                                        </td>
+                                    ))}
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

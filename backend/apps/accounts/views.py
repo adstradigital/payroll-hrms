@@ -998,14 +998,17 @@ def get_my_profile(request):
     try:
         try:
             employee = Employee.objects.select_related('company', 'department', 'designation', 'reporting_manager').get(user=request.user)
-            from .serializers import EmployeeDetailSerializer
-            # Use serializer for consistent data structure including all fields (banking, address, etc.)
-            serializer = EmployeeDetailSerializer(employee)
-            data = serializer.data
-            
-            # Add user-specific fields that might not be in serializer if needed (serializer covers most)
-            # EmployeeDetailSerializer covers all fields we need.
-            
+            data = {
+                'id': str(employee.id), 'employee_id': employee.employee_id, 'full_name': employee.full_name,
+                'first_name': employee.first_name, 'middle_name': employee.middle_name, 'last_name': employee.last_name,
+                'email': employee.email, 'phone': employee.phone, 'date_of_birth': str(employee.date_of_birth) if employee.date_of_birth else None,
+                'gender': employee.gender, 'company': {'id': str(employee.company.id), 'name': employee.company.name},
+                'department': {'id': str(employee.department.id), 'name': employee.department.name} if employee.department else None,
+                'designation': {'id': str(employee.designation.id), 'name': employee.designation.name} if employee.designation else None,
+                'status': employee.status, 'employment_type': employee.employment_type,
+                'is_admin': employee.is_admin,
+                'date_of_joining': str(employee.date_of_joining), 'age': employee.age, 'tenure_in_days': employee.tenure_in_days
+            }
             return Response({'success': True, 'employee': data})
         except Employee.DoesNotExist:
             # Fallback for users without an employee record (like the registering Admin)

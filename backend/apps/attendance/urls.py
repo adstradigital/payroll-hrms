@@ -4,7 +4,9 @@ from .views import (
     ShiftViewSet,
     EmployeeShiftAssignmentViewSet,
     AttendanceViewSet,
+    AttendanceRegularizationRequestViewSet,
     HolidayViewSet,
+    AttendanceSummaryViewSet,
     generate_monthly_summary
 )
 
@@ -42,40 +44,60 @@ holiday_list = HolidayViewSet.as_view({'get': 'list', 'post': 'create'})
 holiday_detail = HolidayViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'})
 holiday_upcoming = HolidayViewSet.as_view({'get': 'upcoming'})
 
+# Regularization Request URLs
+regularization_list = AttendanceRegularizationRequestViewSet.as_view({'get': 'list', 'post': 'create'})
+regularization_detail = AttendanceRegularizationRequestViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'})
+regularization_pending = AttendanceRegularizationRequestViewSet.as_view({'get': 'pending'})
+regularization_approve = AttendanceRegularizationRequestViewSet.as_view({'post': 'approve'})
+regularization_reject = AttendanceRegularizationRequestViewSet.as_view({'post': 'reject'})
+
+# Attendance Summary URLs
+summary_list = AttendanceSummaryViewSet.as_view({'get': 'list'})
+summary_detail = AttendanceSummaryViewSet.as_view({'get': 'retrieve'})
+
 urlpatterns = [
     # Attendance Policies
-    path('api/attendance-policies/', attendance_policy_list, name='attendance_policy_list'),
-    path('api/attendance-policies/<uuid:pk>/', attendance_policy_detail, name='attendance_policy_detail'),
+    path('policies/', attendance_policy_list, name='attendance_policy_list'),
+    path('policies/<uuid:pk>/', attendance_policy_detail, name='attendance_policy_detail'),
 
     # Shifts
-    path('api/shifts/', shift_list, name='shift_list'),
-    path('api/shifts/<uuid:pk>/', shift_detail, name='shift_detail'),
+    path('shifts/', shift_list, name='shift_list'),
+    path('shifts/<uuid:pk>/', shift_detail, name='shift_detail'),
 
     # Employee Shift Assignments
-    path('api/shift-assignments/', assignment_list, name='assignment_list'),
-    path('api/shift-assignments/<uuid:pk>/', assignment_detail, name='assignment_detail'),
+    path('shift-assignments/', assignment_list, name='assignment_list'),
+    path('shift-assignments/<uuid:pk>/', assignment_detail, name='assignment_detail'),
 
     # Attendance
-    path('api/attendance/', attendance_list, name='attendance_list'),
-    path('api/attendance/<uuid:pk>/', attendance_detail, name='attendance_detail'),
-    path('api/attendance/check-in/', attendance_check_in, name='attendance_check_in'),
-    path('api/attendance/check-out/', attendance_check_out, name='attendance_check_out'),
-    path('api/attendance/bulk-mark/', attendance_bulk_mark, name='attendance_bulk_mark'),
-    path('api/attendance/daily-summary/', attendance_daily_summary, name='attendance_daily_summary'),
-    path('api/attendance/employee-monthly/', attendance_employee_monthly, name='attendance_employee_monthly'),
-    path('api/attendance/dashboard-stats/', attendance_dashboard_stats, name='attendance_dashboard_stats'),
-    path('api/attendance/offline-employees/', attendance_offline_employees, name='attendance_offline_employees'),
-    path('api/attendance/on-break/', attendance_on_break, name='attendance_on_break'),
-    path('api/attendance/overtime-pending/', attendance_overtime_pending, name='attendance_overtime_pending'),
-    path('api/attendance/to-validate/', attendance_to_validate, name='attendance_to_validate'),
-    path('api/attendance/analytics/', attendance_analytics, name='attendance_analytics'),
-    path('api/attendance/department-overtime/', attendance_department_overtime, name='attendance_department_overtime'),
+    path('', attendance_list, name='attendance_list'),
+    path('<uuid:pk>/', attendance_detail, name='attendance_detail'),
+    path('check-in/', attendance_check_in, name='attendance_check_in'),
+    path('check-out/', attendance_check_out, name='attendance_check_out'),
+    path('bulk-mark/', attendance_bulk_mark, name='attendance_bulk_mark'),
+    path('daily-summary/', attendance_daily_summary, name='attendance_daily_summary'),
+    path('employee-monthly/', attendance_employee_monthly, name='attendance_employee_monthly'),
+    path('dashboard-stats/', attendance_dashboard_stats, name='attendance_dashboard_stats'),
+    path('offline-employees/', attendance_offline_employees, name='attendance_offline_employees'),
+    path('on-break/', attendance_on_break, name='attendance_on_break'),
+    path('overtime-pending/', attendance_overtime_pending, name='attendance_overtime_pending'),
+    path('to-validate/', attendance_to_validate, name='attendance_to_validate'),
+    path('analytics/', attendance_analytics, name='attendance_analytics'),
+    path('department-overtime/', attendance_department_overtime, name='attendance_department_overtime'),
 
     # Holidays
-    path('api/holidays/', holiday_list, name='holiday_list'),
-    path('api/holidays/<uuid:pk>/', holiday_detail, name='holiday_detail'),
-    path('api/holidays/upcoming/', holiday_upcoming, name='holiday_upcoming'),
+    path('holidays/', holiday_list, name='holiday_list'),
+    path('holidays/<uuid:pk>/', holiday_detail, name='holiday_detail'),
+    path('holidays/upcoming/', holiday_upcoming, name='holiday_upcoming'),
+
+    # Regularization Requests
+    path('regularization/', regularization_list, name='regularization_list'),
+    path('regularization/<uuid:pk>/', regularization_detail, name='regularization_detail'),
+    path('regularization/pending/', regularization_pending, name='regularization_pending'),
+    path('regularization/<uuid:pk>/approve/', regularization_approve, name='regularization_approve'),
+    path('regularization/<uuid:pk>/reject/', regularization_reject, name='regularization_reject'),
 
     # Attendance Summary
-    path('api/attendance-summary/', generate_monthly_summary, name='generate_monthly_summary'),
+    path('summary/', generate_monthly_summary, name='generate_monthly_summary'),
+    path('summaries/', summary_list, name='attendance_summary_list'),
+    path('summaries/<uuid:pk>/', summary_detail, name='attendance_summary_detail'),
 ]
