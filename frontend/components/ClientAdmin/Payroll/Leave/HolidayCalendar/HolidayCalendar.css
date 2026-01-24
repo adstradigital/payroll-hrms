@@ -1,0 +1,236 @@
+.holiday-calendar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+.holiday-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.holiday-toolbar__left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.holiday-search {
+    position: relative;
+    width: 300px;
+}
+
+.holiday-search__icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+
+.holiday-search__input {
+    width: 100%;
+    padding: 0.625rem 1rem 0.625rem 2.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-body);
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.holiday-search__input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+    outline: none;
+}
+
+.holiday-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.holiday-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.holiday-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-color);
+}
+
+.holiday-card__status {
+    height: 4px;
+    width: 100%;
+}
+
+.holiday-card__status.public {
+    background: #3B82F6;
+}
+
+.holiday-card__status.restricted {
+    background: #F59E0B;
+}
+
+.holiday-card__status.optional {
+    background: #10B981;
+}
+
+.holiday-card__content {
+    padding: 1.25rem;
+    flex: 1;
+}
+
+.holiday-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.holiday-card__date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px;
+    height: 50px;
+    background: var(--bg-body);
+    border-radius: 8px;
+    font-weight: 700;
+}
+
+.holiday-card__day {
+    font-size: 1.125rem;
+    line-height: 1;
+}
+
+.holiday-card__month {
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.holiday-card__title-area {
+    flex: 1;
+    margin-left: 1rem;
+}
+
+.holiday-card__name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.holiday-card__type {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--bg-body);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+}
+
+.holiday-card__desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 1rem 0;
+}
+
+.holiday-card__footer {
+    padding: 1rem 1.25rem;
+    background: var(--bg-body);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-color);
+}
+
+.holiday-card__actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.holiday-action-btn {
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.holiday-action-btn:hover {
+    background: var(--bg-body);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.holiday-action-btn.delete:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+.holiday-empty {
+    padding: 4rem;
+    text-align: center;
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.holiday-empty p {
+    margin-top: 1rem;
+    font-size: 1.125rem;
+}
+
+/* Modal Specific Styles if needed */
+.holiday-modal-form {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.holiday-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.holiday-form-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.holiday-form-input,
+.holiday-form-select,
+.holiday-form-textarea {
+    padding: 0.625rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-body);
+    font-size: 0.875rem;
+}
+
+.holiday-form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}

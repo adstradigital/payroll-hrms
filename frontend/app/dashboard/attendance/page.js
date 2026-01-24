@@ -1,6 +1,6 @@
 'use client';
 
-import AttendanceDashboard from '@/components/ClientAdmin/Account/Attendance/AttendanceDashboard';
+import AttendanceDashboard from '@/components/ClientAdmin/Account/Attendance/Dashboard/Dashboard';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 
 export default function AttendancePage() {

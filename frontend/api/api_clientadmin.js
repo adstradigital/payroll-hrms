@@ -45,20 +45,33 @@ export const getScopes = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SCOPES);
 
 // Attendance
 export const getAllAttendance = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE, { params });
+export const createAttendance = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ATTENDANCE, data);
+export const updateAttendance = (id, data) => axiosInstance.put(`${CLIENTADMIN_ENDPOINTS.ATTENDANCE}${id}/`, data);
+export const bulkMarkAttendance = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.ATTENDANCE}bulk-mark/`, data);
 export const clockIn = () => axiosInstance.post(CLIENTADMIN_ENDPOINTS.CLOCK_IN);
 export const clockOut = () => axiosInstance.post(CLIENTADMIN_ENDPOINTS.CLOCK_OUT);
 export const getAttendanceReport = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE_REPORT, { params });
 export const getAllHolidays = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.HOLIDAYS);
 export const createHoliday = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.HOLIDAYS, data);
+export const updateHoliday = (id, data) => axiosInstance.put(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/`, data);
+export const deleteHoliday = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/`);
 
 // Leave Management
 export const getAllLeaves = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVES, { params });
 export const getLeaveById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_DETAIL(id));
 export const applyLeave = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LEAVES, data);
-export const approveLeave = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LEAVE_APPROVE(id));
-export const rejectLeave = (id, reason) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LEAVE_REJECT(id), { reason });
+export const getLeaveStats = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.LEAVES}stats/`, { params });
+export const cancelLeave = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.LEAVES}${id}/cancel/`);
+export const approveLeave = (id, approverId) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LEAVE_PROCESS(id), { action: 'approve', approver_id: approverId });
+export const rejectLeave = (id, reason) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LEAVE_PROCESS(id), { action: 'reject', rejection_reason: reason });
 export const getLeaveTypes = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_TYPES);
 export const getLeaveBalance = (employeeId) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_BALANCE, { params: { employee_id: employeeId } });
+export const createLeaveType = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LEAVE_TYPES, data);
+export const updateLeaveType = (id, data) => axiosInstance.put(`${CLIENTADMIN_ENDPOINTS.LEAVE_TYPES}${id}/`, data);
+export const deleteLeaveType = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.LEAVE_TYPES}${id}/`);
+export const allocateLeaves = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.LEAVE_BALANCE}allocate/`, data);
+export const runLeaveAccrual = (companyId) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.LEAVE_BALANCE}run_accrual/`, { company: companyId });
+export const getAllLeaveBalances = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_BALANCE, { params });
 
 // Payroll
 export const getAllPayroll = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL, { params });
@@ -71,7 +84,7 @@ export const getSalaryComponents = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS
 // Reports
 export const getAttendanceReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_ATTENDANCE, { params });
 export const getPayrollReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL, { params });
-export const getLeaveReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_LEAVE, { params });
+export const getLeaveReports = ({ type, ...params }) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_LEAVE}${type}/`, { params });
 export const getEmployeeReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_EMPLOYEE, { params });
 
 // Requests

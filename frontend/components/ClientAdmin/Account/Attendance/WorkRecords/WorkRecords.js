@@ -1,24 +1,54 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Filter, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import './WorkRecords.css';
 
-const mockEmployees = [
-    { id: 'PEP00', name: 'Kiran Kishor', status: ['L', '', 'A', 'L', 'L', 'L', 'A', 'P', 'A', 'A', 'P', 'P', 'P', 'L', 'P', 'P', 'P', 'P', 'P', 'P', 'P'] },
-    { id: '567', name: 'Afsal', status: ['', 'A', 'A', '', '', 'A', 'A', '', 'L', 'A', '', '', 'A', 'A', 'A', 'A', 'A', '', '', 'A'] },
-    { id: 'PEP03', name: 'Sunsreekumar', status: ['', 'A', 'A', '', '', 'A', 'A', '', 'P', 'A', '', '', 'A', 'A', 'A', '!'] },
-    { id: 'PEP04', name: 'Jagathu', status: ['', 'A', 'P', '', '', 'A', 'A', '', 'A', 'A', '', '', 'A', 'A', 'L', 'A', 'A'], meta: 'TERMINATED' },
-    { id: 'PEP05', name: 'Ankit Pokhrel', status: ['', '', '', '', '', '', '', '', 'L', '', '', '', '', '', '!', ''] },
-    { id: 'PEP06', name: 'Ravi Kumar', status: [] },
-    { id: 'PEP07', name: 'Priya Sharma', status: ['L'] },
-    { id: 'PEP08', name: 'Rahul Verma', status: [] },
-    { id: 'PEP09', name: 'Vikram Singh', status: ['', 'A', 'A', '', '', 'A', 'A', '', 'A', 'A', '', '', 'A', 'A', 'A', 'A', 'A'] },
-    { id: 'PEP10', name: 'Amit Patel', status: ['', 'A', 'A', '', '', 'A', 'A', '', 'A', 'A', '', '', 'A', 'A', 'A', '', '', '', '', 'A'] },
-];
+
 
 export default function WorkRecords() {
+    const [viewDate, setViewDate] = useState(new Date());
+    const [employees, setEmployees] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [daysInMonth, setDaysInMonth] = useState(31);
+
     const days = Array.from({ length: 31 }, (_, i) => i + 1);
+
+    const fetchWorkRecords = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const month = viewDate.getMonth() + 1;
+            const year = viewDate.getFullYear();
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/monthly_matrix/?month=${month}&year=${year}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setEmployees(data.employees || []);
+                setDaysInMonth(data.days_in_month || 31);
+            } else {
+                console.error('Failed to fetch work records');
+            }
+        } catch (error) {
+            console.error('Error fetching work records:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchWorkRecords();
+    }, [viewDate]);
+
+    const handleMonthChange = (e) => {
+        const [year, month] = e.target.value.split('-');
+        setViewDate(new Date(year, month - 1));
+    };
 
     const getStatusClass = (status) => {
         if (status === 'P') return 'wr-cell-bubble p';
@@ -30,47 +60,37 @@ export default function WorkRecords() {
         return 'wr-cell-bubble empty';
     };
 
-    const getTooltip = (status, date) => {
-        if (!status) return `No Record - Jan ${date}`;
+    const getTooltip = (status, day) => {
+        if (!status) return `No Record - ${day}`;
         const map = {
-            'P': `Present • 09:00 - 18:00 • Jan ${date}`,
-            'L': `Leave • Jan ${date}`,
-            'A': `Absent • Jan ${date}`,
-            '!': `Conflict Alert • Jan ${date}`,
-            'H': `Half Day • 09:00 - 13:00 • Jan ${date}`,
-            'O': `On Leave (Present) • Jan ${date}`
+            'P': `Present • ${day}`,
+            'L': `Leave • ${day}`,
+            'A': `Absent • ${day}`,
+            '!': `Conflict Alert • ${day}`,
+            'H': `Half Day • ${day}`,
+            'O': `On Leave (Present) • ${day}`
         };
         return map[status] || status;
     };
 
-    const calculateStats = (statusArray) => {
-        const stats = { P: 0, L: 0, A: 0, Conflict: 0 };
-        statusArray.forEach(s => {
-            if (s === 'P') stats.P++;
-            if (s === 'L') stats.L++;
-            if (s === 'A') stats.A++;
-            if (s === '!') stats.Conflict++;
-        });
-        return stats;
-    };
-
     return (
-        <div className="work-records-section">
+        <div className="timesheets-section">
             {/* Header Area */}
             <div className="wr-header">
                 <div className="wr-title-area">
                     <h2>Work Records</h2>
-                    <p className="text-muted text-sm mt-1">Monthly attendance overview and status</p>
+                    <p className="wr-subtitle">Monthly attendance overview and status</p>
                 </div>
                 <div className="wr-meta-area">
-                    <div className="wr-date-display">Date: Jan. 20, 2026</div>
+                    <div className="wr-date-display">Date: {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
                     <div className="wr-month-picker">
                         <label>Month</label>
-                        <select defaultValue="January, 2026">
-                            <option>January, 2026</option>
-                            <option>February, 2026</option>
-                        </select>
-                        <Calendar size={16} className="text-slate-400" />
+                        <input
+                            type="month"
+                            className="wr-month-input"
+                            value={`${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}`}
+                            onChange={handleMonthChange}
+                        />
                     </div>
                 </div>
             </div>
@@ -105,27 +125,32 @@ export default function WorkRecords() {
                             <th className="stat-col sticky-col-2">Days</th>
                             <th className="stat-col">Late</th>
                             <th className="stat-col">Abs</th>
-                            {days.map(d => <th key={d}>{d}</th>)}
+                            {days.map(d => (
+                                <th key={d} className={d > daysInMonth ? 'wr-day-disabled' : ''}>{d}</th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
-                        {mockEmployees.map(emp => {
-                            const stats = calculateStats(emp.status);
-                            return (
+                        {loading ? (
+                            <tr><td colSpan={35} className="text-center p-4">Loading work records...</td></tr>
+                        ) : employees.length === 0 ? (
+                            <tr><td colSpan={35} className="text-center p-4">No employees found</td></tr>
+                        ) : (
+                            employees.map(emp => (
                                 <tr key={emp.id}>
                                     <td className="emp-name-cell sticky-col">
                                         <div className="emp-info">
                                             <span className="emp-name">{emp.name}</span>
-                                            <span className="emp-id">{emp.id}</span>
+                                            <span className="emp-id">{emp.employee_id}</span>
                                             {emp.meta && <span className="emp-badge terminated">{emp.meta}</span>}
                                         </div>
                                     </td>
-                                    <td className="stat-cell sticky-col-2 font-bold text-emerald">{stats.P}</td>
-                                    <td className="stat-cell text-amber">{Math.floor(Math.random() * 3)}</td>
-                                    <td className="stat-cell text-rose">{stats.A}</td>
+                                    <td className="stat-cell sticky-col-2 wr-stat-present">{emp.stats.P}</td>
+                                    <td className="stat-cell wr-stat-late">{emp.stats.H}</td>
+                                    <td className="stat-cell wr-stat-absent">{emp.stats.A}</td>
                                     {days.map((day, idx) => (
-                                        <td key={day} className="timeline-cell">
-                                            {emp.status[idx] && (
+                                        <td key={day} className={`timeline-cell ${day > daysInMonth ? 'wr-day-disabled' : ''}`}>
+                                            {day <= daysInMonth && emp.status[idx] && (
                                                 <div
                                                     className={getStatusClass(emp.status[idx])}
                                                     title={getTooltip(emp.status[idx], day)}
@@ -136,8 +161,8 @@ export default function WorkRecords() {
                                         </td>
                                     ))}
                                 </tr>
-                            );
-                        })}
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>

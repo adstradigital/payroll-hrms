@@ -2,7 +2,7 @@
 
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
-import { Settings } from 'lucide-react';
+import LeaveTypes from '@/components/ClientAdmin/Payroll/Leave/LeaveTypes/LeaveTypes';
 
 export default function LeaveTypesPage() {
     return (
@@ -12,11 +12,7 @@ export default function LeaveTypesPage() {
             breadcrumbs={['Dashboard', 'Leave', 'Leave Types']}
         >
             <ModuleGuard module="HRMS">
-                <div className="card text-center" style={{ padding: 'var(--spacing-2xl)' }}>
-                    <Settings size={48} style={{ color: 'var(--color-info)', marginBottom: 'var(--spacing-md)' }} />
-                    <h3>Leave Type Settings Coming Soon</h3>
-                    <p className="text-muted">Configure leave policies, carry-forward rules, and limits.</p>
-                </div>
+                <LeaveTypes />
             </ModuleGuard>
         </Dashboard>
     );

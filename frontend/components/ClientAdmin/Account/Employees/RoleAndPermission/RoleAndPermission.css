@@ -1,13 +1,13 @@
 /* RoleAndPermission.css - Theme Consistent */
 
 /*
-   NOTE: This file now depends on global CSS variables for colors
-   (e.g., --bg-primary, --text-primary, --brand-primary) to ensure
-   it adapts to Light/Dark mode automatically.
+   REMOVED conflicting :root block. 
+   Local variables (--rp-*) are now defined within the .rp-container 
+   to scope them and prevent global variable pollution.
 */
 
-:root {
-    /* Map local variables to global theme variables for easier maintenance */
+.rp-container {
+    /* Map local variables to global theme variables */
     --rp-bg-main: var(--bg-primary);
     --rp-bg-panel: var(--bg-secondary);
     --rp-bg-card: var(--card-bg, #fff);
@@ -28,9 +28,7 @@
 
     --rp-radius: var(--radius-md, 8px);
     --rp-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.rp-container {
     background-color: var(--rp-bg-main);
     color: var(--rp-text-main);
     font-family: var(--font-primary, inherit);

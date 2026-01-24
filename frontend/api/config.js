@@ -74,12 +74,12 @@ export const CLIENTADMIN_ENDPOINTS = {
     HOLIDAYS: `${BASE_URL}/attendance/holidays/`,
 
     // Leave
-    LEAVES: `${BASE_URL}/leave/`,
-    LEAVE_DETAIL: (id) => `${BASE_URL}/leave/${id}/`,
+    LEAVES: `${BASE_URL}/leave/requests/`,
+    LEAVE_DETAIL: (id) => `${BASE_URL}/leave/requests/${id}/`,
     LEAVE_TYPES: `${BASE_URL}/leave/types/`,
-    LEAVE_BALANCE: `${BASE_URL}/leave/balance/`,
-    LEAVE_APPROVE: (id) => `${BASE_URL}/leave/${id}/approve/`,
-    LEAVE_REJECT: (id) => `${BASE_URL}/leave/${id}/reject/`,
+    LEAVE_TYPE_DETAIL: (id) => `${BASE_URL}/leave/types/${id}/`,
+    LEAVE_BALANCE: `${BASE_URL}/leave/balances/`,
+    LEAVE_PROCESS: (id) => `${BASE_URL}/leave/requests/${id}/process/`,
 
     // Payroll
     PAYROLL: `${BASE_URL}/payroll/`,

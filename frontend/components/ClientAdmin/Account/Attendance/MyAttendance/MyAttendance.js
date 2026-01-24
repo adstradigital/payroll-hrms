@@ -1,81 +1,185 @@
-import { useState } from 'react';
-import { Filter, MoreVertical, Plus } from 'lucide-react';
-import './MyAttendance.css';
+'use client';
 
-const mockAttendanceData = [
-    { id: 1, name: 'Adam Luis', empId: 'PEP00', date: '21/01/2026', day: 'Wednesday', checkIn: '08:30', inDate: '21/01/2026', checkOut: '12:49', outDate: '20/01/2026', shift: 'Regular Shift', workType: 'Work From Office', minHour: '08:15', atWork: '11:54', pending: '00:00', overtime: '01:30', status: 'validated' },
-    { id: 2, name: 'Adam Luis', empId: 'PEP00', date: '20/01/2026', day: 'Tuesday', checkIn: '00:53', inDate: '20/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '08:15', atWork: '00:00', pending: '08:15', overtime: '00:00', status: 'validated' },
-    { id: 3, name: 'Adam Luis', empId: 'PEP00', date: '19/01/2026', day: 'Monday', checkIn: '07:45', inDate: '19/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '00:00', atWork: '00:00', pending: '00:00', overtime: '00:00', status: 'validated' },
-    { id: 4, name: 'Adam Luis', empId: 'PEP00', date: '18/01/2026', day: 'Sunday', checkIn: '14:26', inDate: '18/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '00:00', atWork: '00:00', pending: '00:00', overtime: '00:00', status: 'not-validated' },
-    { id: 5, name: 'Adam Luis', empId: 'PEP00', date: '17/01/2026', day: 'Saturday', checkIn: '03:02', inDate: '17/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '08:15', atWork: '00:00', pending: '08:15', overtime: '00:00', status: 'validated' },
-    { id: 6, name: 'Adam Luis', empId: 'PEP00', date: '16/01/2026', day: 'Friday', checkIn: '09:47', inDate: '16/01/2026', checkOut: '12:59', outDate: '16/01/2026', shift: 'Regular Shift', workType: 'None', minHour: '08:15', atWork: '03:12', pending: '05:03', overtime: '00:00', status: 'requested' },
-    { id: 7, name: 'Adam Luis', empId: 'PEP00', date: '15/01/2026', day: 'Thursday', checkIn: '08:30', inDate: '15/01/2026', checkOut: 'None', outDate: 'None', shift: 'Regular Shift', workType: 'None', minHour: '00:00', atWork: '00:00', pending: '00:00', overtime: '00:00', status: 'approved' },
-];
+import { useState, useEffect, useCallback } from 'react';
+import { Filter, MoreVertical, Plus, ChevronDown, Clock, Calendar, AlertCircle, Loader, Coffee, LogIn, LogOut, History } from 'lucide-react';
+import './MyAttendance.css';
+import { getMyProfile } from '@/api/api_clientadmin';
 
 export default function MyAttendance() {
+    const [dashboardData, setDashboardData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [currentDate, setCurrentDate] = useState(new Date());
+
+    const fetchDashboard = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const month = currentDate.getMonth() + 1;
+            const year = currentDate.getFullYear();
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/my_dashboard/?month=${month}&year=${year}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setDashboardData(data);
+            } else {
+                setError('Failed to fetch attendance dashboard');
+            }
+        } catch (err) {
+            console.error('Error fetching dashboard:', err);
+            setError('Failed to load dashboard data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDashboard();
+    }, [currentDate]);
+
+    const formatTime = (isoString) => {
+        if (!isoString) return '-- : --';
+        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const formatDate = (dateStr) => {
+        return new Date(dateStr).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+
     return (
-        <div className="my-attendance-section">
+        <div className="my-attendance">
             <div className="ma-header">
-                <h2 className="ma-title">My Attendances</h2>
-                <div className="flex items-center gap-6">
-                    <div className="ma-legend-bar">
-                        <div className="ma-legend-item"><span className="ma-dot green"></span> Validated</div>
-                        <div className="ma-legend-item"><span className="ma-dot red"></span> Not validated</div>
-                        <div className="ma-legend-item"><span className="ma-dot yellow"></span> Requested</div>
-                        <div className="ma-legend-item"><span className="ma-dot blue"></span> Approved request</div>
-                    </div>
-                    <button className="ma-filter-btn">
-                        <Filter size={16} /> Filter
+                <div>
+                    <h1>My Attendance</h1>
+                    <p className="subtitle">Overview for {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+                </div>
+                <div className="header-actions">
+                    <button className="refresh-btn" onClick={fetchDashboard} title="Refresh Data">
+                        <Loader size={16} className={loading ? "animate-spin" : ""} />
                     </button>
+                    <div className="wr-month-picker" style={{ padding: '0.4rem 0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '0.5rem' }}>
+                        <input
+                            type="month"
+                            className="wr-month-input"
+                            style={{ border: 'none', background: 'transparent', color: 'var(--text-primary)', outline: 'none' }}
+                            value={`${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`}
+                            onChange={(e) => {
+                                const [y, m] = e.target.value.split('-');
+                                setCurrentDate(new Date(y, m - 1));
+                            }}
+                        />
+                    </div>
                 </div>
             </div>
 
-            <div className="ma-table-container">
-                <table className="ma-table">
-                    <thead>
-                        <tr>
-                            <th>Employee</th>
-                            <th>Date</th>
-                            <th>Shift</th>
-                            <th>Work Type</th>
-                            <th>Min Hour</th>
-                            <th>At Work</th>
-                            <th>Pending Hour</th>
-                            <th>Overtime</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {mockAttendanceData.map(row => (
-                            <tr key={row.id} className={`status-${row.status}`}>
-                                <td>
-                                    <div className="ma-emp-cell">
-                                        <div className="ma-avatar">AL</div>
-                                        <div className="ma-emp-details">
-                                            <span className="ma-emp-name">{row.name}</span>
-                                            <span className="ma-emp-id">({row.empId})</span>
+            {loading && !dashboardData ? (
+                <div className="ma-loading">
+                    <Loader size={32} className="animate-spin" />
+                    <p>Loading your dashboard...</p>
+                </div>
+            ) : error ? (
+                <div className="ma-error"><AlertCircle /> {error}</div>
+            ) : (
+                <>
+                    {/* Top Stats Row */}
+                    <div className="ma-stats">
+                        <div className="stat-card validated">
+                            <span className="stat-value">{dashboardData?.stats?.present || 0}</span>
+                            <span className="stat-label">Present Days</span>
+                        </div>
+                        <div className="stat-card not-validated">
+                            <span className="stat-value">{dashboardData?.stats?.absent || 0}</span>
+                            <span className="stat-label">Absent Days</span>
+                        </div>
+                        <div className="stat-card pending">
+                            <span className="stat-value">{dashboardData?.stats?.late || 0}</span>
+                            <span className="stat-label">Late Arrivals</span>
+                        </div>
+                        <div className="stat-card requested">
+                            <span className="stat-value">{dashboardData?.stats?.on_leave || 0}</span>
+                            <span className="stat-label">Leaves Taken</span>
+                        </div>
+                        <div className="stat-card approved">
+                            <span className="stat-value">{dashboardData?.stats?.total_hours || 0}</span>
+                            <span className="stat-label">Total Hours</span>
+                        </div>
+                    </div>
+
+                    <div className="ma-dashboard-grid">
+                        {/* Today's Status Card */}
+                        <div className="ma-card today-status-card">
+                            <div className="ma-card-header">
+                                <h3><Clock size={18} /> Today's Status</h3>
+                                <span className={`status-badge ${dashboardData?.today?.status || 'absent'}`}>
+                                    {dashboardData?.today?.status?.replace('_', ' ') || 'Not Marked'}
+                                </span>
+                            </div>
+                            <div className="today-timings">
+                                <div className="timing-block">
+                                    <span className="label">Check In</span>
+                                    <span className="time-value in">
+                                        <LogIn size={16} /> {formatTime(dashboardData?.today?.check_in)}
+                                    </span>
+                                </div>
+                                <div className="timing-block">
+                                    <span className="label">Check Out</span>
+                                    <span className="time-value out">
+                                        <LogOut size={16} /> {formatTime(dashboardData?.today?.check_out)}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="working-hours-display">
+                                <span className="label">Working Hours</span>
+                                <div className="progress-bar-bg">
+                                    <div className="progress-bar-fill" style={{ width: `${Math.min((dashboardData?.today?.working_hours / 9) * 100, 100)}%` }}></div>
+                                </div>
+                                <span className="wh-val">{dashboardData?.today?.working_hours || 0} Hrs / 9.0 Hrs</span>
+                            </div>
+                            <div className="avg-stats">
+                                <small>Avg Check-in: <strong>{dashboardData?.averages?.check_in}</strong></small>
+                            </div>
+                        </div>
+
+                        {/* Recent Activity List */}
+                        <div className="ma-card recent-activity-card">
+                            <div className="ma-card-header">
+                                <h3><History size={18} /> Recent Activity</h3>
+                            </div>
+                            <div className="recent-list">
+                                {dashboardData?.recent_logs?.length === 0 ? (
+                                    <p className="no-data-text">No recent activity.</p>
+                                ) : (
+                                    dashboardData?.recent_logs?.map(log => (
+                                        <div className="recent-item" key={log.id}>
+                                            <div className="ri-date-box">
+                                                <span className="ri-day">{new Date(log.date).getDate()}</span>
+                                                <span className="ri-month">{new Date(log.date).toLocaleString('default', { month: 'short' })}</span>
+                                            </div>
+                                            <div className="ri-details">
+                                                <div className="ri-top">
+                                                    <span className={`ri-status ${log.status}`}>{log.status}</span>
+                                                    <span className="ri-shift">{log.shift_name}</span>
+                                                </div>
+                                                <div className="ri-time">
+                                                    {formatTime(log.check_in_time)} - {formatTime(log.check_out_time)}
+                                                </div>
+                                            </div>
+                                            <div className="ri-hours">
+                                                {log.total_hours}h
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td>{row.date}</td>
-                                <td><span className="ma-shift-badge">{row.shift}</span></td>
-                                <td className="text-sm text-slate-400">{row.workType}</td>
-                                <td className="ma-time">{row.minHour}</td>
-                                <td className="ma-time text-emerald">{row.atWork}</td>
-                                <td className="ma-pending">{row.pending}</td>
-                                <td className="ma-overtime">{row.overtime}</td>
-                                <td>
-                                    <button className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5">
-                                        <MoreVertical size={16} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

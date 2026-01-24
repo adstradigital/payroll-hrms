@@ -53,14 +53,15 @@ const menuItems = [
         permission: 'attendance.view',
         children: [
             { id: 'att-dashboard', label: 'Dashboard', path: '/dashboard/attendance' },
-            { id: 'att-biometric', label: 'Biometric Devices', path: '/dashboard/attendance/biometric', adminOnly: true },
-            { id: 'att-attendances', label: 'Attendances', path: '/dashboard/attendance/list', permission: 'attendance.manage' },
+            { id: 'att-register', label: 'Attendance Register', path: '/dashboard/attendance/register', permission: 'attendance.manage' },
             { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests', permission: 'attendance.approve' },
-            { id: 'att-hour-account', label: 'Hour Account', path: '/dashboard/attendance/hour-account' },
+            { id: 'att-my-attendance', label: 'My Attendance', path: '/dashboard/attendance/my-attendance' },
+            { id: 'att-work-hours', label: 'Work Hours (Hour Bank)', path: '/dashboard/attendance/work-hours' },
             { id: 'att-work-records', label: 'Work Records', path: '/dashboard/attendance/work-records' },
-            { id: 'att-activities', label: 'Attendance Activities', path: '/dashboard/attendance/activities' },
-            { id: 'att-late-early', label: 'Late Come Early Out', path: '/dashboard/attendance/late-early' },
-            { id: 'att-my-attendance', label: 'My Attendances', path: '/dashboard/attendance/my-attendance' },
+            { id: 'att-late-early', label: 'Late & Early Rules', path: '/dashboard/attendance/late-early-rules' },
+            { id: 'att-holidays', label: 'Holiday Calendar', path: '/dashboard/attendance/holidays' },
+            { id: 'att-logs', label: 'Attendance Logs', path: '/dashboard/attendance/logs' },
+            { id: 'att-biometric', label: 'Biometric Devices', path: '/dashboard/attendance/biometric', adminOnly: true },
         ]
     },
     {
@@ -70,9 +71,13 @@ const menuItems = [
         path: '/dashboard/leave',
         permission: 'leave.view',
         children: [
-            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave', permission: 'leave.view' },
+            { id: 'leave-dashboard', label: 'Dashboard', path: '/dashboard/leave' },
+            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave/requests', permission: 'leave.view' },
+            { id: 'leave-approvals', label: 'Approvals', path: '/dashboard/leave/approvals', permission: 'leave.view' },
             { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types', adminOnly: true },
+            { id: 'leave-holidays', label: 'Holiday Calendar', path: '/dashboard/leave/holidays' },
             { id: 'leave-balance', label: 'Leave Balance', path: '/dashboard/leave/balance' },
+            { id: 'leave-reports-sub', label: 'Reports', path: '/dashboard/leave/reports', permission: 'reports.view' },
         ]
     },
     {
@@ -122,6 +127,28 @@ export default function Sidebar() {
         return defaultExpanded;
     });
 
+    // Persistent scroll preservation
+    useEffect(() => {
+        const sidebarNav = document.querySelector('.sidebar__nav');
+        if (sidebarNav) {
+            // Restore scroll position
+            const savedScroll = sessionStorage.getItem('sidebar-scroll');
+            if (savedScroll) {
+                // Use requestAnimationFrame to ensure DOM is ready/stable
+                requestAnimationFrame(() => {
+                    sidebarNav.scrollTop = parseInt(savedScroll, 10);
+                });
+            }
+
+            const handleScroll = () => {
+                sessionStorage.setItem('sidebar-scroll', sidebarNav.scrollTop);
+            };
+
+            sidebarNav.addEventListener('scroll', handleScroll);
+            return () => sidebarNav.removeEventListener('scroll', handleScroll);
+        }
+    }, [pathname, expandedItems]); // Track expandedItems too to handle jumps during state changes
+
     // Auto-expand parent if a child is active (useful for direct navigation or URL changes)
     useEffect(() => {
         const itemsToExpand = [...expandedItems];
@@ -142,11 +169,13 @@ export default function Sidebar() {
     }, [pathname]);
 
     const toggleExpand = (itemId) => {
-        setExpandedItems(prev =>
-            prev.includes(itemId)
+        setExpandedItems(prev => {
+            const isExpanded = prev.includes(itemId);
+            const next = isExpanded
                 ? prev.filter(id => id !== itemId)
-                : [...prev, itemId]
-        );
+                : [...prev, itemId];
+            return next;
+        });
     };
 
     const isActive = (path) => pathname === path;

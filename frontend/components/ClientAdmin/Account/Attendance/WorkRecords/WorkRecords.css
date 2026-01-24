@@ -372,3 +372,45 @@
 .wr-grid-container::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
 }
+
+/* Subtitle */
+.wr-subtitle {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Calendar Icon */
+.wr-calendar-icon {
+    color: #94a3b8;
+}
+
+/* Stat Cells with Colors */
+.wr-stat-present {
+    font-weight: 700;
+    color: #10b981;
+}
+
+.wr-stat-late {
+    color: #f59e0b;
+}
+
+.wr-stat-absent {
+    color: #f43f5e;
+}
+
+.wr-day-disabled {
+    background-color: var(--bg-tertiary);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.wr-month-input {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+}

@@ -1,22 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, Plus, MoreVertical, X, Wifi, WifiOff, Clock, CheckCircle2, Circle } from 'lucide-react';
+import { Search, Filter, Plus, MoreVertical, X, Wifi, WifiOff, Clock, CheckCircle2, Circle, Hand, ClipboardList } from 'lucide-react';
 import './BiometricDevices.css';
 
 export default function BiometricDevices() {
     const [devices, setDevices] = useState([]);
     const [filteredDevices, setFilteredDevices] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Modal States
+    const [isAddDeviceModalOpen, setIsAddDeviceModalOpen] = useState(false);
+    const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false);
+
     const [newDevice, setNewDevice] = useState({
         name: '',
         device_type: '',
         device_direction: 'System Direction(In/Out) Device',
-        company: 'Mine',
+        company: 'Adstradigital', // Default changed
         ip_address: '',
         port: '',
         activate_live_capture: false
+    });
+
+    const [manualEntry, setManualEntry] = useState({
+        employeeId: '',
+        date: new Date().toISOString().split('T')[0],
+        time: '',
+        type: 'check_in',
+        remarks: ''
     });
 
     // Mock data
@@ -24,9 +36,9 @@ export default function BiometricDevices() {
         const mockDevices = [
             {
                 id: 1,
-                name: 'In Device',
+                name: 'Reception In', // Renamed from In Device
                 company: 'ZKTeco / eSSL Biometric',
-                device_direction: 'System Direction(In/Out) Device',
+                device_direction: 'In Device',
                 ip_address: '192.168.1.10',
                 port: '4370',
                 activate_live_capture: true,
@@ -36,9 +48,9 @@ export default function BiometricDevices() {
             },
             {
                 id: 2,
-                name: 'Eng Renad',
+                name: 'Main Entrance', // Renamed from Eng Renad
                 company: 'e-Time Office',
-                device_direction: 'In Device',
+                device_direction: 'System Direction(In/Out) Device',
                 ip_address: 'https://api.etimeoffice.com/api/',
                 port: '',
                 activate_live_capture: false,
@@ -48,7 +60,7 @@ export default function BiometricDevices() {
             },
             {
                 id: 3,
-                name: 'Zkteco 400',
+                name: 'Back Office', // Renamed from Zkteco 400
                 company: 'ZKTeco / eSSL Biometric',
                 device_direction: 'System Direction(In/Out) Device',
                 ip_address: '192.168.1.50',
@@ -82,15 +94,29 @@ export default function BiometricDevices() {
             activeUsers: 0
         };
         setDevices([...devices, deviceToAdd]);
-        setIsModalOpen(false);
+        setIsAddDeviceModalOpen(false);
         setNewDevice({
             name: '',
             device_type: '',
             device_direction: 'System Direction(In/Out) Device',
-            company: 'Mine',
+            company: 'Adstradigital',
             ip_address: '',
             port: '',
             activate_live_capture: false
+        });
+    };
+
+    const handleManualEntrySubmit = (e) => {
+        e.preventDefault();
+        // In a real app, this would verify the employee ID and call the backend
+        alert(`Manual entry recorded for ${manualEntry.employeeId} at ${manualEntry.time} (${manualEntry.type})`);
+        setIsManualEntryModalOpen(false);
+        setManualEntry({
+            employeeId: '',
+            date: new Date().toISOString().split('T')[0],
+            time: '',
+            type: 'check_in',
+            remarks: ''
         });
     };
 
@@ -146,7 +172,12 @@ export default function BiometricDevices() {
                         <span>Filter</span>
                     </button>
 
-                    <button className="biodevice-add-btn" onClick={() => setIsModalOpen(true)}>
+                    <button className="biodevice-filter-btn" onClick={() => setIsManualEntryModalOpen(true)} style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}>
+                        <ClipboardList size={18} />
+                        <span>Manual Entry</span>
+                    </button>
+
+                    <button className="biodevice-add-btn" onClick={() => setIsAddDeviceModalOpen(true)}>
                         <Plus size={20} />
                         <span>Add Device</span>
                     </button>
@@ -282,12 +313,12 @@ export default function BiometricDevices() {
             </div>
 
             {/* Add Device Modal */}
-            {isModalOpen && (
-                <div className="biodevice-modal-overlay" onClick={() => setIsModalOpen(false)}>
+            {isAddDeviceModalOpen && (
+                <div className="biodevice-modal-overlay" onClick={() => setIsAddDeviceModalOpen(false)}>
                     <div className="biodevice-modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="biodevice-modal-header">
                             <h2 className="biodevice-modal-title">Add Biometric Device</h2>
-                            <button className="biodevice-modal-close" onClick={() => setIsModalOpen(false)}>
+                            <button className="biodevice-modal-close" onClick={() => setIsAddDeviceModalOpen(false)}>
                                 <X size={24} />
                             </button>
                         </div>
@@ -338,14 +369,14 @@ export default function BiometricDevices() {
                                     value={newDevice.company}
                                     onChange={(e) => setNewDevice({ ...newDevice, company: e.target.value })}
                                 >
-                                    <option value="Mine">Mine</option>
+                                    <option value="Adstradigital">Adstradigital</option>
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
                         </div>
 
                         <div className="biodevice-modal-footer">
-                            <button className="biodevice-modal-cancel" onClick={() => setIsModalOpen(false)}>
+                            <button className="biodevice-modal-cancel" onClick={() => setIsAddDeviceModalOpen(false)}>
                                 Cancel
                             </button>
                             <button className="biodevice-modal-save" onClick={handleAddDevice}>
@@ -353,6 +384,106 @@ export default function BiometricDevices() {
                                 Add Device
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Entry Modal */}
+            {isManualEntryModalOpen && (
+                <div className="biodevice-modal-overlay" onClick={() => setIsManualEntryModalOpen(false)}>
+                    <div className="biodevice-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="biodevice-modal-header">
+                            <h2 className="biodevice-modal-title">Manual Biometric Entry</h2>
+                            <button className="biodevice-modal-close" onClick={() => setIsManualEntryModalOpen(false)}>
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleManualEntrySubmit}>
+                            <div className="biodevice-modal-body">
+                                <div className="biodevice-form-group">
+                                    <label className="biodevice-form-label">Employee ID / Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. EMP001 or John Doe"
+                                        className="biodevice-form-input"
+                                        required
+                                        value={manualEntry.employeeId}
+                                        onChange={(e) => setManualEntry({ ...manualEntry, employeeId: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="biodevice-form-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="biodevice-form-group">
+                                        <label className="biodevice-form-label">Date</label>
+                                        <input
+                                            type="date"
+                                            className="biodevice-form-input"
+                                            required
+                                            value={manualEntry.date}
+                                            onChange={(e) => setManualEntry({ ...manualEntry, date: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="biodevice-form-group">
+                                        <label className="biodevice-form-label">Time</label>
+                                        <input
+                                            type="time"
+                                            className="biodevice-form-input"
+                                            required
+                                            value={manualEntry.time}
+                                            onChange={(e) => setManualEntry({ ...manualEntry, time: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="biodevice-form-group">
+                                    <label className="biodevice-form-label">Entry Type</label>
+                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                            <input
+                                                type="radio"
+                                                name="entryType"
+                                                value="check_in"
+                                                checked={manualEntry.type === 'check_in'}
+                                                onChange={() => setManualEntry({ ...manualEntry, type: 'check_in' })}
+                                            />
+                                            Check In
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                            <input
+                                                type="radio"
+                                                name="entryType"
+                                                value="check_out"
+                                                checked={manualEntry.type === 'check_out'}
+                                                onChange={() => setManualEntry({ ...manualEntry, type: 'check_out' })}
+                                            />
+                                            Check Out
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="biodevice-form-group">
+                                    <label className="biodevice-form-label">Remarks</label>
+                                    <textarea
+                                        className="biodevice-form-input"
+                                        rows="3"
+                                        placeholder="Reason for manual entry..."
+                                        value={manualEntry.remarks}
+                                        onChange={(e) => setManualEntry({ ...manualEntry, remarks: e.target.value })}
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <div className="biodevice-modal-footer">
+                                <button type="button" className="biodevice-modal-cancel" onClick={() => setIsManualEntryModalOpen(false)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="biodevice-modal-save">
+                                    <CheckCircle2 size={18} />
+                                    Save Entry
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
