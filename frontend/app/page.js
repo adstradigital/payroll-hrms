@@ -1,15 +1,5 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import LandingPage from '@/components/LandingPage/LandingPage';
 
 export default function Home() {
-    const router = useRouter();
-
-    useEffect(() => {
-        // Redirect to dashboard
-        router.push('/login');
-    }, [router]);
-
-    return null;
+    return <LandingPage />;
 }

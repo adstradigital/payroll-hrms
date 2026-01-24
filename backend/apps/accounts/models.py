@@ -624,7 +624,7 @@ class NotificationPreference(BaseModel):
 
 # ==================== PERMISSION MODELS ====================
 
-class Module(models.Model):
+class Module(BaseModel):
     """Business modules/domains in the HRMS"""
     MODULE_CHOICES = (
         ('core', 'Core Management'),
@@ -650,9 +650,6 @@ class Module(models.Model):
     is_active = models.BooleanField(default=True)
     sort_order = models.PositiveIntegerField(default=0)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
     class Meta:
         ordering = ['sort_order', 'name']
         
@@ -660,7 +657,7 @@ class Module(models.Model):
         return self.name
 
 
-class Permission(models.Model):
+class Permission(BaseModel):
     """Granular permissions within modules"""
     ACTION_CHOICES = (
         ('view', 'View/Read'),
@@ -686,9 +683,6 @@ class Permission(models.Model):
     is_system = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
     class Meta:
         ordering = ['module', 'action', 'name']
         unique_together = ['module', 'code']
@@ -701,7 +695,7 @@ class Permission(models.Model):
         return f"{self.module.name} - {self.name}"
 
 
-class DataScope(models.Model):
+class DataScope(BaseModel):
     """Define data access scope for permissions"""
     SCOPE_CHOICES = (
         ('self', 'Self Only'),
@@ -728,7 +722,7 @@ class DataScope(models.Model):
         return self.name
 
 
-class Role(models.Model):
+class Role(BaseModel):
     """Roles that group permissions together"""
     ROLE_TYPE_CHOICES = (
         ('system', 'System Role'),
@@ -768,9 +762,6 @@ class Role(models.Model):
     
     is_active = models.BooleanField(default=True)
     is_system = models.BooleanField(default=False, help_text="System roles cannot be deleted")
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -1037,3 +1028,67 @@ class PermissionAuditLog(models.Model):
         
     def __str__(self):
         return f"{self.user.email} - {self.action} - {self.result}"
+
+
+# ==================== ORGANIZATION REGISTRATION MODEL ====================
+
+class OrganizationRegistration(BaseModel):
+    """Pending organization registrations awaiting super admin approval"""
+    STATUS_CHOICES = (
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Organization Details
+    organization_name = models.CharField(max_length=150)
+    domain = models.CharField(max_length=100, blank=True)
+    industry = models.CharField(max_length=100, blank=True)
+    employee_scale = models.CharField(max_length=50, default='1-50')
+    
+    # Admin Details
+    admin_name = models.CharField(max_length=200)
+    admin_email = models.EmailField()
+    admin_phone = models.CharField(max_length=20, blank=True)
+    
+    # Multi-company support
+    is_multi_company = models.BooleanField(default=False)
+    subsidiaries = models.JSONField(default=list, blank=True)
+    
+    # Plan
+    plan = models.CharField(max_length=50, default='pro')
+    
+    # Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    
+    # Approval Details
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_registrations'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    
+    # Created Organization (after approval)
+    organization = models.OneToOneField(
+        Organization,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registration'
+    )
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['admin_email']),
+        ]
+    
+    def __str__(self):
+        return f"{self.organization_name} - {self.status}"

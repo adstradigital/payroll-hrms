@@ -239,7 +239,7 @@ export default function EmployeeList({ onAdd, onEdit, onView, refreshTrigger }) 
                             <div className="grid-stats">
                                 <div className="stat-box">
                                     <span className="stat-label">Dept</span>
-                                    <span className="stat-value">{emp.department?.name || emp.department}</span>
+                                    <span className="stat-value">{emp.department?.name || emp.department || 'N/A'}</span>
                                 </div>
                                 <div className="stat-box">
                                     <span className="stat-label">ID</span>

@@ -1,0 +1,124 @@
+/* Profile Payroll Styles */
+/* Now fully theme-aware for Light/Dark mode compatibility */
+
+.profile-payroll {
+    /* Container styling if needed */
+}
+
+.payroll-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.payroll-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+}
+
+.payroll-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--brand-primary);
+}
+
+.card-header {
+    padding: var(--spacing-lg);
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Use brand/status colors with fallbacks */
+.header-icon.blue {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.header-icon.green {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.card-title {
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    margin: 0;
+}
+
+.card-content {
+    padding: var(--spacing-lg);
+}
+
+.detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.detail-item:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.detail-label {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+}
+
+.text-green {
+    color: var(--color-success);
+}
+
+.section-subtitle {
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-payslips {
+    background: var(--card-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    color: var(--text-muted);
+    text-align: center;
+}

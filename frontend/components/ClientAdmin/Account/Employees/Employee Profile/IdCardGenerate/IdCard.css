@@ -1,13 +1,17 @@
 .id-card-overlay {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(10px);
-    z-index: 1200;
+    z-index: var(--z-modal, 1200);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: var(--spacing-lg);
+    overflow-y: auto;
 }
 
 .id-card-modal {
@@ -21,6 +25,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    margin: auto;
 }
 
 .id-card-modal .modal-header {

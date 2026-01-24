@@ -2,15 +2,24 @@ from rest_framework import serializers
 from .models import DocumentRequest, ShiftRequest, WorkTypeRequest
 
 class DocumentRequestSerializer(serializers.ModelSerializer):
-    employee_name = serializers.CharField(source='employee.user.get_full_name', read_only=True)
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
+    employee_email = serializers.CharField(source='employee.email', read_only=True)
+    direction_display = serializers.CharField(source='get_direction_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
 
     class Meta:
         model = DocumentRequest
-        fields = '__all__'
+        fields = [
+            'id', 'employee', 'employee_name', 'employee_code', 'employee_email',
+            'direction', 'direction_display', 'document_type', 'reason',
+            'status', 'status_display', 'document_file', 'submitted_at',
+            'approver', 'rejection_reason', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 class ShiftRequestSerializer(serializers.ModelSerializer):
-    employee_name = serializers.CharField(source='employee.user.get_full_name', read_only=True)
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
     
     class Meta:
@@ -18,7 +27,7 @@ class ShiftRequestSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class WorkTypeRequestSerializer(serializers.ModelSerializer):
-    employee_name = serializers.CharField(source='employee.user.get_full_name', read_only=True)
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
     
     class Meta:

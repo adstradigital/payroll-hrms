@@ -7,7 +7,17 @@ import { CLIENTADMIN_ENDPOINTS } from './config';
 
 // Authentication
 export const login = (credentials) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOGIN, credentials);
-export const register = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REGISTER, data);
+// Submit registration for approval (no password - credentials will be auto-generated)
+export const register = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SUBMIT_REGISTRATION, {
+    organization_name: data.organizationName,
+    admin_name: data.fullName,
+    admin_email: data.email,
+    admin_phone: data.phone || '',
+    employee_scale: data.employeeCount || '1-50',
+    is_multi_company: data.isMultiCompany || false,
+    subsidiaries: data.companies ? data.companies.map(c => ({ name: c.name })) : [],
+    plan: 'pro'
+});
 export const logout = () => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOGOUT);
 export const forgotPassword = (email) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.FORGOT_PASSWORD, { email });
 export const resetPassword = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.RESET_PASSWORD, data);
@@ -81,6 +91,12 @@ export const getPayslipById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PA
 export const downloadPayslip = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DETAIL(id), { responseType: 'blob' });
 export const getSalaryComponents = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENTS);
 
+export const getSalaryStructures = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURES, { params });
+export const createSalaryStructure = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURES, data);
+export const updateSalaryStructure = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id), data);
+export const deleteSalaryStructure = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id));
+export const addComponentToStructure = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id)}add_component/`, data);
+
 // Reports
 export const getAttendanceReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_ATTENDANCE, { params });
 export const getPayrollReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL, { params });
@@ -90,6 +106,9 @@ export const getEmployeeReports = (params) => axiosInstance.get(CLIENTADMIN_ENDP
 // Requests
 export const getDocumentRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, { params });
 export const createDocumentRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, data);
+export const approveDocumentRequest = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS}${id}/approve/`);
+export const rejectDocumentRequest = (id, reason) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS}${id}/reject/`, { reason });
+export const submitDocumentForRequest = (id, formData) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS}${id}/submit/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
 export const getShiftRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SHIFT_REQUESTS, { params });
 export const createShiftRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SHIFT_REQUESTS, data);
@@ -102,3 +121,8 @@ export const getAllAnnouncements = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS
 export const createAnnouncement = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ANNOUNCEMENTS, data);
 export const getAllDocuments = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DOCUMENTS, { params });
 export const uploadDocument = (formData) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DOCUMENTS, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+
+// Employee Documents
+export const getEmployeeDocuments = (employeeId) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENTS(employeeId));
+export const uploadEmployeeDocument = (employeeId, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENTS(employeeId), data, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const deleteEmployeeDocument = (employeeId, docId) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENT_DETAIL(employeeId, docId));

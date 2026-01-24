@@ -9,6 +9,34 @@ from .models import (
 )
 
 
+class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Custom JWT Serializer for Super Admin Login (Username-based).
+    Strictly checks for is_superuser=True.
+    """
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['is_superuser'] = user.is_superuser
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        if not self.user.is_superuser:
+            raise serializers.ValidationError(
+                {"detail": "Access Denied: You do not have Super Admin privileges."}
+            )
+
+        data['user'] = {
+            'id': str(self.user.id),
+            'username': self.user.username,
+            'email': self.user.email,
+            'is_superuser': self.user.is_superuser
+        }
+        return data
+
+
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Custom JWT Serializer to include user info and roles"""
     def validate(self, attrs):
@@ -42,7 +70,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             'role': 'admin' if user_is_admin else 'employee',
             'role_name': role_name,
             'is_admin': user_is_admin,
-            'is_org_creator': user_is_org_creator
+            'is_org_creator': user_is_org_creator,
+            'is_superuser': self.user.is_superuser
         }
         
         # Include organization info
@@ -290,7 +319,7 @@ class DesignationDetailSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
         read_only_fields = [
-            'id', 'company_name', 'employee_count', 'created_at', 'updated_at',
+            'id', 'company', 'company_name', 'employee_count', 'created_at', 'updated_at',
             'created_by', 'updated_by'
         ]
         extra_kwargs = {
@@ -363,7 +392,8 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
             'id', 'full_name', 'age', 'tenure_in_days', 'is_on_probation',
             'company_name', 'department_name', 'designation_name',
             'reporting_manager_name', 'subordinates_count',
-            'created_at', 'updated_at', 'created_by', 'updated_by'
+            'created_at', 'updated_at', 'created_by', 'updated_by',
+            'company', 'employee_id', 'user'
         ]
     
     def get_subordinates_count(self, obj):
@@ -505,3 +535,71 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user', 'user_email', 'created_at', 'updated_at']
+
+
+# ==================== ORGANIZATION REGISTRATION SERIALIZERS ====================
+
+from .models import OrganizationRegistration
+
+class OrganizationRegistrationListSerializer(serializers.ModelSerializer):
+    """Organization Registration List Serializer"""
+    submitted_at = serializers.DateTimeField(source='created_at', read_only=True)
+    
+    class Meta:
+        model = OrganizationRegistration
+        fields = [
+            'id', 'organization_name', 'domain', 'industry', 'employee_scale',
+            'admin_name', 'admin_email', 'admin_phone', 'plan', 'status',
+            'is_multi_company', 'subsidiaries', 'submitted_at'
+        ]
+        read_only_fields = ['id', 'submitted_at']
+
+
+class OrganizationRegistrationDetailSerializer(serializers.ModelSerializer):
+    """Organization Registration Detail Serializer"""
+    submitted_at = serializers.DateTimeField(source='created_at', read_only=True)
+    reviewed_by_name = serializers.CharField(source='reviewed_by.username', read_only=True)
+    
+    class Meta:
+        model = OrganizationRegistration
+        fields = [
+            'id', 'organization_name', 'domain', 'industry', 'employee_scale',
+            'admin_name', 'admin_email', 'admin_phone', 'is_multi_company',
+            'subsidiaries', 'plan', 'status', 'reviewed_by', 'reviewed_by_name',
+            'reviewed_at', 'rejection_reason', 'organization', 'submitted_at'
+        ]
+        read_only_fields = [
+            'id', 'reviewed_by', 'reviewed_by_name', 'reviewed_at', 
+            'organization', 'submitted_at'
+        ]
+
+
+class OrganizationRegistrationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating new organization registrations (public endpoint)"""
+    class Meta:
+        model = OrganizationRegistration
+        fields = [
+            'organization_name', 'domain', 'industry', 'employee_scale',
+            'admin_name', 'admin_email', 'admin_phone', 'is_multi_company',
+            'subsidiaries', 'plan'
+        ]
+    
+    def validate_admin_email(self, value):
+        # Check if email already exists in pending registrations
+        if OrganizationRegistration.objects.filter(
+            admin_email=value, status='pending'
+        ).exists():
+            raise serializers.ValidationError(
+                "A registration with this email is already pending approval."
+            )
+        return value
+
+
+class OrganizationRegistrationApproveSerializer(serializers.Serializer):
+    """Serializer for approving an organization registration"""
+    pass  # No additional data needed, just triggers approval
+
+
+class OrganizationRegistrationRejectSerializer(serializers.Serializer):
+    """Serializer for rejecting an organization registration"""
+    rejection_reason = serializers.CharField(required=False, allow_blank=True)

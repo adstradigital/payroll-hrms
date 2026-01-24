@@ -4,22 +4,28 @@ import { useState, useEffect } from 'react';
 import {
     User, Mail, Phone, MapPin,
     Briefcase, Calendar, Clock, CreditCard,
-    GraduationCap, Shield, FileText, ChevronRight,
-    Edit2, MoreHorizontal, Download, Printer,
-    CheckCircle2, AlertCircle, Loader2
+    Shield, FileText, LayoutGrid,
+    Edit2, Download, Printer,
+    CheckCircle2, AlertCircle, Loader2, Send, X
 } from 'lucide-react';
 import { getEmployeeById, getMyProfile } from '@/api/api_clientadmin';
 import EditProfile from './EditProfile/EditProfile';
 import IdCard from './IdCardGenerate/IdCard';
+import RequestManager from './Requests/RequestManager';
+import ProfileDocuments from './Documents/ProfileDocuments';
+import ProfilePayroll from './Payroll/ProfilePayroll';
 import './EmployeeProfile.css';
 
 export default function EmployeeProfile({ employeeId, onBack }) {
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState('about');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [employee, setEmployee] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showIdModal, setShowIdModal] = useState(false);
+
+    // Quick Request States for Sidebar
+    const [quickRequestMode, setQuickRequestMode] = useState(false);
 
     useEffect(() => {
         fetchProfile();
@@ -70,213 +76,186 @@ export default function EmployeeProfile({ employeeId, onBack }) {
         joinDate: employee.date_of_joining,
         status: employee.status || 'active',
         department: employee.department_name || employee.department?.name || 'General',
-        manager: 'Manager Info N/A',
-        bloodGroup: employee.blood_group || 'N/A',
         dob: employee.date_of_birth || 'N/A',
         gender: employee.gender || 'N/A',
-        maritalStatus: employee.marital_status || 'N/A',
         address: employee.current_address || 'Address not registered',
-        stats: [
-            { label: 'Leave Balance', value: '18 Days', color: 'blue' },
-            { label: 'Attendance Rate', value: '98.5%', color: 'green' },
-            { label: 'Projects Done', value: '12', color: 'purple' },
-            { label: 'Salary Status', value: 'Paid', color: 'orange' }
-        ]
     };
 
     const tabs = [
-        { id: 'overview', label: 'Overview', icon: User },
-        { id: 'employment', label: 'Employment', icon: Briefcase },
-        { id: 'documents', label: 'Documents', icon: FileText },
-        { id: 'banking', label: 'Payroll & Bank', icon: CreditCard },
+        { id: 'about', label: 'Overview' },
+        { id: 'work_type', label: 'Work & Shift' },
+        { id: 'attendance', label: 'Attendance' },
+        { id: 'leave', label: 'Leave' },
+        { id: 'payroll', label: 'Payroll' },
+        { id: 'allowance', label: 'Allowance & Deduction' },
+        { id: 'penalty', label: 'Penalty Account' },
+        { id: 'assets', label: 'Assets' },
+        { id: 'performance', label: 'Performance' },
+        { id: 'documents', label: 'Documents' },
+        { id: 'requests', label: 'Requests' },
+        { id: 'bonus', label: 'Bonus Points' },
+        { id: 'interview', label: 'Interview' },
+        { id: 'resignation', label: 'Resignation' }
     ];
 
     return (
-        <div className="profile-container animate-fade-in">
-            {/* Header / Hero Section */}
-            <div className="profile-hero">
-                <div className="hero-cover">
-                    {onBack && (
-                        <button className="profile-back-btn" onClick={onBack}>
-                            <ChevronRight style={{ transform: 'rotate(180deg)' }} size={20} />
-                            Back to List
-                        </button>
-                    )}
-                </div>
-                <div className="hero-content">
+        <div className="saas-wrapper">
+            {/* --- Header --- */}
+            <header className="profile-header">
+                <div className="header-banner"></div>
+                <div className="header-content">
                     <div className="profile-identity">
-                        <div className="profile-avatar-wrapper">
-                            <div className="profile-avatar">
-                                {emp.name.split(' ').map(n => n?.[0]).join('')}
-                                <button className="avatar-edit-btn" title="Change Photo">
-                                    <Edit2 size={14} />
-                                </button>
+                        <div className="avatar-wrapper">
+                            <div className="avatar">
+                                <div className="avatar-img">
+                                    {emp.name.split(' ').map(n => n?.[0]).join('')}
+                                </div>
                             </div>
-                            <div className={`status-indicator ${emp.status.toLowerCase()}`}></div>
+                            <div className="status-indicator" title={emp.status}></div>
                         </div>
-                        <div className="profile-main-info">
-                            <h1 className="profile-name">
-                                {emp.name}
-                                <CheckCircle2 size={20} className="verified-icon" />
-                            </h1>
-                            <div className="profile-meta">
-                                <span className="meta-item"><Briefcase size={14} /> {emp.role}</span>
-                                <span className="meta-separator">•</span>
-                                <span className="meta-item"><MapPin size={14} /> {emp.location}</span>
-                                <span className="meta-item badge-id">{emp.id}</span>
+                        <div className="user-details">
+                            <h1 className="user-name">{emp.name}</h1>
+                            <div className="user-role">
+                                {emp.role}
+                                <span className="badge">{emp.id}</span>
                             </div>
                         </div>
                     </div>
-                    <div className="profile-header-actions">
-                        <button className="btn btn-secondary-glass" onClick={() => setShowIdModal(true)}>
-                            <Printer size={18} /> ID Card
+                    <div className="header-actions">
+                        <button className="btn btn-outline" onClick={() => setShowEditModal(true)}>
+                            <Edit2 size={16} /> Edit Profile
                         </button>
-                        <button className="btn btn-primary" onClick={() => setShowEditModal(true)}>
-                            <Edit2 size={18} /> Edit Profile
+                        <button className="btn btn-primary" onClick={() => setShowIdModal(true)}>
+                            <LayoutGrid size={16} /> Digital ID
                         </button>
-                        <button className="btn btn-icon-glass"><MoreHorizontal size={18} /></button>
                     </div>
                 </div>
-            </div>
+            </header>
 
-            <div className="profile-body-layout">
-                {/* Left Sidebar */}
-                <div className="profile-sidebar">
-                    <div className="profile-stats-grid">
-                        {emp.stats.map((stat, i) => (
-                            <div key={i} className={`stat-card stat-${stat.color}`}>
-                                <span className="stat-label">{stat.label}</span>
-                                <span className="stat-value">{stat.value}</span>
+            {/* --- Navigation Tabs --- */}
+            <nav className="nav-tabs">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+                        onClick={() => setActiveTab(tab.id)}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </nav>
+
+            {/* --- Main Grid Content --- */}
+            <div className="content-grid">
+
+                {/* --- Left Sidebar --- */}
+                <aside className="profile-sidebar">
+                    <div className="card">
+                        <div className="card-title">Contact Info</div>
+                        <div className="info-list">
+                            <div className="info-item">
+                                <span className="info-label"><Mail size={14} /> Email</span>
+                                <span className="info-value" title={emp.email}>{emp.email}</span>
                             </div>
-                        ))}
+                            <div className="info-item">
+                                <span className="info-label"><Phone size={14} /> Phone</span>
+                                <span className="info-value">{emp.phone}</span>
+                            </div>
+                            <div className="info-item">
+                                <span className="info-label"><MapPin size={14} /> Location</span>
+                                <span className="info-value">{emp.location.split(',')[0]}</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="sidebar-module card shadow-sm">
-                        <h3 className="module-title">Contact Information</h3>
-                        <ul className="contact-list">
-                            <li>
-                                <div className="contact-icon"><Mail size={16} /></div>
-                                <div className="contact-info">
-                                    <span className="label">Work Email</span>
-                                    <span className="value">{emp.email}</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div className="contact-icon"><Phone size={16} /></div>
-                                <div className="contact-info">
-                                    <span className="label">Phone</span>
-                                    <span className="value">{emp.phone}</span>
-                                </div>
-                            </li>
-                            <li>
-                                <div className="contact-icon"><MapPin size={16} /></div>
-                                <div className="contact-info">
-                                    <span className="label">Current Address</span>
-                                    <span className="value">{emp.address}</span>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                {/* Main Content Area */}
-                <div className="profile-main-content">
-                    <nav className="profile-nav">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                className={`nav-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                                onClick={() => setActiveTab(tab.id)}
-                            >
-                                <tab.icon size={18} />
-                                {tab.label}
-                                {activeTab === tab.id && <div className="active-indicator" />}
+                    {/* Quick Request Widget Placeholder - Redirects to main Request functionality in tabs or opens modal eventually */}
+                    <div className="card">
+                        <div className="card-title">Quick Actions</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button className="btn btn-outline" style={{ justifyContent: 'center' }} onClick={() => setActiveTab('requests')}>
+                                <Send size={14} /> New Request
                             </button>
-                        ))}
-                    </nav>
-
-                    <div className="tab-content-wrapper card shadow-sm animate-slide-up">
-                        {activeTab === 'overview' && (
-                            <div className="tab-pane">
-                                <div className="info-section">
-                                    <div className="section-header">
-                                        <h3 className="section-title">Personal Details</h3>
-                                        <button className="text-btn">Edit</button>
-                                    </div>
-                                    <div className="info-grid">
-                                        <div className="info-group">
-                                            <span className="info-label">Full Name</span>
-                                            <span className="info-value">{emp.name}</span>
-                                        </div>
-                                        <div className="info-group">
-                                            <span className="info-label">Date of Birth</span>
-                                            <span className="info-value">{emp.dob}</span>
-                                        </div>
-                                        <div className="info-group">
-                                            <span className="info-label">Gender</span>
-                                            <span className="info-value">{emp.gender}</span>
-                                        </div>
-                                        <div className="info-group">
-                                            <span className="info-label">Marital Status</span>
-                                            <span className="info-value">{emp.maritalStatus}</span>
-                                        </div>
-                                        <div className="info-group">
-                                            <span className="info-label">Blood Group</span>
-                                            <span className="info-value">{emp.bloodGroup}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="info-section">
-                                    <div className="section-header">
-                                        <h3 className="section-title">Identity & Security</h3>
-                                    </div>
-                                    <div className="identity-cards">
-                                        <div className="id-card-item">
-                                            <Shield size={24} className="id-icon" />
-                                            <div className="id-details">
-                                                <span className="id-name">National Identity</span>
-                                                <span className="id-number">Verified</span>
-                                            </div>
-                                            <Download size={18} className="id-download" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'employment' && (
-                            <div className="tab-pane">
-                                <div className="info-section">
-                                    <h3 className="section-title">Current Status</h3>
-                                    <div className="info-grid">
-                                        <div className="info-group">
-                                            <span className="info-label">Department</span>
-                                            <span className="info-value">{emp.department}</span>
-                                        </div>
-                                        <div className="info-group">
-                                            <span className="info-label">Work Anniversary</span>
-                                            <span className="info-value">{emp.joinDate}</span>
-                                        </div>
-                                        <div className="info-group">
-                                            <span className="info-label">Employment Type</span>
-                                            <span className="info-value">{employee.employment_type || 'Permanent'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab !== 'overview' && activeTab !== 'employment' && (
-                            <div className="empty-tab-state">
-                                <AlertCircle size={48} />
-                                <p>Section content is being prepared.</p>
-                            </div>
-                        )}
+                            <button className="btn btn-outline" style={{ justifyContent: 'center' }} onClick={() => setActiveTab('documents')}>
+                                <Download size={14} /> Downloads
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </aside>
+
+                {/* --- Main Content Area --- */}
+                <main className="main-content">
+
+                    {activeTab === 'about' && (
+                        <div className="overview-section animate-slide-up">
+                            <div className="card">
+                                {/* Stats Row */}
+                                <div className="stats-grid">
+                                    <div className="stat-card">
+                                        <div className="stat-value">2.5</div>
+                                        <div className="stat-label">Years of Service</div>
+                                    </div>
+                                    <div className="stat-card">
+                                        <div className="stat-value">12</div>
+                                        <div className="stat-label">Leave Balance</div>
+                                    </div>
+                                    <div className="stat-card">
+                                        <div className="stat-value">98%</div>
+                                        <div className="stat-label">Attendance</div>
+                                    </div>
+                                </div>
+
+                                <div className="card-divider"></div>
+
+                                <div className="card-title">Personal Information</div>
+                                <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                    <div className="form-group">
+                                        <label className="form-label">Date of Birth</label>
+                                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{emp.dob}</div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Gender</label>
+                                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{emp.gender}</div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Department</label>
+                                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{emp.department}</div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Joining Date</label>
+                                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{emp.joinDate}</div>
+                                    </div>
+                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                        <label className="form-label">Address</label>
+                                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{emp.address}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'payroll' && <ProfilePayroll employee={employee} />}
+
+                    {activeTab === 'documents' && <ProfileDocuments employeeId={employeeId || employee.id} />}
+
+                    {activeTab === 'requests' && (
+                        <div className="card">
+                            <RequestManager employeeId={employeeId || employee.id} />
+                        </div>
+                    )}
+
+                    {/* Placeholder Logic for Other Tabs */}
+                    {['work_type', 'attendance', 'leave', 'allowance', 'penalty', 'assets', 'performance', 'bonus', 'interview', 'resignation'].includes(activeTab) && (
+                        <div className="placeholder-state animate-fade-in">
+                            <Briefcase size={48} className="placeholder-icon" />
+                            <h3>{tabs.find(t => t.id === activeTab)?.label}</h3>
+                            <p>This module is currently being configured or has no records to display.</p>
+                        </div>
+                    )}
+
+                </main>
             </div>
 
+            {/* Modals */}
             {showEditModal && (
                 <EditProfile
                     employee={employee}

@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from apps.accounts.models import BaseModel, Employee
+import uuid
 
 class BaseRequest(BaseModel):
     """Abstract base request model"""
@@ -10,6 +11,7 @@ class BaseRequest(BaseModel):
         ('rejected', 'Rejected'),
     ]
     
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='%(class)s_requests')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_approvals')
@@ -19,11 +21,20 @@ class BaseRequest(BaseModel):
         abstract = True
 
 class DocumentRequest(BaseRequest):
+    DIRECTION_CHOICES = [
+        ('admin_to_employee', 'Admin Requesting from Employee'),
+        ('employee_to_admin', 'Employee Requesting from Admin'),
+    ]
+    
+    direction = models.CharField(max_length=30, choices=DIRECTION_CHOICES, default='employee_to_admin')
     document_type = models.CharField(max_length=100)
     reason = models.TextField()
+    # For tracking document submissions (when admin requests from employee)
+    document_file = models.FileField(upload_to='document_requests/', null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
-        return f"{self.employee} - {self.document_type}"
+        return f"{self.employee} - {self.document_type} ({self.get_direction_display()})"
 
 class ShiftRequest(BaseRequest):
     current_shift = models.CharField(max_length=100)

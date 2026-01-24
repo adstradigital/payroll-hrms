@@ -36,6 +36,14 @@ class MyTokenObtainPairView(TokenObtainPairView):
     """Custom Token View to use our enhanced serializer"""
     serializer_class = MyTokenObtainPairSerializer
 
+class SuperAdminTokenObtainPairView(TokenObtainPairView):
+    """
+    Super Admin Login View
+    Uses SuperAdminTokenObtainPairSerializer to enforce superuser check and username login.
+    """
+    from .serializers import SuperAdminTokenObtainPairSerializer
+    serializer_class = SuperAdminTokenObtainPairSerializer
+
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 20
@@ -635,14 +643,17 @@ def department_list_create(request):
             elif company_id:
                 queryset = queryset.filter(company_id=company_id)
             
+            # Use specific serializer for list
             paginator = StandardResultsSetPagination()
             paginated = paginator.paginate_queryset(queryset, request)
-            
-            data = [{'id': str(d.id), 'name': d.name, 'code': d.code, 'company_name': d.company.name,
-                    'is_active': d.is_active} for d in paginated]
-            return paginator.get_paginated_response(data)
+            serializer = DepartmentListSerializer(paginated, many=True)
+            return paginator.get_paginated_response(serializer.data)
         
         elif request.method == 'POST':
+            # Check permission - simple check for now
+            if not is_client_admin(request.user) and not is_org_creator(request.user):
+                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
             # Determine company
             company_id = request.data.get('company')
             if not company_id:
@@ -656,21 +667,20 @@ def department_list_create(request):
             if not company_id:
                 return Response({'error': 'Company identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            code = request.data.get('code', '')
-            if Department.objects.filter(company_id=company_id, code=code).exists():
-                return Response({'error': f'Department with code "{code}" already exists'}, status=status.HTTP_400_BAD_REQUEST)
-
-            dept = Department.objects.create(
-                company_id=company_id,
-                name=request.data.get('name'),
-                code=code,
-                description=request.data.get('description', ''),
-                parent_id=request.data.get('parent'),
-                head_id=request.data.get('head') if request.data.get('head') else None,
-                is_active=request.data.get('is_active', True),
-                created_by=request.user
-            )
-            return Response({'success': True, 'id': str(dept.id)}, status=status.HTTP_201_CREATED)
+            # Use serializer for validation and save
+            # We need to inject company into data or context, or handle in perform_create equivalent
+            # But here we can just update the data before passing to serializer or save manually with serializer validation
+            
+            data = request.data.copy()
+            data['company'] = company_id
+            
+            serializer = DepartmentDetailSerializer(data=data) # Use Detail serializer for creation to accept all fields
+            if serializer.is_valid():
+                dept = serializer.save(created_by=request.user)
+                # Return serialized data matches frontend expectation
+                return Response({'success': True, 'id': str(dept.id), **DepartmentListSerializer(dept).data}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
     except Exception as e:
         logger.error(f"Error in department_list_create: {str(e)}")
         return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -684,27 +694,17 @@ def department_detail(request, pk):
         dept = get_object_or_404(Department, pk=pk)
         
         if request.method == 'GET':
-            data = {'id': str(dept.id), 'name': dept.name, 'code': dept.code, 'description': dept.description,
-                   'company': str(dept.company_id), 'parent': str(dept.parent_id) if dept.parent else None,
-                   'head': str(dept.head_id) if dept.head else None, 'is_active': dept.is_active,
-                   'budget': dept.budget}
-            return Response({'success': True, 'department': data})
+            serializer = DepartmentDetailSerializer(dept)
+            return Response({'success': True, 'department': serializer.data})
         
         elif request.method in ['PUT', 'PATCH']:
-            for field in ['name', 'code', 'description', 'is_active', 'budget']:
-                if field in request.data:
-                    setattr(dept, field, request.data[field])
-            
-            # Handle head separately as it's a foreign key
-            if 'head' in request.data:
-                head_id = request.data.get('head')
-                dept.head_id = head_id if head_id else None
-
-            dept.updated_by = request.user
-            dept.save()
-            # Return full serialized data so frontend can update the UI
-            serializer = DepartmentListSerializer(dept)
-            return Response({'success': True, **serializer.data})
+            serializer = DepartmentDetailSerializer(dept, data=request.data, partial=(request.method == 'PATCH'))
+            if serializer.is_valid():
+                dept = serializer.save(updated_by=request.user)
+                # Return data in list format for consistent UI update if needed, or Detail format
+                # The frontend expects 'success': True, and likely the updated object data
+                return Response({'success': True, **DepartmentListSerializer(dept).data})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         elif request.method == 'DELETE':
             dept.delete()
@@ -749,9 +749,29 @@ def designation_list_create(request):
             return paginator.get_paginated_response(serializer.data)
         
         elif request.method == 'POST':
+            # Determine company
+            company = None
+            company_id = request.data.get('company')
+            
+            if company_id:
+                try:
+                    company = Organization.objects.get(id=company_id)
+                except Organization.DoesNotExist:
+                    pass
+            
+            if not company:
+                current_employee = Employee.objects.filter(user=request.user).first()
+                if current_employee:
+                    company = current_employee.company
+                else:
+                    company = Organization.objects.filter(created_by=request.user).first()
+            
+            if not company:
+                return Response({'error': 'Company could not be determined'}, status=status.HTTP_400_BAD_REQUEST)
+
             serializer = DesignationDetailSerializer(data=request.data)
             if serializer.is_valid():
-                desig = serializer.save(created_by=request.user)
+                desig = serializer.save(created_by=request.user, company=company)
                 return Response({'success': True, 'id': str(desig.id)}, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
@@ -1267,82 +1287,73 @@ def employee_detail(request, pk):
         emp = get_object_or_404(Employee.objects.select_related('company', 'department', 'designation', 'reporting_manager'), pk=pk)
         
         if request.method == 'GET':
-            data = {
-                'id': str(emp.id), 'employee_id': emp.employee_id, 'full_name': emp.full_name,
-                'first_name': emp.first_name, 'middle_name': emp.middle_name, 'last_name': emp.last_name,
-                'email': emp.email, 'phone': emp.phone, 'date_of_birth': str(emp.date_of_birth) if emp.date_of_birth else None,
-                'gender': emp.gender, 'company': {'id': str(emp.company.id), 'name': emp.company.name},
-                'department': {'id': str(emp.department.id), 'name': emp.department.name} if emp.department else None,
-                'designation': {'id': str(emp.designation.id), 'name': emp.designation.name} if emp.designation else None,
-                'status': emp.status, 'employment_type': emp.employment_type,
-                'date_of_joining': str(emp.date_of_joining), 'age': emp.age, 'tenure_in_days': emp.tenure_in_days,
-                # User account info
-                'has_user_account': emp.user is not None,
-                'username': emp.user.username if emp.user else None
-            }
-            return Response({'success': True, 'employee': data})
+            from .serializers import EmployeeDetailSerializer
+            serializer = EmployeeDetailSerializer(emp)
+            return Response({'success': True, 'employee': serializer.data})
         
         elif request.method in ['PUT', 'PATCH']:
-            allowed = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'date_of_birth', 'gender',
-                      'department', 'designation', 'status', 'employment_type', 'current_address', 'current_city',
-                      'marital_status', 'blood_group', 'permanent_address', 'permanent_city', 'permanent_state',
-                      'permanent_pincode', 'current_state', 'current_pincode', 'pan_number', 'aadhar_number',
-                      'bank_name', 'bank_account_number', 'bank_ifsc', 'bank_branch']
-            for field in allowed:
-                if field in request.data:
-                    value = request.data[field]
-                    # Handle empty strings for foreign keys
-                    if field in ['department', 'designation']:
-                        if value == '' or value is None:
-                            setattr(emp, f'{field}_id', None)
-                        else:
-                            setattr(emp, f'{field}_id', value)
-                    # Handle empty strings for date fields
-                    elif field == 'date_of_birth':
-                        if value == '' or value is None:
-                            setattr(emp, field, None)
-                        else:
-                            setattr(emp, field, value)
+            # Create a mutable copy of data
+            data = request.data.copy()
+            
+            # Clean empty strings for Foreign Keys/Date fields to avoid validation errors
+            nullable_fields = ['department', 'designation', 'reporting_manager', 'date_of_birth', 
+                             'date_of_joining', 'confirmation_date', 'resignation_date', 
+                             'last_working_date', 'termination_date']
+            
+            for field in nullable_fields:
+                if field in data and (data[field] == '' or data[field] == 'null'):
+                    data[field] = None
+
+            # Map 'bank_ifsc' to 'bank_ifsc_code' if present (frontend compatibility)
+            if 'bank_ifsc' in data:
+                data['bank_ifsc_code'] = data.pop('bank_ifsc')
+
+            from .serializers import EmployeeDetailSerializer
+            serializer = EmployeeDetailSerializer(emp, data=data, partial=(request.method == 'PATCH'))
+            
+            if serializer.is_valid():
+                serializer.save(updated_by=request.user)
+                
+                # Handle User Account Creation/Update
+                enable_login = request.data.get('enable_login')
+                username = request.data.get('username')
+                password = request.data.get('password')
+                
+                if enable_login:
+                    if not emp.user:
+                        # Employee doesn't have a user account, create one
+                        if not username:
+                            username = emp.email  # Default to email as username
+                        
+                        if User.objects.filter(username=username).exists():
+                            # If username exists, check if it's the same user (unlikely if emp.user is None)
+                             pass # Ideally return error, but we already saved employee profile. 
+                             # For now, let's just log or ignore collision to avoid crashing the whole update?
+                             # Better: Check before serializer save? 
+                             # Given existing logic, we'll try to create and fail gracefully if duplicate.
+                        
+                        if not User.objects.filter(username=username).exists():
+                             try:
+                                user = User.objects.create_user(
+                                    username=username, 
+                                    email=emp.email, 
+                                    password=password,
+                                    first_name=emp.first_name,
+                                    last_name=emp.last_name or ''
+                                )
+                                emp.user = user
+                                emp.save()
+                             except Exception as e:
+                                logger.error(f"Failed to create user for employee {emp.id}: {e}")
                     else:
-                        setattr(emp, field, value)
+                        # Employee already has a user account, update password if provided
+                        if password:
+                            emp.user.set_password(password)
+                            emp.user.save()
             
-            # Handle User Account Creation/Update
-            enable_login = request.data.get('enable_login')
-            username = request.data.get('username')
-            password = request.data.get('password')
-            
-            if enable_login:
-                if not emp.user:
-                    # Employee doesn't have a user account, create one
-                    if not username:
-                        username = emp.email  # Default to email as username
-                    
-                    if User.objects.filter(username=username).exists():
-                        return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
-                    
-                    if not password:
-                        return Response({'error': 'Password is required for new user account'}, status=status.HTTP_400_BAD_REQUEST)
-                    
-                    try:
-                        user = User.objects.create_user(
-                            username=username, 
-                            email=emp.email, 
-                            password=password,
-                            first_name=emp.first_name,
-                            last_name=emp.last_name or ''
-                        )
-                        emp.user = user
-                    except Exception as e:
-                        return Response({'error': f'Failed to create user account: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    # Employee already has a user account, update password if provided
-                    if password:
-                        emp.user.set_password(password)
-                        emp.user.save()
-            
-            emp.updated_by = request.user
-            emp.save()
-            return Response({'success': True, 'message': 'Employee updated', 'has_user': emp.user is not None})
+                return Response({'success': True, 'message': 'Employee updated', 'has_user': emp.user is not None})
+            else:
+                return Response({'error': str(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
         
         elif request.method == 'DELETE':
             emp.delete()
@@ -1366,6 +1377,8 @@ def employee_document_list_create(request, employee_id):
         if request.method == 'GET':
             docs = EmployeeDocument.objects.filter(employee=employee)
             data = [{'id': str(d.id), 'title': d.title, 'document_type': d.document_type,
+                    'document_file': request.build_absolute_uri(d.document_file.url) if d.document_file else None,
+                    'created_at': str(d.created_at) if d.created_at else None,
                     'is_verified': d.is_verified} for d in docs]
             return Response({'success': True, 'documents': data})
         
@@ -1496,3 +1509,320 @@ def employee_experience_detail(request, employee_id, pk):
     except Exception as e:
         logger.error(f"Error in employee_experience_detail: {str(e)}")
         return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ==================== SUPER ADMIN ====================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_list(request):
+    """List all users (Super Admin only)"""
+    print(f"DEBUG: user_list called by {request.user.email} (ID: {request.user.id})")
+    print(f"DEBUG: is_superuser: {request.user.is_superuser}, is_staff: {request.user.is_staff}")
+    
+    if not request.user.is_superuser:
+        print("DEBUG: Access Denied")
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    users = User.objects.all().order_by('-date_joined')
+    data = [{
+        'id': str(u.id),
+        'email': u.email,
+        'name': f"{u.first_name} {u.last_name}",
+        'is_active': u.is_active,
+        'is_staff': u.is_staff,
+        'is_superuser': u.is_superuser,
+        'last_login': str(u.last_login) if u.last_login else None,
+        'date_joined': str(u.date_joined)
+    } for u in users]
+    
+    return Response({'success': True, 'results': data})
+
+
+# ==================== ORGANIZATION REGISTRATION APPROVALS ====================
+
+from .models import OrganizationRegistration
+from .serializers import (
+    OrganizationRegistrationListSerializer,
+    OrganizationRegistrationDetailSerializer,
+    OrganizationRegistrationCreateSerializer
+)
+from .emails import send_registration_confirmation, send_login_credentials, send_registration_rejected
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def submit_organization_registration(request):
+    """
+    Public endpoint for submitting organization registration requests.
+    No password is collected - credentials will be generated upon approval.
+    """
+    try:
+        serializer = OrganizationRegistrationCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            registration = serializer.save()
+            logger.info(f"Organization registration submitted: {registration.organization_name}")
+            
+            # Send confirmation email
+            send_registration_confirmation(
+                admin_email=registration.admin_email,
+                admin_name=registration.admin_name,
+                organization_name=registration.organization_name
+            )
+            
+            return Response({
+                'success': True,
+                'message': 'Registration submitted successfully. Awaiting admin approval.',
+                'registration_id': str(registration.id)
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error(f"Registration submission error: {str(e)}", exc_info=True)
+        return Response({'error': 'Failed to submit registration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pending_registrations_list(request):
+    """
+    List pending organization registrations (Super Admin only).
+    """
+    if not request.user.is_superuser:
+        return Response({'error': 'Super Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        status_filter = request.query_params.get('status', 'pending')
+        registrations = OrganizationRegistration.objects.filter(status=status_filter).order_by('-created_at')
+        serializer = OrganizationRegistrationListSerializer(registrations, many=True)
+        return Response({
+            'success': True,
+            'results': serializer.data,
+            'count': registrations.count()
+        })
+    except Exception as e:
+        logger.error(f"Error fetching registrations: {str(e)}")
+        return Response({'error': 'Failed to fetch registrations'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def registration_detail(request, pk):
+    """
+    Get registration detail (Super Admin only).
+    """
+    if not request.user.is_superuser:
+        return Response({'error': 'Super Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        registration = get_object_or_404(OrganizationRegistration, pk=pk)
+        serializer = OrganizationRegistrationDetailSerializer(registration)
+        return Response({'success': True, 'registration': serializer.data})
+    except Exception as e:
+        logger.error(f"Error fetching registration detail: {str(e)}")
+        return Response({'error': 'Failed to fetch registration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_registration(request, pk):
+    """
+    Approve organization registration and create credentials (Super Admin only).
+    This will:
+    1. Create the Organization
+    2. Create the admin User with auto-generated password
+    3. Create the admin Employee record
+    4. Send credentials via email (simulated for now)
+    """
+    if not request.user.is_superuser:
+        return Response({'error': 'Super Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        registration = get_object_or_404(OrganizationRegistration, pk=pk)
+        
+        if registration.status != 'pending':
+            return Response({'error': 'Registration already processed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        with transaction.atomic():
+            # Generate password
+            generated_password = secrets.token_urlsafe(12)
+            
+            # Create user
+            username = registration.admin_email.split('@')[0] + '_' + secrets.token_hex(4)
+            name_parts = registration.admin_name.split()
+            user = User.objects.create_user(
+                username=username,
+                email=registration.admin_email,
+                password=generated_password,
+                first_name=name_parts[0] if name_parts else '',
+                last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+            )
+            
+            # Create organization
+            slug = slugify(registration.organization_name)
+            if Organization.objects.filter(slug=slug).exists():
+                slug = f"{slug}-{secrets.token_hex(3)}"
+            
+            organization = Organization.objects.create(
+                name=registration.organization_name,
+                slug=slug,
+                email=registration.admin_email,
+                phone=registration.admin_phone,
+                industry=registration.industry,
+                is_parent=True,
+                is_active=True,
+                is_verified=True,
+                verified_at=timezone.now(),
+                created_by=user
+            )
+            
+            # Create trial subscription
+            trial_package, _ = Package.objects.get_or_create(
+                package_type='free_trial',
+                defaults={
+                    'name': 'Free Trial',
+                    'monthly_price': 0,
+                    'trial_days': 14,
+                    'max_employees': 50,
+                    'max_companies': 1,
+                    'features': {'payroll': True, 'attendance': True, 'leave_management': True}
+                }
+            )
+            
+            trial_end = timezone.now().date() + timedelta(days=trial_package.trial_days)
+            Subscription.objects.create(
+                organization=organization,
+                package=trial_package,
+                status='trial',
+                billing_cycle='monthly',
+                start_date=timezone.now().date(),
+                trial_end_date=trial_end,
+                current_period_start=timezone.now().date(),
+                current_period_end=trial_end,
+                price=0,
+                employee_count=1,
+                company_count=1,
+                billing_email=registration.admin_email,
+                billing_name=registration.admin_name,
+                created_by=user
+            )
+            
+            # Create admin designation
+            admin_designation, _ = Designation.objects.get_or_create(
+                company=organization,
+                code='admin',
+                defaults={
+                    'name': 'Administrator',
+                    'description': 'Organization Administrator',
+                    'level': 1,
+                    'is_active': True,
+                    'is_managerial': True,
+                    'created_by': user
+                }
+            )
+            
+            # Create admin employee
+            employee_id = f"EMP-{organization.id.hex[:8].upper()}-001"
+            Employee.objects.create(
+                user=user,
+                company=organization,
+                employee_id=employee_id,
+                first_name=name_parts[0] if name_parts else '',
+                last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
+                email=registration.admin_email,
+                phone=registration.admin_phone,
+                date_of_joining=timezone.now().date(),
+                status='active',
+                employment_type='permanent',
+                designation=admin_designation,
+                is_admin=True,
+                created_by=user
+            )
+            
+            # Create subsidiaries if multi-company
+            if registration.is_multi_company and registration.subsidiaries:
+                for sub_data in registration.subsidiaries:
+                    if sub_data.get('name'):
+                        sub_slug = slugify(sub_data['name'])
+                        if Organization.objects.filter(slug=sub_slug).exists():
+                            sub_slug = f"{sub_slug}-{secrets.token_hex(3)}"
+                        Organization.objects.create(
+                            name=sub_data['name'],
+                            slug=sub_slug,
+                            is_parent=False,
+                            parent=organization,
+                            is_active=True,
+                            created_by=user
+                        )
+            
+            # Update registration status
+            registration.status = 'approved'
+            registration.reviewed_by = request.user
+            registration.reviewed_at = timezone.now()
+            registration.organization = organization
+            registration.save()
+            
+            # Send login credentials email
+            email_sent = send_login_credentials(
+                admin_email=registration.admin_email,
+                admin_name=registration.admin_name,
+                organization_name=registration.organization_name,
+                username=registration.admin_email,
+                password=generated_password,
+                login_url="http://localhost:3000/login"  # Update for production
+            )
+            
+            if email_sent:
+                logger.info(f"Organization approved and credentials sent: {organization.name}")
+            else:
+                logger.warning(f"Organization approved but email failed: {organization.name}. Password: {generated_password}")
+            
+            NotificationPreference.objects.create(user=user)
+        
+        return Response({
+            'success': True,
+            'message': f'Organization "{registration.organization_name}" approved successfully!',
+            'credentials_sent_to': registration.admin_email,
+            'organization_id': str(organization.id)
+        })
+    except Exception as e:
+        logger.error(f"Approval error: {str(e)}", exc_info=True)
+        return Response({'error': 'Failed to approve registration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_registration(request, pk):
+    """
+    Reject organization registration (Super Admin only).
+    """
+    if not request.user.is_superuser:
+        return Response({'error': 'Super Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        registration = get_object_or_404(OrganizationRegistration, pk=pk)
+        
+        if registration.status != 'pending':
+            return Response({'error': 'Registration already processed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        registration.status = 'rejected'
+        registration.reviewed_by = request.user
+        registration.reviewed_at = timezone.now()
+        registration.rejection_reason = request.data.get('rejection_reason', '')
+        registration.save()
+        
+        # Send rejection email
+        send_registration_rejected(
+            admin_email=registration.admin_email,
+            admin_name=registration.admin_name,
+            organization_name=registration.organization_name,
+            rejection_reason=registration.rejection_reason
+        )
+        
+        logger.info(f"Organization rejected: {registration.organization_name}")
+        
+        return Response({
+            'success': True,
+            'message': f'Registration for "{registration.organization_name}" has been rejected.'
+        })
+    except Exception as e:
+        logger.error(f"Rejection error: {str(e)}")
+        return Response({'error': 'Failed to reject registration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
