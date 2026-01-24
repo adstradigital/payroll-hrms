@@ -7,7 +7,7 @@ class LeaveType(models.Model):
     """Types of leaves available in the company"""
     company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='leave_types')
     name = models.CharField(max_length=50)  # Casual Leave, Sick Leave, etc.
-    code = models.CharField(max_length=10)  # CL, SL, EL, etc.
+    code = models.CharField(max_length=10, null=True, blank=True)  # Optional CL, SL, EL, etc.
     description = models.TextField(blank=True)
     
     # Allocation settings
@@ -29,7 +29,7 @@ class LeaveType(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['company', 'code']
+        unique_together = ['company', 'name']
         ordering = ['name']
 
     def __str__(self):

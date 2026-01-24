@@ -270,8 +270,8 @@ class AttendanceRegularizationRequestSerializer(serializers.ModelSerializer):
     """Attendance Regularization Request Serializer"""
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     employee_id = serializers.CharField(source='employee.employee_id', read_only=True)
-    attendance_date = serializers.DateField(source='attendance.date', read_only=True)
-    reviewed_by_name = serializers.CharField(source='reviewed_by.full_name', read_only=True)
+    attendance_date = serializers.SerializerMethodField(read_only=True)
+    reviewed_by_name = serializers.CharField(source='reviewed_by.full_name', read_only=True, required=False)
     
     class Meta:
         model = AttendanceRegularizationRequest
@@ -280,6 +280,14 @@ class AttendanceRegularizationRequestSerializer(serializers.ModelSerializer):
             'id', 'reviewed_by', 'reviewed_at', 'reviewer_comments',
             'created_at', 'updated_at'
         ]
+
+    def get_attendance_date(self, obj):
+        """Get attendance date from attendance record or requested check-in"""
+        if obj.attendance and obj.attendance.date:
+            return str(obj.attendance.date)
+        elif obj.requested_check_in:
+            return obj.requested_check_in.date().isoformat()
+        return None
 
     def validate(self, data):
         """Validate regularization request"""

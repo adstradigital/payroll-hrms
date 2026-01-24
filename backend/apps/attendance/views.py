@@ -107,6 +107,17 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             return AttendanceDetailSerializer
         return AttendanceSerializer
 
+    def create(self, request, *args, **kwargs):
+        print(f"DEBUG: AttendanceViewSet.create received data: {request.data}")
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            print(f"DEBUG: AttendanceViewSet validation FAILED: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     # ---------------- CHECK-IN ----------------
     @action(detail=False, methods=['post'])
     def check_in(self, request):
@@ -484,6 +495,96 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    # ---------------- MONTHLY MATRIX ----------------
+    @action(detail=False, methods=['get'])
+    def monthly_matrix(self, request):
+        try:
+            today = date.today()
+            month = int(request.query_params.get('month', today.month))
+            year = int(request.query_params.get('year', today.year))
+            
+            # 1. Get all active employees (optimize with select_related if needed)
+            employees = Employee.objects.filter(is_active=True).order_by('first_name')
+            
+            # 2. Get date range
+            days_in_month = monthrange(year, month)[1]
+            start_date = date(year, month, 1)
+            end_date = date(year, month, days_in_month)
+            
+            # 3. Fetch all attendance for this month
+            attendances = Attendance.objects.filter(
+                date__range=(start_date, end_date),
+                employee__in=employees
+            )
+            
+            # 4. Build lookup dict: attendance_map[emp_id][day_int] = status_code
+            attendance_map = {}
+            for att in attendances:
+                eid = str(att.employee.id)
+                if eid not in attendance_map:
+                    attendance_map[eid] = {}
+                
+                # Determine status code for UI
+                status_code = ''
+                if att.status == 'present':
+                    status_code = 'P'
+                elif att.status == 'absent':
+                    status_code = 'A'
+                elif att.status == 'half_day':
+                    status_code = 'H'
+                elif att.status == 'on_leave':
+                    status_code = 'L' # Leave
+                elif att.status == 'holiday':
+                    status_code = 'O' # Off/Holiday
+                else:
+                    status_code = att.status[:1].upper()
+                    
+                attendance_map[eid][att.date.day] = status_code
+
+            # 5. Construct response data
+            employee_data = []
+            for emp in employees:
+                eid = str(emp.id)
+                emp_status_list = []
+                emp_stats = {'P': 0, 'A': 0, 'L': 0, 'H': 0, 'Conflict': 0}
+                
+                emp_att_map = attendance_map.get(eid, {})
+                
+                # Fill array for each day 1..31 (or days_in_month)
+                status_array = []
+                for d in range(1, 32):
+                    if d > days_in_month:
+                        status_array.append('')
+                        continue
+                        
+                    st = emp_att_map.get(d, '')
+                    status_array.append(st)
+                    
+                    # Caluclate stats
+                    if st == 'P': emp_stats['P'] += 1
+                    elif st == 'A': emp_stats['A'] += 1
+                    elif st == 'L': emp_stats['L'] += 1
+                    elif st == 'H': emp_stats['H'] += 1
+                
+                employee_data.append({
+                    'id': eid,
+                    'employee_id': emp.employee_id,
+                    'name': emp.full_name,
+                    'status': status_array,
+                    'stats': emp_stats,
+                    'meta': emp.designation.name if emp.designation else ''
+                })
+
+            return Response({
+                'month': month,
+                'year': year,
+                'days_in_month': days_in_month,
+                'employees': employee_data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # ================== HOLIDAYS ==================
@@ -516,6 +617,17 @@ class HolidayViewSet(viewsets.ModelViewSet):
 
 
 # ================== ATTENDANCE SUMMARY ==================
+class AttendanceSummaryViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing monthly attendance summaries"""
+    queryset = AttendanceSummary.objects.select_related('employee').order_by('-year', '-month')
+    serializer_class = AttendanceSummarySerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['employee', 'year', 'month', 'is_finalized']
+    search_fields = ['employee__full_name', 'employee__employee_id']
+    ordering_fields = ['year', 'month', 'attendance_percentage']
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_monthly_summary(request):
@@ -564,3 +676,279 @@ def generate_monthly_summary(request):
         return Response({'created': created, 'summary': serializer.data}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    # ---------------- EXCEPTIONS REPORT (LATE/EARLY) ----------------
+    @action(detail=False, methods=['get'])
+    def exceptions_report(self, request):
+        try:
+            today = date.today()
+            month = int(request.query_params.get('month', today.month))
+            year = int(request.query_params.get('year', today.year))
+            
+            # Filter by date range
+            days_in_month = monthrange(year, month)[1]
+            start_date = date(year, month, 1)
+            end_date = date(year, month, days_in_month)
+            
+            # Get attendance with exceptions
+            exceptions = Attendance.objects.filter(
+                date__range=(start_date, end_date)
+            ).filter(
+                Q(is_late=True) | Q(is_early_departure=True)
+            ).select_related('employee', 'shift', 'employee__designation').order_by('-date')
+            
+            data = []
+            for att in exceptions:
+                # Determine primary exception (could be both)
+                status = ''
+                delay = ''
+                
+                if att.is_late and att.is_early_departure:
+                    status = 'Late & Early Out'
+                    delay = f"{att.late_by_minutes}m Late / {att.early_departure_minutes}m Early"
+                elif att.is_late:
+                    status = 'Late'
+                    delay = f"{att.late_by_minutes} mins"
+                    if att.late_by_minutes > 60:
+                        h = att.late_by_minutes // 60
+                        m = att.late_by_minutes % 60
+                        delay = f"{h}h {m}m"
+                elif att.is_early_departure:
+                    status = 'Early Out'
+                    delay = f"{att.early_departure_minutes} mins"
+                
+                data.append({
+                    'id': str(att.id),
+                    'name': att.employee.full_name,
+                    'empId': att.employee.employee_id,
+                    'date': att.date,
+                    'status': status,
+                    'delay': delay,
+                    'policy': att.shift.name if att.shift else 'General'
+                })
+                
+            return Response({
+                'count': len(data),
+                'results': data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    # ---------------- ATTENDANCE LOGS (DAILY RECORDS) ----------------
+    @action(detail=False, methods=['get'])
+    def logs(self, request):
+        try:
+            # Default to today if no date provided
+            today = date.today().isoformat()
+            query_date = request.query_params.get('date', today)
+            
+            # Parse date
+            target_date = datetime.strptime(query_date, '%Y-%m-%d').date()
+            
+            # Fetch logs
+            logs = Attendance.objects.filter(
+                date=target_date
+            ).select_related('employee').order_by('-check_in_time')
+            
+            # Use serializer for consistent data
+            serializer = AttendanceListSerializer(logs, many=True)
+            
+            return Response({
+                'count': logs.count(),
+                'date': query_date,
+                'results': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    # ---------------- MY DASHBOARD (EMPLOYEE VIEW) ----------------
+    @action(detail=False, methods=['get'])
+    def my_dashboard(self, request):
+        try:
+            employee = getattr(request.user, 'employee', None)
+            if not employee:
+                return Response({'error': 'Employee profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            today = date.today()
+            month = int(request.query_params.get('month', today.month))
+            year = int(request.query_params.get('year', today.year))
+            
+            # 1. Monthly Stats
+            attendances = Attendance.objects.filter(
+                employee=employee,
+                date__year=year,
+                date__month=month
+            )
+            
+            stats = {
+                'present': attendances.filter(status='present').count(),
+                'absent': attendances.filter(status='absent').count(),
+                'half_day': attendances.filter(status='half_day').count(),
+                'on_leave': attendances.filter(status='on_leave').count(),
+                'late': attendances.filter(is_late=True).count(),
+                'total_hours': attendances.aggregate(Sum('total_hours'))['total_hours__sum'] or 0
+            }
+            
+            # 2. Today's Status
+            today_att = Attendance.objects.filter(employee=employee, date=today).first()
+            today_status = {
+                'check_in': today_att.check_in_time if today_att else None,
+                'check_out': today_att.check_out_time if today_att else None,
+                'status': today_att.status if today_att else 'Not Marked',
+                'working_hours': today_att.total_hours if today_att else 0
+            }
+            
+            # 3. Recent Activity (Last 5 days)
+            recent_logs = Attendance.objects.filter(
+                employee=employee
+            ).order_by('-date')[:5]
+            
+            logs_serializer = AttendanceListSerializer(recent_logs, many=True)
+            
+            # 4. Averages (Current Month)
+            avg_check_in = attendances.exclude(check_in_time__isnull=True).extra(select={'time': "EXTRACT(HOUR FROM check_in_time) * 60 + EXTRACT(MINUTE FROM check_in_time)"}).aggregate(Avg('time'))['time__avg']
+            
+            # Convert minutes to HH:MM
+            avg_in_str = "09:00" # Default
+            if avg_check_in:
+                h = int(avg_check_in // 60)
+                m = int(avg_check_in % 60)
+                avg_in_str = f"{h:02d}:{m:02d}"
+
+            return Response({
+                'stats': stats,
+                'today': today_status,
+                'recent_logs': logs_serializer.data,
+                'averages': {'check_in': avg_in_str}
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ================== ATTENDANCE REGULARIZATION REQUEST ==================
+class AttendanceRegularizationRequestViewSet(viewsets.ModelViewSet):
+    queryset = AttendanceRegularizationRequest.objects.select_related('employee', 'attendance', 'reviewed_by')
+    serializer_class = AttendanceRegularizationSerializer
+    permission_classes = [IsAuthenticated]
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'request_type', 'employee']
+    search_fields = ['employee__full_name', 'employee__employee_id', 'reason']
+    ordering_fields = ['created_at', 'status']
+    ordering = ['-created_at']
+
+    def create(self, request, *args, **kwargs):
+        # Clean up mutable data
+        data = request.data.copy()
+        print(f"DEBUG: Processing create with keys: {data.keys()}")
+        
+        # Handle attendance date
+        if 'attendance_date' in data and 'employee' in data:
+            attendance_date = data.get('attendance_date')
+            if isinstance(attendance_date, list):
+                attendance_date = attendance_date[0]
+                
+            employee_id = data.get('employee')
+            
+            # Get or create attendance record
+            # Note: Attendance is already imported at module level
+            attendance, created = Attendance.objects.get_or_create(
+                employee_id=employee_id,
+                date=attendance_date,
+                defaults={'status': 'absent'}
+            )
+            print(f"DEBUG: Linked attendance {attendance.id} (Created: {created})")
+            
+            data['attendance'] = str(attendance.id)
+        
+        print(f"DEBUG: Final data passed to serializer: {data}")
+        serializer = self.get_serializer(data=data)
+        if not serializer.is_valid():
+            print(f"DEBUG: Serializer VALIDATION FAILED. Errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            return super().update(request, *args, **kwargs)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'])
+    def pending(self, request):
+        """Get all pending regularization requests"""
+        try:
+            pending_requests = AttendanceRegularizationRequest.objects.filter(
+                status='pending'
+            ).select_related('employee', 'attendance', 'reviewed_by')
+            
+            serializer = self.get_serializer(pending_requests, many=True)
+            return Response({
+                'count': pending_requests.count(),
+                'results': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Approve a regularization request"""
+        try:
+            regularization = self.get_object()
+            
+            if regularization.status != 'pending':
+                return Response(
+                    {'error': 'Only pending requests can be approved'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            regularization.status = 'approved'
+            regularization.reviewed_by = request.user.employee
+            regularization.reviewed_at = timezone.now()
+            regularization.reviewer_comments = request.data.get('comments', '')
+            regularization.save()
+            
+            # Update the attendance record if check-in/check-out times were requested
+            attendance = regularization.attendance
+            if regularization.requested_check_in:
+                attendance.check_in_time = regularization.requested_check_in
+            if regularization.requested_check_out:
+                attendance.check_out_time = regularization.requested_check_out
+            attendance.save()
+            
+            serializer = self.get_serializer(regularization)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Reject a regularization request"""
+        try:
+            regularization = self.get_object()
+            
+            if regularization.status != 'pending':
+                return Response(
+                    {'error': 'Only pending requests can be rejected'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            regularization.status = 'rejected'
+            regularization.reviewed_by = request.user.employee
+            regularization.reviewed_at = timezone.now()
+            regularization.reviewer_comments = request.data.get('comments', '')
+            regularization.save()
+            
+            serializer = self.get_serializer(regularization)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
