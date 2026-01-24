@@ -5,6 +5,17 @@ from datetime import date
 
 class LeaveType(models.Model):
     """Types of leaves available in the company"""
+    ACCRUAL_CHOICES = [
+        ('full_year', 'Full Year (at Start)'),
+        ('monthly', 'Monthly Accrual'),
+        ('quarterly', 'Quarterly Accrual'),
+    ]
+    
+    RESET_CHOICES = [
+        ('calendar', 'Calendar Year (Jan-Dec)'),
+        ('fiscal', 'Fiscal Year (Apr-Mar)'),
+    ]
+    
     company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='leave_types')
     name = models.CharField(max_length=50)  # Casual Leave, Sick Leave, etc.
     code = models.CharField(max_length=10, null=True, blank=True)  # Optional CL, SL, EL, etc.
@@ -12,6 +23,8 @@ class LeaveType(models.Model):
     
     # Allocation settings
     days_per_year = models.DecimalField(max_digits=5, decimal_places=2, default=12)
+    accrual_type = models.CharField(max_length=20, choices=ACCRUAL_CHOICES, default='full_year')
+    reset_cycle = models.CharField(max_length=20, choices=RESET_CHOICES, default='calendar')
     max_consecutive_days = models.PositiveIntegerField(default=3, help_text='Max days allowed in one request')
     
     # Rules
@@ -114,26 +127,54 @@ class LeaveRequest(models.Model):
         return f"{self.employee.employee_id} - {self.leave_type.code} ({self.start_date} to {self.end_date})"
     
     def calculate_days(self):
-        """Calculate number of leave days"""
+        """Calculate number of leave days excluding holidays and weekends"""
         from datetime import timedelta
+        from decimal import Decimal
+        from apps.attendance.models import Holiday, AttendancePolicy
         
-        if self.start_date == self.end_date:
-            # Single day leave
-            if self.start_day_type == 'full':
-                return 1.0
+        if self.start_date > self.end_date:
+            return Decimal('0')
+            
+        # Get company holidays in the date range
+        holidays = Holiday.objects.filter(
+            company=self.employee.company,
+            date__range=(self.start_date, self.end_date),
+            is_active=True,
+            holiday_type='public' # Usually only public holidays count against leave
+        ).values_list('date', flat=True)
+        
+        # Get attendance policy for weekends
+        policy = AttendancePolicy.objects.filter(
+            company=self.employee.company,
+            is_active=True
+        ).first()
+        
+        total_days = Decimal('0')
+        current_date = self.start_date
+        
+        while current_date <= self.end_date:
+            is_holiday = current_date in holidays
+            is_weekend = False
+            
+            if policy:
+                is_weekend = not policy.is_working_day(current_date)
             else:
-                return 0.5
-        
-        # Multi-day leave
-        delta = (self.end_date - self.start_date).days + 1
-        
-        # Adjust for half days
-        if self.start_day_type != 'full':
-            delta -= 0.5
-        if self.end_day_type != 'full':
-            delta -= 0.5
-        
-        return delta
+                # Fallback to Sat/Sun
+                is_weekend = current_date.weekday() >= 5
+                
+            if not is_holiday and not is_weekend:
+                # Normal work day
+                day_value = Decimal('1.0')
+                if current_date == self.start_date and self.start_day_type != 'full':
+                    day_value = Decimal('0.5')
+                elif current_date == self.end_date and self.end_day_type != 'full':
+                    day_value = Decimal('0.5')
+                
+                total_days += day_value
+            
+            current_date += timedelta(days=1)
+            
+        return total_days
     
     def save(self, *args, **kwargs):
         # Auto-calculate days

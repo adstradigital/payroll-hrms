@@ -986,6 +986,7 @@ def get_my_profile(request):
                 'department': {'id': str(employee.department.id), 'name': employee.department.name} if employee.department else None,
                 'designation': {'id': str(employee.designation.id), 'name': employee.designation.name} if employee.designation else None,
                 'status': employee.status, 'employment_type': employee.employment_type,
+                'is_admin': employee.is_admin,
                 'date_of_joining': str(employee.date_of_joining), 'age': employee.age, 'tenure_in_days': employee.tenure_in_days
             }
             return Response({'success': True, 'employee': data})
