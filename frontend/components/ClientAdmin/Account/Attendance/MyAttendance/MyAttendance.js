@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Filter, MoreVertical, Plus, ChevronDown, Clock, Calendar, AlertCircle, Loader, Coffee, LogIn, LogOut, History } from 'lucide-react';
+import { Filter, MoreVertical, Plus, ChevronDown, Clock, Calendar, AlertCircle, Loader, Coffee, LogIn, LogOut, History, CheckCircle2 } from 'lucide-react';
 import './MyAttendance.css';
 import { getMyProfile } from '@/api/api_clientadmin';
 
@@ -49,6 +49,66 @@ export default function MyAttendance() {
 
     const formatDate = (dateStr) => {
         return new Date(dateStr).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+
+    const handleClockIn = async () => {
+        if (!dashboardData?.employee?.id) {
+            setError('Employee information missing. Cannot clock in.');
+            return;
+        }
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/check-in/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ employee: dashboardData.employee.id })
+            });
+
+            if (response.ok) {
+                await fetchDashboard();
+            } else {
+                const data = await response.json();
+                setError(data.error || 'Failed to clock in');
+            }
+        } catch (err) {
+            setError('Error clocking in');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleClockOut = async () => {
+        if (!dashboardData?.employee?.id) {
+            setError('Employee information missing. Cannot clock out.');
+            return;
+        }
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/check-out/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ employee: dashboardData.employee.id })
+            });
+
+            if (response.ok) {
+                await fetchDashboard();
+            } else {
+                const data = await response.json();
+                setError(data.error || 'Failed to clock out');
+            }
+        } catch (err) {
+            setError('Error clocking out');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -119,6 +179,31 @@ export default function MyAttendance() {
                                     {dashboardData?.today?.status?.replace('_', ' ') || 'Not Marked'}
                                 </span>
                             </div>
+
+                            <div className="attendance-actions">
+                                {!dashboardData?.today?.check_in ? (
+                                    <button
+                                        className="btn-clock-in"
+                                        onClick={handleClockIn}
+                                        disabled={loading}
+                                    >
+                                        <LogIn size={18} /> Clock In
+                                    </button>
+                                ) : !dashboardData?.today?.check_out ? (
+                                    <button
+                                        className="btn-clock-out"
+                                        onClick={handleClockOut}
+                                        disabled={loading}
+                                    >
+                                        <LogOut size={18} /> Clock Out
+                                    </button>
+                                ) : (
+                                    <div className="attendance-complete">
+                                        <CheckCircle2 size={18} /> Shift Completed
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="today-timings">
                                 <div className="timing-block">
                                     <span className="label">Check In</span>

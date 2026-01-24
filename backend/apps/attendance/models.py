@@ -303,6 +303,7 @@ class Attendance(models.Model):
         default=0.0,
         help_text='Total working hours'
     )
+
     overtime_hours = models.DecimalField(
         max_digits=5, 
         decimal_places=2, 

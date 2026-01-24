@@ -37,6 +37,7 @@ attendance_overtime_pending = AttendanceViewSet.as_view({'get': 'overtime_pendin
 attendance_to_validate = AttendanceViewSet.as_view({'get': 'to_validate', 'post': 'to_validate'})
 attendance_analytics = AttendanceViewSet.as_view({'get': 'analytics'})
 attendance_department_overtime = AttendanceViewSet.as_view({'get': 'department_overtime'})
+attendance_my_dashboard = AttendanceViewSet.as_view({'get': 'get_my_dashboard'})
 
 
 # Holiday URLs
@@ -83,6 +84,7 @@ urlpatterns = [
     path('to-validate/', attendance_to_validate, name='attendance_to_validate'),
     path('analytics/', attendance_analytics, name='attendance_analytics'),
     path('department-overtime/', attendance_department_overtime, name='attendance_department_overtime'),
+    path('my_dashboard/', attendance_my_dashboard, name='attendance_my_dashboard'),
 
     # Holidays
     path('holidays/', holiday_list, name='holiday_list'),

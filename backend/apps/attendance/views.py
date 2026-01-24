@@ -2,7 +2,7 @@ from datetime import date
 from calendar import monthrange
 
 from django.db import transaction
-from django.db.models import Q, Sum, Count
+from django.db.models import Q, Sum, Count, Avg
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -31,7 +31,8 @@ from .serializers import (
     AttendanceBreakSerializer,
     HolidaySerializer,
     AttendanceRegularizationSerializer,
-    AttendanceSummarySerializer
+    AttendanceSummarySerializer,
+    AttendanceListSerializer
 )
 from apps.accounts.models import Employee
 
@@ -106,6 +107,82 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return AttendanceDetailSerializer
         return AttendanceSerializer
+
+    # ---------------- MY DASHBOARD (EMPLOYEE VIEW) ----------------
+    @action(detail=False, methods=['get'])
+    def get_my_dashboard(self, request):
+        try:
+            employee = getattr(request.user, 'employee_profile', None)
+            if not employee:
+                return Response({'error': 'Employee profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            today = date.today()
+            month = int(request.query_params.get('month', today.month))
+            year = int(request.query_params.get('year', today.year))
+            
+            # 1. Monthly Stats
+            attendances = Attendance.objects.filter(
+                employee=employee,
+                date__year=year,
+                date__month=month
+            )
+            
+            stats = {
+                'present': attendances.filter(status='present').count(),
+                'absent': attendances.filter(status='absent').count(),
+                'half_day': attendances.filter(status='half_day').count(),
+                'on_leave': attendances.filter(status='on_leave').count(),
+                'late': attendances.filter(is_late=True).count(),
+                'total_hours': attendances.aggregate(Sum('total_hours'))['total_hours__sum'] or 0
+            }
+            
+            # 2. Today's Status
+            today_att = Attendance.objects.filter(employee=employee, date=today).first()
+            today_status = {
+                'check_in': today_att.check_in_time if today_att else None,
+                'check_out': today_att.check_out_time if today_att else None,
+                'status': today_att.status if today_att else 'Not Marked',
+                'working_hours': today_att.total_hours if today_att else 0
+            }
+            
+            # 3. Recent Activity (Last 5 days)
+            recent_logs = Attendance.objects.filter(
+                employee=employee
+            ).order_by('-date')[:5]
+            
+            logs_serializer = AttendanceListSerializer(recent_logs, many=True)
+            
+            # 4. Averages (Current Month)
+            from django.db.models.functions import ExtractHour, ExtractMinute
+            
+            avg_check_in = attendances.exclude(check_in_time__isnull=True).annotate(
+                time_in_minutes=ExtractHour('check_in_time') * 60 + ExtractMinute('check_in_time')
+            ).aggregate(Avg('time_in_minutes'))['time_in_minutes__avg']
+            
+            # Convert minutes to HH:MM
+            avg_in_str = "09:00" # Default
+            if avg_check_in:
+                h = int(avg_check_in // 60)
+                m = int(avg_check_in % 60)
+                avg_in_str = f"{h:02d}:{m:02d}"
+
+            return Response({
+                'employee': {
+                    'id': str(employee.id),
+                    'name': employee.full_name,
+                    'code': employee.employee_id
+                },
+                'stats': stats,
+                'today': today_status,
+                'recent_logs': logs_serializer.data,
+                'averages': {'check_in': avg_in_str}
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ---------------- MY DASHBOARD (EMPLOYEE VIEW) ----------------
+
 
     def create(self, request, *args, **kwargs):
         print(f"DEBUG: AttendanceViewSet.create received data: {request.data}")
@@ -770,7 +847,7 @@ def generate_monthly_summary(request):
     @action(detail=False, methods=['get'])
     def my_dashboard(self, request):
         try:
-            employee = getattr(request.user, 'employee', None)
+            employee = getattr(request.user, 'employee_profile', None)
             if not employee:
                 return Response({'error': 'Employee profile not found'}, status=status.HTTP_404_NOT_FOUND)
             
@@ -821,6 +898,11 @@ def generate_monthly_summary(request):
                 avg_in_str = f"{h:02d}:{m:02d}"
 
             return Response({
+                'employee': {
+                    'id': str(employee.id),
+                    'name': employee.full_name,
+                    'code': employee.employee_id
+                },
                 'stats': stats,
                 'today': today_status,
                 'recent_logs': logs_serializer.data,
