@@ -444,7 +444,6 @@ export default function AdvancedDocumentRequest() {
                                 <div className="interaction-tabs">
                                     <button onClick={() => setModalTab('checklist')} className={`interaction-tab ${modalTab === 'checklist' ? 'active' : ''}`}>Checklist</button>
                                     <button onClick={() => setModalTab('history')} className={`interaction-tab ${modalTab === 'history' ? 'active' : ''}`}>History</button>
-                                    <button onClick={() => setModalTab('comments')} className={`interaction-tab ${modalTab === 'comments' ? 'active' : ''}`}>Chat</button>
                                 </div>
                                 <div className="tab-content">
                                     {modalTab === 'checklist' && (
@@ -477,18 +476,6 @@ export default function AdvancedDocumentRequest() {
                                                     ))}
                                                 </div>
                                             ) : <div style={{ color: 'var(--text-muted)' }}>No history events available.</div>}
-                                        </div>
-                                    )}
-                                    {modalTab === 'comments' && (
-                                        <div className="fade-in">
-                                            {selectedRequest.comments.length > 0 ? selectedRequest.comments.map((c, i) => (
-                                                <div key={i} className="comment-box">
-                                                    <div className="comment-header"><span style={{ fontWeight: 'bold' }}>{c.user}</span><span>{new Date(c.date).toLocaleDateString()}</span></div>
-                                                    <p className="comment-text">{c.text}</p>
-                                                </div>
-                                            )) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No comments yet.</div>}
-                                            {/* Chat feature implementation is placeholder unless API supports it */}
-                                            <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2rem' }}>Chat/Comment functionality requires backend integration.</div>
                                         </div>
                                     )}
                                 </div>
