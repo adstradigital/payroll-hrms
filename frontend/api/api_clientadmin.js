@@ -42,7 +42,7 @@ export const deleteDepartment = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOIN
 
 export const getAllDesignations = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DESIGNATIONS);
 export const createDesignation = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DESIGNATIONS, data);
-export const updateDesignation = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id), data);
+export const updateDesignation = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id), data);
 export const deleteDesignation = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id));
 export const updateDesignationPermissions = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.DESIGNATION_PERMISSIONS(id), data);
 

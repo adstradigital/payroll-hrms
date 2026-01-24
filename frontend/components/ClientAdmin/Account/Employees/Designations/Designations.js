@@ -214,8 +214,8 @@ const DesignationList = ({ designations, loading, setDesignations, refreshData }
     const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
     const filteredDesignations = designations.filter(d =>
-        d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.code.toLowerCase().includes(searchTerm.toLowerCase())
+        (d.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (d.code || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleSuccess = (data, isEdit) => {

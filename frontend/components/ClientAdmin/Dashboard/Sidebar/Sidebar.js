@@ -19,24 +19,22 @@ const menuItems = [
         label: 'Dashboard',
         icon: LayoutDashboard,
         path: '/dashboard',
-        permission: 'dashboard.view', // Everyone can see dashboard
+        permission: 'dashboard.view',
     },
     {
         id: 'profile',
         label: 'My Profile',
         icon: User,
         path: '/dashboard/profile',
-        // No permission needed - everyone can see their own profile
     },
     {
         id: 'employees',
         label: 'Employees',
         icon: Users,
         path: '/dashboard/employees',
-        permission: 'employees.view', // Need employee view permission
-        adminOnly: false, // Not admin-only, but needs permission
+        permission: ['employees.view', 'employee.view_employee', 'employee.view_employees'],
         children: [
-            { id: 'all-employees', label: 'All Employees', path: '/dashboard/employees', permission: 'employees.view' },
+            { id: 'all-employees', label: 'All Employees', path: '/dashboard/employees', permission: ['employees.view', 'employee.view_employee', 'employee.view_employees'] },
             { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments', permission: 'employees.view' },
             { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations', permission: 'employees.view' },
             { id: 'roles-permissions', label: 'Roles & Permissions', path: '/dashboard/employees/roles', adminOnly: true },
@@ -50,7 +48,7 @@ const menuItems = [
         label: 'Attendance',
         icon: CheckCircle2,
         path: '/dashboard/attendance',
-        permission: 'attendance.view',
+        permission: ['attendance.view', 'attendance.view_attendance'],
         children: [
             { id: 'att-dashboard', label: 'Dashboard', path: '/dashboard/attendance' },
             { id: 'att-register', label: 'Attendance Register', path: '/dashboard/attendance/register', permission: 'attendance.manage' },
@@ -69,10 +67,10 @@ const menuItems = [
         label: 'Leave Management',
         icon: Calendar,
         path: '/dashboard/leave',
-        permission: 'leave.view',
+        permission: ['leave.view', 'leave.view_leave'],
         children: [
             { id: 'leave-dashboard', label: 'Dashboard', path: '/dashboard/leave' },
-            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave/requests', permission: 'leave.view' },
+            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave/requests', permission: ['leave.view', 'leave.view_leave'] },
             { id: 'leave-approvals', label: 'Approvals', path: '/dashboard/leave/approvals', permission: 'leave.view' },
             { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types', adminOnly: true },
             { id: 'leave-holidays', label: 'Holiday Calendar', path: '/dashboard/leave/holidays' },
@@ -85,7 +83,7 @@ const menuItems = [
         label: 'Payroll',
         icon: Wallet,
         path: '/dashboard/payroll',
-        permission: 'payroll.view',
+        permission: ['payroll.view', 'payroll.view_payslip', 'payroll.view_payslips'],
         children: [
             { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
             { id: 'payslips', label: 'Payslips', path: '/dashboard/payroll/payslips' },
@@ -97,26 +95,23 @@ const menuItems = [
         label: 'Reports',
         icon: FileText,
         path: '/dashboard/reports',
-        permission: 'reports.view',
+        permission: ['reports.view', 'reports.view_reports'],
     },
-
     {
         id: 'settings',
         label: 'Settings',
         icon: Settings,
         path: '/dashboard/settings',
-        adminOnly: true, // Only admins can access settings
+        adminOnly: true,
     },
 ];
 
 export default function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
-    const { hasHRMS, hasPayroll, hasPermission, isAdmin } = usePermissions();
+    const { hasHRMS, hasPayroll, hasPermission, hasAnyPermission, isAdmin } = usePermissions();
     const [expandedItems, setExpandedItems] = useState(() => {
-        // Initial state: opened items by default + items that are parents of the current path
         const defaultExpanded = [];
-
         menuItems.forEach(item => {
             if (item.children && !defaultExpanded.includes(item.id)) {
                 if (item.children.some(child => pathname.startsWith(child.path))) {
@@ -127,33 +122,26 @@ export default function Sidebar() {
         return defaultExpanded;
     });
 
-    // Persistent scroll preservation
     useEffect(() => {
         const sidebarNav = document.querySelector('.sidebar__nav');
         if (sidebarNav) {
-            // Restore scroll position
             const savedScroll = sessionStorage.getItem('sidebar-scroll');
             if (savedScroll) {
-                // Use requestAnimationFrame to ensure DOM is ready/stable
                 requestAnimationFrame(() => {
                     sidebarNav.scrollTop = parseInt(savedScroll, 10);
                 });
             }
-
             const handleScroll = () => {
                 sessionStorage.setItem('sidebar-scroll', sidebarNav.scrollTop);
             };
-
             sidebarNav.addEventListener('scroll', handleScroll);
             return () => sidebarNav.removeEventListener('scroll', handleScroll);
         }
-    }, [pathname, expandedItems]); // Track expandedItems too to handle jumps during state changes
+    }, [pathname, expandedItems]);
 
-    // Auto-expand parent if a child is active (useful for direct navigation or URL changes)
     useEffect(() => {
         const itemsToExpand = [...expandedItems];
         let changed = false;
-
         menuItems.forEach(item => {
             if (item.children && !itemsToExpand.includes(item.id)) {
                 if (item.children.some(child => pathname.startsWith(child.path))) {
@@ -162,19 +150,13 @@ export default function Sidebar() {
                 }
             }
         });
-
-        if (changed) {
-            setExpandedItems(itemsToExpand);
-        }
+        if (changed) setExpandedItems(itemsToExpand);
     }, [pathname]);
 
     const toggleExpand = (itemId) => {
         setExpandedItems(prev => {
             const isExpanded = prev.includes(itemId);
-            const next = isExpanded
-                ? prev.filter(id => id !== itemId)
-                : [...prev, itemId];
-            return next;
+            return isExpanded ? prev.filter(id => id !== itemId) : [...prev, itemId];
         });
     };
 
@@ -187,28 +169,40 @@ export default function Sidebar() {
         return false;
     };
 
-    const filteredMenuItems = menuItems.filter(item => {
+    const checkPermission = (item) => {
         // 1. Check Subscription Plan
         if (item.module === 'HRMS' && !hasHRMS) return false;
         if (item.module === 'Payroll' && !hasPayroll) return false;
 
-        // 2. Check Admin-Only items
+        // 2. Check Admin-Only
         if (item.adminOnly && !isAdmin) return false;
 
         // 3. Check Granular Permission
-        if (item.permission && !hasPermission(item.permission)) {
-            return false;
+        if (item.permission) {
+            if (Array.isArray(item.permission)) {
+                if (!hasAnyPermission(item.permission)) return false;
+            } else {
+                if (!hasPermission(item.permission)) return false;
+            }
         }
-
         return true;
-    });
+    };
+
+    const filteredMenuItems = menuItems.filter(checkPermission);
 
     // Also filter children based on permissions
     const filterChildren = (children) => {
         if (!children) return [];
         return children.filter(child => {
             if (child.adminOnly && !isAdmin) return false;
-            if (child.permission && !hasPermission(child.permission)) return false;
+
+            if (child.permission) {
+                if (Array.isArray(child.permission)) {
+                    if (!hasAnyPermission(child.permission)) return false;
+                } else {
+                    if (!hasPermission(child.permission)) return false;
+                }
+            }
             return true;
         });
     };

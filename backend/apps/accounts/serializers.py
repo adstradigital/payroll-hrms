@@ -238,10 +238,11 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 class PermissionSerializer(serializers.ModelSerializer):
     module_name = serializers.CharField(source='module.name', read_only=True)
+    module_code = serializers.CharField(source='module.code', read_only=True)
     
     class Meta:
         model = Permission
-        fields = ['id', 'module', 'module_name', 'name', 'code', 'action', 'description']
+        fields = ['id', 'module', 'module_name', 'module_code', 'name', 'code', 'action', 'description']
 
 
 class DataScopeSerializer(serializers.ModelSerializer):
@@ -265,7 +266,7 @@ class RoleSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Role
-        fields = ['id', 'name', 'code', 'role_type', 'description', 'default_scope', 'permissions_data']
+        fields = ['id', 'name', 'code', 'role_type', 'description', 'default_scope', 'permissions_data', 'is_system']
         read_only_fields = ['id']
 
 
@@ -309,6 +310,12 @@ class DesignationDetailSerializer(serializers.ModelSerializer):
     created_by = UserSerializer(read_only=True)
     updated_by = UserSerializer(read_only=True)
     roles_data = RoleSerializer(source='roles', many=True, read_only=True)
+    roles = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        many=True,
+        write_only=True,
+        required=False
+    )
     
     class Meta:
         model = Designation
@@ -322,9 +329,6 @@ class DesignationDetailSerializer(serializers.ModelSerializer):
             'id', 'company', 'company_name', 'employee_count', 'created_at', 'updated_at',
             'created_by', 'updated_by'
         ]
-        extra_kwargs = {
-            'roles': {'write_only': True, 'required': False}
-        }
     
     def get_employee_count(self, obj):
         return obj.employees.filter(status='active').count()

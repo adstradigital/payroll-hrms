@@ -7,10 +7,8 @@ from rest_framework import status as http_status
 import logging
 import traceback
 
-# Set up logger for this module
 logger = logging.getLogger(__name__)
 
-# Import models here to avoid circular imports at module level
 def _get_models():
     from .models import (
         UserRole, UserPermission, RolePermission, Permission,
@@ -27,65 +25,87 @@ def _get_models():
         'Organization': Organization
     }
 
+# ==================== BASIC EMPLOYEE RIGHTS ====================
+
+EMPLOYEE_BASIC_RIGHTS = {
+    # Profile
+    'view_own_profile': True,
+    'edit_own_basic_profile': True,  # Name, photo, contact only
+    
+    # Attendance
+    'view_own_attendance': True,
+    'clock_in': True,
+    'clock_out': True,
+    'view_attendance_summary': True,
+    
+    # Leave
+    'view_own_leave': True,
+    'request_leave': True,
+    'cancel_own_leave': True,
+    
+    # Payroll
+    'view_own_payslip': True,
+    'download_own_payslip': True,
+    
+    # Dashboard
+    'view_dashboard': True,
+    'view_announcements': True,
+    
+    # Documents
+    'view_own_documents': True,
+    'upload_own_documents': True,
+}
+
+def has_basic_right(user, action):
+    """
+    Check if user has basic employee right (auto-granted to all active employees).
+    These rights do NOT need permission checks.
+    """
+    if action not in EMPLOYEE_BASIC_RIGHTS:
+        return False
+    
+    try:
+        models = _get_models()
+        Employee = models['Employee']
+        # Check for any active employee record for this user
+        employee = Employee.objects.filter(user=user, status='active').first()
+        if employee:
+            logger.debug(f"✓ Basic right '{action}' granted to {user.email}")
+            return True
+        return False
+    except Exception as e:
+        logger.debug(f"✗ Basic right '{action}' check failed: {str(e)}")
+        return False
 
 # ==================== QUICK HELPER FUNCTIONS ====================
 
 def is_org_creator(user):
-    """Check if user is the organization creator (super admin)"""
+    """Check if user is the organization creator"""
     try:
         if not user or not user.is_authenticated:
-            logger.debug(f"[is_org_creator] User not authenticated: {user}")
             return False
-        
         models = _get_models()
         Organization = models['Organization']
-        
-        result = Organization.objects.filter(created_by=user).exists()
-        logger.info(f"[is_org_creator] User: {user.username} (ID: {user.id}) -> {result}")
-        
-        # Also log the orgs this user created
-        if result:
-            orgs = Organization.objects.filter(created_by=user).values_list('name', 'id')
-            logger.info(f"[is_org_creator] User created orgs: {list(orgs)}")
-        
-        return result
+        return Organization.objects.filter(created_by=user).exists()
     except Exception as e:
         logger.error(f"[is_org_creator] ERROR: {str(e)}")
-        logger.error(traceback.format_exc())
         return False
-
 
 def is_client_admin(user):
     """
     Check if user is a Client Administrator.
-    Returns True if:
-    - User is a Django superuser, OR
-    - User is the organization creator, OR
-    - User's employee record has is_admin=True
+    Admins have ALL permissions automatically.
     """
     try:
-        logger.info(f"[is_client_admin] ===== Checking admin status for user =====")
-        
-        if not user:
-            logger.warning(f"[is_client_admin] User is None")
+        if not user or not user.is_authenticated:
             return False
-            
-        if not user.is_authenticated:
-            logger.warning(f"[is_client_admin] User not authenticated")
-            return False
-        
-        logger.info(f"[is_client_admin] User: {user.username} (ID: {user.id})")
-        logger.info(f"[is_client_admin] is_superuser: {user.is_superuser}")
-        logger.info(f"[is_client_admin] is_staff: {user.is_staff}")
         
         # Superusers are always admins
         if user.is_superuser:
-            logger.info(f"[is_client_admin] ✓ GRANTED: User is superuser")
             return True
         
         # Check if org creator
         if is_org_creator(user):
-            logger.info(f"[is_client_admin] ✓ GRANTED: User is org creator")
             return True
         
         # Check employee is_admin flag
@@ -93,195 +113,118 @@ def is_client_admin(user):
         Employee = models['Employee']
         
         try:
-            employee = Employee.objects.select_related('company', 'designation').get(user=user)
-            logger.info(f"[is_client_admin] Found employee: {employee.full_name} (ID: {employee.id})")
-            logger.info(f"[is_client_admin] employee.is_admin: {employee.is_admin}")
-            logger.info(f"[is_client_admin] employee.company: {employee.company.name if employee.company else 'None'}")
-            logger.info(f"[is_client_admin] employee.designation: {employee.designation.name if employee.designation else 'None'}")
-            
-            if employee.is_admin:
-                logger.info(f"[is_client_admin] ✓ GRANTED: Employee has is_admin=True")
-                return True
+            employee = Employee.objects.get(user=user)
+            return employee.is_admin
         except Employee.DoesNotExist:
-            logger.warning(f"[is_client_admin] No employee record found for user {user.username}")
-        except Exception as e:
-            logger.error(f"[is_client_admin] Error fetching employee: {str(e)}")
-            logger.error(traceback.format_exc())
-        
-        logger.info(f"[is_client_admin] ✗ DENIED: User is not an admin")
-        return False
-        
+            return False
+            
     except Exception as e:
-        logger.error(f"[is_client_admin] CRITICAL ERROR: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"[is_client_admin] ERROR: {str(e)}")
         return False
-
 
 def require_admin():
-    """
-    Decorator for DRF views to require client admin access.
-    """
+    """Decorator for DRF views to require admin access"""
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
-            logger.info(f"[require_admin] Checking admin for: {request.user} on {request.method} {request.path}")
-            
             if not is_client_admin(request.user):
-                logger.warning(f"[require_admin] ✗ ACCESS DENIED for user {request.user}")
                 return Response(
                     {'error': 'Admin access required'},
                     status=http_status.HTTP_403_FORBIDDEN
                 )
-            
-            logger.info(f"[require_admin] ✓ ACCESS GRANTED for user {request.user}")
             return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
 
+# ==================== ENHANCED PERMISSION CHECKER ====================
 
 class PermissionChecker:
-    """Central permission checking system"""
+    """Enhanced permission checking with basic rights support"""
     
     def __init__(self, user, organization=None, log=True):
         self.user = user
         self.organization = organization
         self.log = log
         self._cache = {}
-        self._models = _get_models()  # Lazy load models
+        self._models = _get_models()
         
     def has_permission(self, permission_code, scope_required='self', obj=None, **kwargs):
         """
-        Check if user has a specific permission
+        Check if user has permission.
         
-        Args:
-            permission_code: str - Permission code (e.g., 'leave.approve_leave')
-            scope_required: str - Required scope level
-            obj: object - Object being accessed (for scope checking)
-            **kwargs: Additional context
-            
-        Returns:
-            bool - True if user has permission
+        Priority Order:
+        1. Basic Employee Rights (auto-granted)
+        2. Admin Rights (all permissions)
+        3. Role-based Permissions
         """
-        logger.debug(f"[PermissionChecker] Checking '{permission_code}' with scope '{scope_required}'")
+        logger.debug(f"[PermissionChecker] Checking '{permission_code}' for {self.user.email}")
         
+        # 1. Check if it's a basic employee right
+        if has_basic_right(self.user, permission_code):
+            logger.debug(f"✓ Basic right granted")
+            return True
+        
+        # 2. Check if user is admin (admins have ALL permissions)
+        if is_client_admin(self.user):
+            logger.debug(f"✓ Admin access - all permissions granted")
+            return True
+        
+        # 3. Check role-based permissions
         cache_key = f"{permission_code}:{scope_required}"
         if cache_key in self._cache:
             return self._cache[cache_key]
         
-        result = self._check_permission(permission_code, scope_required, obj, **kwargs)
+        result = self._check_role_permissions(permission_code, scope_required, obj)
         self._cache[cache_key] = result
         
-        # Log permission check
         if self.log:
             self._log_permission_check(permission_code, result, scope_required)
         
-        logger.debug(f"[PermissionChecker] Result for '{permission_code}': {result}")
+        logger.debug(f"[PermissionChecker] Result: {result}")
         return result
     
-    def _check_permission(self, permission_code, scope_required, obj, **kwargs):
-        """Internal permission checking logic"""
+    def _check_role_permissions(self, permission_code, scope_required, obj):
+        """Check permission through user roles"""
         Permission = self._models['Permission']
+        RolePermission = self._models['RolePermission']
+        Employee = self._models['Employee']
+        
         try:
             permission = Permission.objects.get(code=permission_code, is_active=True)
         except Permission.DoesNotExist:
+            logger.warning(f"Permission '{permission_code}' not found")
             return False
         
-        # 1. Check direct permissions (GRANT/REVOKE)
-        direct_permission = self._check_direct_permission(permission, scope_required)
-        if direct_permission is not None:
-            return direct_permission
-        
-        # 2. Check role-based permissions
-        role_permission = self._check_role_permission(permission, scope_required, obj)
-        
-        return role_permission
-    
-    def _check_direct_permission(self, permission, scope_required):
-        """Check UserPermission for direct grants/revokes"""
-        now = timezone.now()
-        
-        # Check for active direct permissions
-        direct_perms = UserPermission.objects.filter(
-            user=self.user,
-            permission=permission,
-            is_active=True,
-            organization=self.organization
-        ).filter(
-            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
-            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
-        )
-        
-        # Check for explicit revoke
-        if direct_perms.filter(grant_type='revoke').exists():
-            return False
-        
-        # Check for explicit grant with sufficient scope
-        granted = direct_perms.filter(grant_type='grant')
-        if granted.exists():
-            for perm in granted:
-                if self._has_sufficient_scope(perm.scope.code, scope_required):
-                    return True
-        
-        return None  # No direct permission found
-    
-    def _check_role_permission(self, permission, scope_required, obj):
-        """Check permission through user roles (direct and designation-based)"""
-        now = timezone.now()
-        
-        # 1. Get active direct user roles
-        direct_roles = UserRole.objects.filter(
-            user=self.user,
-            is_active=True,
-            organization=self.organization
-        ).filter(
-            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
-            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
-        ).select_related('role', 'scope_override')
-        
-        # 2. Get roles from user's designation
-        designation_roles = []
+        # Get user's employee record
         try:
             employee = Employee.objects.select_related('designation').get(user=self.user)
-            if employee.designation:
-                designation_roles = employee.designation.roles.filter(is_active=True)
         except Employee.DoesNotExist:
-            pass
-
-        # 3. Check direct roles first (they might have scope overrides)
-        for user_role in direct_roles:
-            role_perm = RolePermission.objects.filter(
-                role=user_role.role,
-                permission=permission
-            ).select_related('scope').first()
-            
-            if role_perm:
-                effective_scope = (
-                    user_role.scope_override.code if user_role.scope_override
-                    else role_perm.scope.code
-                )
-                if self._has_sufficient_scope(effective_scope, scope_required):
-                    if obj and not self._check_object_scope(obj, effective_scope, user_role):
-                        continue
-                    return True
-
-        # 4. Check designation-based roles
-        for role in designation_roles:
-            role_perm = RolePermission.objects.filter(
-                role=role,
-                permission=permission
-            ).select_related('scope').first()
-            
-            if role_perm:
-                effective_scope = role_perm.scope.code
-                if self._has_sufficient_scope(effective_scope, scope_required):
-                    if obj and not self._check_object_scope(obj, effective_scope, None):
-                        continue
-                    return True
+            logger.warning(f"No employee record for {self.user.email}")
+            return False
         
+        # Check designation-based permissions
+        if employee.designation:
+            # Get roles mapped to designation
+            roles = employee.designation.roles.filter(is_active=True)
+            
+            for role in roles:
+                role_perm = RolePermission.objects.filter(
+                    role=role,
+                    permission=permission
+                ).select_related('scope').first()
+                
+                if role_perm:
+                    if self._has_sufficient_scope(role_perm.scope.code, scope_required):
+                        if obj and not self._check_object_scope(obj, role_perm.scope.code, employee):
+                            continue
+                        logger.debug(f"✓ Permission granted via role: {role.name}")
+                        return True
+        
+        logger.debug(f"✗ Permission denied - no matching role")
         return False
     
     def _has_sufficient_scope(self, granted_scope, required_scope):
-        """Check if granted scope is sufficient for required scope"""
+        """Check if granted scope meets required scope"""
         scope_hierarchy = {
             'self': 1,
             'team': 2,
@@ -297,54 +240,42 @@ class PermissionChecker:
         
         return granted_level >= required_level
     
-    def _check_object_scope(self, obj, scope, user_role):
+    def _check_object_scope(self, obj, scope, employee):
         """Check if user can access object based on scope"""
-        try:
-            employee = Employee.objects.select_related(
-                'company', 'department', 'reporting_manager'
-            ).get(user=self.user)
-        except Employee.DoesNotExist:
-            return False
-        
         if scope == 'self':
-            # Can only access own data
             return getattr(obj, 'user', None) == self.user or obj == employee
         
         elif scope == 'team':
-            # Can access subordinates' data
             if hasattr(obj, 'reporting_manager'):
                 return obj.reporting_manager == employee
             return False
         
         elif scope == 'department':
-            # Can access department data
             if hasattr(obj, 'department'):
                 return obj.department == employee.department
             return False
         
         elif scope == 'company':
-            # Can access company data
             if hasattr(obj, 'company'):
                 return obj.company == employee.company
             return False
         
         elif scope == 'organization':
-            # Can access organization data
             if hasattr(obj, 'company'):
                 root_org = employee.company.get_root_parent()
                 obj_org = obj.company.get_root_parent()
                 return obj_org == root_org
             return False
         
-        elif scope in ['branch', 'global']:
-            # Branch and global always allowed if permission exists
-            return True
-        
-        return False
+        # branch and global always allowed
+        return True
     
     def _log_permission_check(self, permission_code, result, scope):
         """Log permission check for audit"""
         try:
+            PermissionAuditLog = self._models['PermissionAuditLog']
+            Permission = self._models['Permission']
+            
             permission = Permission.objects.get(code=permission_code)
             PermissionAuditLog.objects.create(
                 user=self.user,
@@ -354,209 +285,95 @@ class PermissionChecker:
                 scope_used=scope
             )
         except:
-            pass  # Don't fail on logging errors
+            pass
     
     def get_user_permissions(self):
-        """Get all permissions for user (direct, role-based, and designation-based)"""
-        permissions_dict = {}  # Use dict to avoid duplicates
+        """Get all permissions for user"""
+        permissions = []
         
-        # 1. Get from active direct roles
-        now = timezone.now()
-        user_roles = UserRole.objects.filter(
-            user=self.user,
-            is_active=True,
-            organization=self.organization
-        ).filter(
-            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
-            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
-        ).select_related('role', 'scope_override')
+        # Always include basic rights
+        for right in EMPLOYEE_BASIC_RIGHTS.keys():
+            permissions.append({
+                'permission': right,
+                'name': right.replace('_', ' ').title(),
+                'module': 'Employee Self-Service',
+                'scope': 'self',
+                'source': 'Basic Employee Right'
+            })
         
-        for user_role in user_roles:
-            role_perms = RolePermission.objects.filter(
-                role=user_role.role
-            ).select_related('permission', 'permission__module', 'scope')
+        # If admin, add all permissions
+        if is_client_admin(self.user):
+            Permission = self._models['Permission']
+            all_perms = Permission.objects.filter(is_active=True).select_related('module')
             
-            for rp in role_perms:
-                scope = user_role.scope_override.code if user_role.scope_override else rp.scope.code
-                perm_code = rp.permission.code
-                
-                # Keep highest scope if permission exists
-                if perm_code not in permissions_dict or self._has_sufficient_scope(scope, permissions_dict[perm_code]['scope']):
-                    permissions_dict[perm_code] = {
-                        'permission': perm_code,
-                        'name': rp.permission.name,
-                        'module': rp.permission.module.name,
-                        'scope': scope,
-                        'source': f"Role: {user_role.role.name}"
-                    }
+            for perm in all_perms:
+                permissions.append({
+                    'permission': perm.code,
+                    'name': perm.name,
+                    'module': perm.module.name,
+                    'module_code': perm.module.code,
+                    'scope': 'organization',
+                    'source': 'Admin Access'
+                })
+            
+            return permissions
         
-        # 2. Get from designation-based roles
+        # Add role-based permissions
         try:
+            Employee = self._models['Employee']
+            RolePermission = self._models['RolePermission']
+            
             employee = Employee.objects.select_related('designation').get(user=self.user)
+            
             if employee.designation:
-                designation_roles = employee.designation.roles.filter(is_active=True)
-                for role in designation_roles:
+                roles = employee.designation.roles.filter(is_active=True)
+                
+                for role in roles:
                     role_perms = RolePermission.objects.filter(
                         role=role
                     ).select_related('permission', 'permission__module', 'scope')
                     
                     for rp in role_perms:
-                        perm_code = rp.permission.code
-                        scope = rp.scope.code
-                        
-                        if perm_code not in permissions_dict or self._has_sufficient_scope(scope, permissions_dict[perm_code]['scope']):
-                            permissions_dict[perm_code] = {
-                                'permission': perm_code,
-                                'name': rp.permission.name,
-                                'module': rp.permission.module.name,
-                                'scope': scope,
-                                'source': f"Designation: {employee.designation.name}"
-                            }
-        except Employee.DoesNotExist:
-            pass
-        
-        # 3. Get direct permissions
-        direct_perms = UserPermission.objects.filter(
-            user=self.user,
-            is_active=True,
-            grant_type='grant',
-            organization=self.organization
-        ).filter(
-            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
-            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
-        ).select_related('permission', 'permission__module', 'scope')
-        
-        for dp in direct_perms:
-            perm_code = dp.permission.code
-            scope = dp.scope.code
-            
-            if perm_code not in permissions_dict or self._has_sufficient_scope(scope, permissions_dict[perm_code]['scope']):
-                permissions_dict[perm_code] = {
-                    'permission': perm_code,
-                    'name': dp.permission.name,
-                    'module': dp.permission.module.name,
-                    'scope': scope,
-                    'source': 'Direct Grant'
-                }
-        
-        # 4. Handle revokes (removing from the set)
-        revoked_perms = UserPermission.objects.filter(
-            user=self.user,
-            is_active=True,
-            grant_type='revoke',
-            organization=self.organization
-        ).values_list('permission__code', flat=True)
-        
-        for code in revoked_perms:
-            if code in permissions_dict:
-                del permissions_dict[code]
-        
-        return list(permissions_dict.values())
-
-    def get_user_roles(self):
-        """Get all roles for user (direct and designation-based)"""
-        roles_info = []
-        
-        # Direct roles
-        now = timezone.now()
-        direct_roles = UserRole.objects.filter(
-            user=self.user,
-            is_active=True,
-            organization=self.organization
-        ).filter(
-            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now),
-            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=now)
-        ).select_related('role', 'scope_override')
-        
-        for ur in direct_roles:
-            roles_info.append({
-                'id': ur.role.id,
-                'name': ur.role.name,
-                'code': ur.role.code,
-                'type': ur.role.role_type,
-                'source': 'direct',
-                'scope_override': ur.scope_override.code if ur.scope_override else None
-            })
-            
-        # Designation roles
-        try:
-            employee = Employee.objects.select_related('designation').get(user=self.user)
-            if employee.designation:
-                designation_roles = employee.designation.roles.filter(is_active=True)
-                for role in designation_roles:
-                    # Avoid duplicates if already directly assigned
-                    if not any(r['id'] == role.id for r in roles_info):
-                        roles_info.append({
-                            'id': role.id,
-                            'name': role.name,
-                            'code': role.code,
-                            'type': role.role_type,
-                            'source': 'designation',
-                            'designation': employee.designation.name
+                        permissions.append({
+                            'permission': rp.permission.code,
+                            'name': rp.permission.name,
+                            'module': rp.permission.module.name,
+                            'module_code': rp.permission.module.code,
+                            'scope': rp.scope.code,
+                            'source': f"Role: {role.name}"
                         })
         except Employee.DoesNotExist:
             pass
-            
-        return roles_info
-
+        
+        # Add basic rights with default module code
+        for i, p in enumerate(permissions):
+            if p['source'] == 'Basic Employee Right':
+                p['module_code'] = 'core'
+        
+        return permissions
 
 # ==================== DECORATORS ====================
 
-def require_permission(permission_code, scope='self', raise_exception=True):
+def require_permission(permission_code, scope='self'):
     """
-    Decorator to check permission before view execution
-    
-    Usage:
-        @require_permission('leave.approve_leave', scope='department')
-        def approve_leave(request, leave_id):
-            ...
+    Decorator to check permission.
+    Automatically allows basic employee rights and admin access.
     """
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
-            # Get organization from request or employee
-            organization = getattr(request, 'organization', None)
-            if not organization:
-                try:
-                    employee = Employee.objects.get(user=request.user)
-                    organization = employee.company.get_root_parent()
-                except Employee.DoesNotExist:
-                    if raise_exception:
-                        raise PermissionDenied("Employee profile not found")
-                    return None
+            # Check basic rights first
+            if has_basic_right(request.user, permission_code):
+                return view_func(request, *args, **kwargs)
             
-            # Check permission
-            checker = PermissionChecker(request.user, organization)
+            # Check admin access
+            if is_client_admin(request.user):
+                return view_func(request, *args, **kwargs)
             
-            # Get object if provided in kwargs
-            obj = kwargs.get('obj', None)
-            
-            if not checker.has_permission(permission_code, scope, obj):
-                if raise_exception:
-                    raise PermissionDenied(f"Permission denied: {permission_code}")
-                return None
-            
-            return view_func(request, *args, **kwargs)
-        return wrapper
-    return decorator
-
-
-def permission_required(permission_codes, scope='self', require_all=True):
-    """
-    Check multiple permissions
-    
-    Usage:
-        @permission_required(['leave.view_leave', 'leave.approve_leave'], scope='department')
-        def view_function(request):
-            ...
-    """
-    if isinstance(permission_codes, str):
-        permission_codes = [permission_codes]
-    
-    def decorator(view_func):
-        @wraps(view_func)
-        def wrapper(request, *args, **kwargs):
+            # Check role-based permissions
             try:
+                models = _get_models()
+                Employee = models['Employee']
                 employee = Employee.objects.get(user=request.user)
                 organization = employee.company.get_root_parent()
             except Employee.DoesNotExist:
@@ -565,10 +382,55 @@ def permission_required(permission_codes, scope='self', require_all=True):
             checker = PermissionChecker(request.user, organization)
             obj = kwargs.get('obj', None)
             
-            results = [
-                checker.has_permission(perm, scope, obj)
-                for perm in permission_codes
-            ]
+            if not checker.has_permission(permission_code, scope, obj):
+                raise PermissionDenied(f"Permission denied: {permission_code}")
+            
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+def check_permission(user, permission_code, organization=None, scope='self', obj=None):
+    """Standalone permission check"""
+    # Check basic rights
+    if has_basic_right(user, permission_code):
+        return True
+    
+    # Check admin
+    if is_client_admin(user):
+        return True
+    
+    # Check role-based
+    checker = PermissionChecker(user, organization, log=False)
+    return checker.has_permission(permission_code, scope, obj)
+
+# ==================== LEGACY HELPERS (PRESERVED) ====================
+
+def permission_required(permission_codes, scope='self', require_all=True):
+    """
+    Check multiple permissions (Legacy wrapper support)
+    """
+    if isinstance(permission_codes, str):
+        permission_codes = [permission_codes]
+    
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            # For multiple permissions, we just verify if the user has specific ones
+            # Basic rights check
+            results = []
+            for code in permission_codes:
+                if has_basic_right(request.user, code) or is_client_admin(request.user):
+                    results.append(True)
+                else:
+                    try:
+                        models = _get_models()
+                        Employee = models['Employee']
+                        employee = Employee.objects.get(user=request.user)
+                        organization = employee.company.get_root_parent()
+                        checker = PermissionChecker(request.user, organization)
+                        results.append(checker.has_permission(code, scope))
+                    except:
+                        results.append(False)
             
             if require_all:
                 has_access = all(results)
@@ -582,15 +444,6 @@ def permission_required(permission_codes, scope='self', require_all=True):
         return wrapper
     return decorator
 
-
-# ==================== HELPER FUNCTIONS ====================
-
-def check_permission(user, permission_code, organization=None, scope='self', obj=None):
-    """Standalone permission check function"""
-    checker = PermissionChecker(user, organization, log=False)
-    return checker.has_permission(permission_code, scope, obj)
-
-
 def get_user_module_permissions(user, module_code, organization=None):
     """Get all permissions for a specific module"""
     checker = PermissionChecker(user, organization, log=False)
@@ -601,10 +454,11 @@ def get_user_module_permissions(user, module_code, organization=None):
         if p['permission'].startswith(f"{module_code}.")
     ]
 
-
 def assign_role(user, role, organization=None, department=None, scope_override=None, created_by=None):
     """Helper to assign role to user"""
-    from .models import Role
+    models = _get_models()
+    UserRole = models['UserRole']
+    PermissionAuditLog = models['PermissionAuditLog']
     
     user_role, created = UserRole.objects.get_or_create(
         user=user,
@@ -623,19 +477,25 @@ def assign_role(user, role, organization=None, department=None, scope_override=N
         user_role.save()
     
     # Log role assignment
-    PermissionAuditLog.objects.create(
-        user=user,
-        action='role_assign',
-        role=role,
-        result=True,
-        metadata={'created_by': created_by.email if created_by else None}
-    )
+    try:
+        PermissionAuditLog.objects.create(
+            user=user,
+            action='role_assign',
+            role=role,
+            result=True,
+            metadata={'created_by': created_by.email if created_by else None}
+        )
+    except:
+        pass
     
     return user_role
 
-
 def remove_role(user, role, organization=None, department=None):
     """Helper to remove role from user"""
+    models = _get_models()
+    UserRole = models['UserRole']
+    PermissionAuditLog = models['PermissionAuditLog']
+    
     try:
         user_role = UserRole.objects.get(
             user=user,
@@ -646,13 +506,15 @@ def remove_role(user, role, organization=None, department=None):
         user_role.is_active = False
         user_role.save()
         
-        # Log role removal
-        PermissionAuditLog.objects.create(
-            user=user,
-            action='role_remove',
-            role=role,
-            result=True
-        )
+        try:
+            PermissionAuditLog.objects.create(
+                user=user,
+                action='role_remove',
+                role=role,
+                result=True
+            )
+        except:
+            pass
         
         return True
     except UserRole.DoesNotExist:
