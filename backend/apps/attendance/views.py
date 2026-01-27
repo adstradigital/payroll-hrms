@@ -46,6 +46,18 @@ class AttendancePolicyViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['company', 'department', 'policy_type', 'is_active']
 
+    def get_queryset(self):
+        user = self.request.user
+        queryset = AttendancePolicy.objects.select_related('company', 'department')
+        
+        if user.is_superuser:
+            return queryset
+            
+        employee = getattr(user, 'employee_profile', None)
+        if employee:
+            return queryset.filter(company=employee.company)
+        return queryset.none()
+
     def create(self, request, *args, **kwargs):
         try:
             return super().create(request, *args, **kwargs)
@@ -69,6 +81,18 @@ class ShiftViewSet(viewsets.ModelViewSet):
     filterset_fields = ['company', 'shift_type', 'is_active']
     search_fields = ['name', 'code']
 
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Shift.objects.select_related('company')
+        
+        if user.is_superuser:
+            return queryset
+            
+        employee = getattr(user, 'employee_profile', None)
+        if employee:
+            return queryset.filter(company=employee.company)
+        return queryset.none()
+
     def create(self, request, *args, **kwargs):
         try:
             return super().create(request, *args, **kwargs)
@@ -84,6 +108,18 @@ class EmployeeShiftAssignmentViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['employee', 'shift', 'is_active']
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = EmployeeShiftAssignment.objects.select_related('employee', 'shift')
+        
+        if user.is_superuser:
+            return queryset
+            
+        employee = getattr(user, 'employee_profile', None)
+        if employee:
+            return queryset.filter(employee__company=employee.company)
+        return queryset.none()
 
     def create(self, request, *args, **kwargs):
         try:
@@ -102,6 +138,20 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     filterset_fields = ['employee', 'date', 'status', 'is_late']
     search_fields = ['employee__full_name', 'employee__employee_id']
     ordering_fields = ['date']
+
+    def get_queryset(self):
+        user = self.request.user
+        # Note: We don't use self.queryset directly to avoid potential caching issues with dynamic filtering if not careful, 
+        # but here we redefine it or filter properly.
+        queryset = Attendance.objects.select_related('employee', 'shift')
+        
+        if user.is_superuser:
+            return queryset
+            
+        employee = getattr(user, 'employee_profile', None)
+        if employee:
+            return queryset.filter(employee__company=employee.company)
+        return queryset.none()
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -206,6 +256,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             attendance.check_in_time = timezone.now()
             attendance.check_in_device = request.data.get('device', '')
             attendance.check_in_ip = request.META.get('REMOTE_ADDR')
+            attendance.status = 'present'  # Mark as present when clocking in
             attendance.save()
 
             return Response(AttendanceSerializer(attendance).data, status=status.HTTP_200_OK)
@@ -220,14 +271,29 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             today = timezone.localdate()
 
             attendance = get_object_or_404(Attendance, employee=employee, date=today)
+            
+            # Validation: Ensure at least 1 minute has passed since check-in
+            if attendance.check_in_time:
+                now = timezone.now()
+                time_diff = (now - attendance.check_in_time).total_seconds()
+                if time_diff < 60:  # Less than 1 minute
+                    return Response({
+                        'error': 'Cannot clock out so soon. Please wait at least 1 minute after clocking in.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
             attendance.check_out_time = timezone.now()
             attendance.check_out_device = request.data.get('device', '')
             attendance.check_out_ip = request.META.get('REMOTE_ADDR')
+            # Ensure status remains 'present' (in case it was changed)
+            if attendance.status not in ['half_day', 'on_leave']:
+                attendance.status = 'present'
             attendance.save()
 
             return Response(AttendanceSerializer(attendance).data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
     # ---------------- BULK ATTENDANCE ----------------
     @action(detail=False, methods=['post'])
@@ -703,6 +769,22 @@ class AttendanceSummaryViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['employee', 'year', 'month', 'is_finalized']
     search_fields = ['employee__full_name', 'employee__employee_id']
     ordering_fields = ['year', 'month', 'attendance_percentage']
+
+    def get_queryset(self):
+        """Filter attendance summaries by the current user's organization"""
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        # If user has an employee profile, filter by their company
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+            if company:
+                queryset = queryset.filter(employee__company=company)
+        # If user is a ClientAdmin (has organization), filter by that
+        elif hasattr(user, 'organization') and user.organization:
+            queryset = queryset.filter(employee__company=user.organization)
+        
+        return queryset
 
 
 @api_view(['POST'])

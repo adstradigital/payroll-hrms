@@ -6,7 +6,8 @@ import Link from 'next/link';
 import {
     LayoutDashboard, Users, Calendar, Clock,
     Wallet, FileText, Settings, ChevronDown,
-    ChevronRight, LogOut, Bell, User, CheckCircle2
+    ChevronRight, LogOut, Bell, User, CheckCircle2,
+    X, Loader, AlertCircle
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -51,9 +52,9 @@ const menuItems = [
         permission: ['attendance.view', 'attendance.view_attendance'],
         children: [
             { id: 'att-dashboard', label: 'Dashboard', path: '/dashboard/attendance' },
+            { id: 'att-my-attendance', label: 'My Attendance', path: '/dashboard/attendance/my-attendance' },
             { id: 'att-register', label: 'Attendance Register', path: '/dashboard/attendance/register', permission: 'attendance.manage' },
             { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests', permission: 'attendance.approve' },
-            { id: 'att-my-attendance', label: 'My Attendance', path: '/dashboard/attendance/my-attendance' },
             { id: 'att-work-hours', label: 'Work Hours (Hour Bank)', path: '/dashboard/attendance/work-hours' },
             { id: 'att-work-records', label: 'Work Records', path: '/dashboard/attendance/work-records' },
             { id: 'att-late-early', label: 'Late & Early Rules', path: '/dashboard/attendance/late-early-rules' },
@@ -85,7 +86,9 @@ const menuItems = [
         path: '/dashboard/payroll',
         permission: ['payroll.view', 'payroll.view_payslip', 'payroll.view_payslips'],
         children: [
+            { id: 'salary-components', label: 'Salary Components', path: '/dashboard/payroll/salarycomponents', permission: 'payroll.manage' },
             { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
+            { id: 'employee-salary', label: 'Employee Salary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },
             { id: 'payslips', label: 'Payslips', path: '/dashboard/payroll/payslips' },
             { id: 'run-payroll', label: 'Run Payroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
         ]
@@ -110,6 +113,15 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const { hasHRMS, hasPayroll, hasPermission, hasAnyPermission, isAdmin } = usePermissions();
+
+    // Logout Flow States
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [showWorkReportModal, setShowWorkReportModal] = useState(false);
+    const [workReport, setWorkReport] = useState({ tasks: '', notes: '' });
+    const [submittingReport, setSubmittingReport] = useState(false);
+    const [attendanceStatus, setAttendanceStatus] = useState(null); // { checkedIn: bool, checkedOut: bool }
+    const [checkingAttendance, setCheckingAttendance] = useState(false);
+
     const [expandedItems, setExpandedItems] = useState(() => {
         const defaultExpanded = [];
         menuItems.forEach(item => {
@@ -207,7 +219,77 @@ export default function Sidebar() {
         });
     };
 
-    return (
+    // Logout Flow Handlers
+    const handleLogoutClick = async () => {
+        setCheckingAttendance(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/my_dashboard/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const today = data.today;
+
+                // Check if clocked in but not clocked out
+                if (today?.check_in && !today?.check_out) {
+                    setAttendanceStatus({ checkedIn: true, checkedOut: false });
+                    setShowLogoutConfirm(true);
+                } else {
+                    // Already clocked out or not clocked in today - just logout
+                    logout();
+                }
+            } else {
+                // API error - just logout
+                logout();
+            }
+        } catch (err) {
+            console.error('Error checking attendance:', err);
+            logout();
+        } finally {
+            setCheckingAttendance(false);
+        }
+    };
+
+    const handleConfirmLogoutWithReport = () => {
+        setShowLogoutConfirm(false);
+        setShowWorkReportModal(true);
+    };
+
+    const handleSubmitReportAndLogout = async () => {
+        if (!workReport.tasks.trim()) return;
+
+        setSubmittingReport(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+
+            // Clock out with work report
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/check-out/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    work_report: {
+                        tasks_completed: workReport.tasks,
+                        notes: workReport.notes
+                    }
+                })
+            });
+
+            if (response.ok) {
+                setShowWorkReportModal(false);
+                setWorkReport({ tasks: '', notes: '' });
+                logout();
+            }
+        } catch (err) {
+            console.error('Error submitting report:', err);
+        } finally {
+            setSubmittingReport(false);
+        }
+    }; return (
         <aside className="sidebar">
             {/* Logo */}
             <div className="sidebar__logo">
@@ -286,11 +368,105 @@ export default function Sidebar() {
                                         'Free Plan'}
                         </span>
                     </div>
-                    <button className="sidebar__logout-btn" onClick={logout}>
-                        <LogOut size={18} />
+                    <button
+                        className="sidebar__logout-btn"
+                        onClick={handleLogoutClick}
+                        disabled={checkingAttendance}
+                    >
+                        {checkingAttendance ? <Loader size={18} className="animate-spin" /> : <LogOut size={18} />}
                     </button>
                 </div>
             </div>
+
+            {/* Logout Confirmation Modal */}
+            {showLogoutConfirm && (
+                <div className="sidebar-modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
+                    <div className="sidebar-modal" onClick={e => e.stopPropagation()}>
+                        <div className="sidebar-modal__header">
+                            <h3><AlertCircle size={20} /> Work Report Required</h3>
+                            <button className="sidebar-modal__close" onClick={() => setShowLogoutConfirm(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="sidebar-modal__body">
+                            <div className="sidebar-modal__icon">
+                                <Clock size={48} />
+                            </div>
+                            <p><strong>You haven't clocked out yet!</strong></p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                Please submit your work report and clock out before logging out.
+                            </p>
+                        </div>
+                        <div className="sidebar-modal__footer">
+                            <button className="sidebar-modal__btn sidebar-modal__btn--secondary" onClick={() => setShowLogoutConfirm(false)}>
+                                Cancel
+                            </button>
+                            <button className="sidebar-modal__btn sidebar-modal__btn--primary" onClick={handleConfirmLogoutWithReport}>
+                                Submit Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Work Report Modal */}
+            {showWorkReportModal && (
+                <div className="sidebar-modal-overlay">
+                    <div className="sidebar-modal sidebar-modal--lg" onClick={e => e.stopPropagation()}>
+                        <div className="sidebar-modal__header">
+                            <h3><FileText size={20} /> Daily Work Report</h3>
+                        </div>
+                        <div className="sidebar-modal__body">
+                            <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                                Please submit your work report before logging out. This is required.
+                            </p>
+
+                            <div className="sidebar-modal__form-group">
+                                <label>Tasks Completed Today <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                                <textarea
+                                    rows={4}
+                                    placeholder="List the tasks you completed today..."
+                                    value={workReport.tasks}
+                                    onChange={(e) => setWorkReport(prev => ({ ...prev, tasks: e.target.value }))}
+                                />
+                            </div>
+
+                            <div className="sidebar-modal__form-group">
+                                <label>Additional Notes (Optional)</label>
+                                <textarea
+                                    rows={2}
+                                    placeholder="Any blockers, issues, or notes for tomorrow..."
+                                    value={workReport.notes}
+                                    onChange={(e) => setWorkReport(prev => ({ ...prev, notes: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+                        <div className="sidebar-modal__footer">
+                            <button
+                                className="sidebar-modal__btn sidebar-modal__btn--secondary"
+                                onClick={() => {
+                                    setShowWorkReportModal(false);
+                                    setWorkReport({ tasks: '', notes: '' });
+                                }}
+                                disabled={submittingReport}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="sidebar-modal__btn sidebar-modal__btn--primary"
+                                onClick={handleSubmitReportAndLogout}
+                                disabled={!workReport.tasks.trim() || submittingReport}
+                            >
+                                {submittingReport ? (
+                                    <><Loader size={16} className="animate-spin" /> Submitting...</>
+                                ) : (
+                                    <><CheckCircle2 size={16} /> Submit & Logout</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </aside>
     );
 }

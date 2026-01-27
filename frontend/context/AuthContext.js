@@ -49,6 +49,28 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         try {
+            // --- AUTO CLOCK-OUT LOGIC ---
+            const employeeId = localStorage.getItem('employeeId');
+            const token = localStorage.getItem('accessToken');
+
+            if (employeeId && token) {
+                console.log('[Auth] 🕒 Auto Clock-out triggering...');
+                try {
+                    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/check-out/`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ employee: employeeId })
+                    });
+                    console.log('[Auth] ✅ Auto Clock-out successful');
+                } catch (coErr) {
+                    console.error('[Auth] ⚠️ Auto Clock-out failed:', coErr);
+                }
+            }
+            // ----------------------------
+
             await apiLogout();
         } catch (error) {
             console.error('Backend logout failed:', error);
@@ -58,6 +80,7 @@ export function AuthProvider({ children }) {
             Cookies.remove('token');
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
+            localStorage.removeItem('employeeId'); // Cleanup
             router.push('/login');
         }
     };

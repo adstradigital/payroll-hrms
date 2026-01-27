@@ -793,3 +793,56 @@
 .no-transition * {
     transition: none !important;
 }
+
+/* ========================================
+   CONFIRMATION DIALOG
+   ======================================== */
+.confirm-out-box {
+    text-align: center;
+    width: 100%;
+    animation: fadeIn 0.3s ease;
+}
+
+.confirm-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.confirm-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.confirm-btn.cancel {
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+
+.confirm-btn.cancel:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.confirm-btn.confirm {
+    background: var(--color-danger);
+    color: white;
+}
+
+.confirm-btn.confirm:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}

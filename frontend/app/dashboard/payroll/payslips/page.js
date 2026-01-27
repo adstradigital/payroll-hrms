@@ -1,6 +1,6 @@
 'use client';
 
-import PaySlipList from '@/components/ClientAdmin/Payroll/PaySlips/PaySlipList/PaySlipList';
+import PaySlips from '@/components/ClientAdmin/Payroll/PaySlips/PaySlips';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
 
@@ -12,7 +12,7 @@ export default function PaySlipsPage() {
             breadcrumbs={['Dashboard', 'Payroll', 'Payslips']}
         >
             <ModuleGuard module="Payroll">
-                <PaySlipList />
+                <PaySlips />
             </ModuleGuard>
         </Dashboard>
     );

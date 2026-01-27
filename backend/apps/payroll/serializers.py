@@ -93,6 +93,6 @@ class PaySlipDetailSerializer(serializers.ModelSerializer):
 
 class GeneratePayrollSerializer(serializers.Serializer):
     """For generating payroll for a period"""
-    company = serializers.IntegerField()
+    company = serializers.UUIDField(required=False)
     month = serializers.IntegerField(min_value=1, max_value=12)
     year = serializers.IntegerField(min_value=2020)

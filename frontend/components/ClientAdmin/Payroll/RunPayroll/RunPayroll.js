@@ -1,21 +1,137 @@
 'use client';
 
-import { useState } from 'react';
-import { Play, Calendar, Users, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+    Play, Calendar, Users, DollarSign, AlertCircle,
+    CheckCircle, FileText, Loader2, ArrowRight, ShieldCheck,
+    Activity, Lock, ChevronRight, Zap, AlertTriangle,
+    TrendingUp, Sliders, X
+} from 'lucide-react';
+import {
+    getPayrollPeriods, generateAdvancedPayroll,
+    markPeriodAsPaid, getAllEmployees
+} from '@/api/api_clientadmin';
+import Link from 'next/link';
 import './RunPayroll.css';
 
 export default function RunPayroll() {
     const [step, setStep] = useState(1);
-    const [selectedMonth, setSelectedMonth] = useState('2026-01');
+    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [loading, setLoading] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const [existingPeriod, setExistingPeriod] = useState(null);
 
-    const payrollSummary = {
-        totalEmployees: 156,
-        eligibleEmployees: 152,
-        onHold: 4,
-        estimatedGross: 4850000,
-        estimatedDeductions: 582000,
-        estimatedNet: 4268000,
+    // Advanced UI States
+    const [bootSequence, setBootSequence] = useState(false);
+    const [startDate, setStartDate] = useState(Date.now());
+    const [securityPin, setSecurityPin] = useState(['', '', '', '']);
+    const [isPinVerified, setIsPinVerified] = useState(false);
+    const [activeTab, setActiveTab] = useState('overview');
+
+    const [bonusPool, setBonusPool] = useState(0); // Simulation state only for now
+    const [activeEmployeeCount, setActiveEmployeeCount] = useState(0);
+
+    useEffect(() => {
+        if (step === 2) {
+            fetchActiveEmployees();
+        }
+    }, [step]);
+
+    const fetchActiveEmployees = async () => {
+        try {
+            const res = await getAllEmployees({ status: 'active', page_size: 1 });
+            if (res.data) {
+                // If paginated, count is in res.data.count, else length of results
+                const count = res.data.count || (Array.isArray(res.data) ? res.data.length : (res.data.results ? res.data.results.length : 0));
+                setActiveEmployeeCount(count);
+            }
+        } catch (error) {
+            console.error("Failed to fetch employee count", error);
+        }
+    };
+
+    useEffect(() => {
+        setBootSequence(true);
+    }, []);
+
+    useEffect(() => {
+        checkExistingPeriod();
+    }, [selectedMonth]);
+
+    const checkExistingPeriod = async () => {
+        setLoading(true);
+        // Reset states
+        setSecurityPin(['', '', '', '']);
+        setIsPinVerified(false);
+
+        try {
+            const [year, month] = selectedMonth.split('-');
+            const res = await getPayrollPeriods({
+                month: parseInt(month),
+                year: parseInt(year)
+            });
+
+            if (res.data && res.data.results && res.data.results.length > 0) {
+                setExistingPeriod(res.data.results[0]);
+                setStep(3);
+            } else {
+                setExistingPeriod(null);
+                setStep(1);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGeneratePayroll = async () => {
+        if (!isPinVerified && step === 2) return;
+
+        setProcessing(true);
+        try {
+            const [year, month] = selectedMonth.split('-');
+            const res = await generateAdvancedPayroll({
+                month: parseInt(month),
+                year: parseInt(year),
+                action: 'generate'
+            });
+
+            setExistingPeriod({
+                id: res.data.period_id,
+                month: parseInt(month),
+                year: parseInt(year),
+                total_net_salary: res.data.total_net,
+                processed_count: activeEmployeeCount,
+                status: 'Completed'
+            });
+            setStep(3);
+        } catch (error) {
+            alert(error.response?.data?.detail || "Failed to generate payroll");
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    // Pin logic (Client side security simulation)
+    const handlePinChange = (index, value) => {
+        if (value.length > 1) return;
+        const newPin = [...securityPin];
+        newPin[index] = value;
+        setSecurityPin(newPin);
+
+        if (value && index < 3) {
+            document.getElementById(`pin-${index + 1}`)?.focus();
+        }
+
+        if (newPin.join('').length === 4) {
+            // Demo Pin: 1234
+            if (newPin.join('') === '1234') {
+                setTimeout(() => setIsPinVerified(true), 300);
+            } else {
+                setTimeout(() => setSecurityPin(['', '', '', '']), 500);
+            }
+        }
     };
 
     const formatCurrency = (amount) => {
@@ -23,123 +139,306 @@ export default function RunPayroll() {
             style: 'currency',
             currency: 'INR',
             maximumFractionDigits: 0
-        }).format(amount);
+        }).format(amount || 0);
     };
 
-    const handleRunPayroll = () => {
-        setProcessing(true);
-        // Simulate processing
-        setTimeout(() => {
-            setProcessing(false);
-            setStep(3);
-        }, 3000);
+    const getMonthName = (dateStr) => {
+        const date = new Date(dateStr + '-01');
+        return date.toLocaleString('default', { month: 'long', year: 'numeric' });
     };
+
+    // Estimated calculation for preview
+    const estimatedCost = (activeEmployeeCount * 45000) * (1 + (bonusPool / 100)); // Approx 45k avg salary assumption
 
     return (
-        <div className="run-payroll">
-            {/* Progress Steps */}
-            <div className="payroll-steps">
-                <div className={`payroll-step ${step >= 1 ? 'payroll-step--active' : ''}`}>
-                    <span className="payroll-step__number">1</span>
-                    <span className="payroll-step__label">Select Period</span>
-                </div>
-                <div className="payroll-step__line"></div>
-                <div className={`payroll-step ${step >= 2 ? 'payroll-step--active' : ''}`}>
-                    <span className="payroll-step__number">2</span>
-                    <span className="payroll-step__label">Review</span>
-                </div>
-                <div className="payroll-step__line"></div>
-                <div className={`payroll-step ${step >= 3 ? 'payroll-step--active' : ''}`}>
-                    <span className="payroll-step__number">3</span>
-                    <span className="payroll-step__label">Complete</span>
-                </div>
+        <div className={`rp-container ${bootSequence ? 'rp-booted' : ''}`}>
+
+            {/* Ambient Background */}
+            <div className="rp-ambient-bg">
+                <div className="rp-blob rp-blob-1"></div>
+                <div className="rp-blob rp-blob-2"></div>
+                <div className="rp-noise"></div>
             </div>
 
-            {/* Step 1: Select Period */}
-            {step === 1 && (
-                <div className="payroll-content">
-                    <h2 className="payroll-title">Select Payroll Period</h2>
-                    <div className="period-selector">
-                        <input
-                            type="month"
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value)}
-                            className="period-input"
-                        />
-                    </div>
-                    <div className="summary-preview">
-                        <div className="summary-item">
-                            <Users size={20} />
-                            <span>{payrollSummary.totalEmployees} Total Employees</span>
-                        </div>
-                        <div className="summary-item">
-                            <CheckCircle size={20} className="text-success" />
-                            <span>{payrollSummary.eligibleEmployees} Eligible</span>
-                        </div>
-                        <div className="summary-item">
-                            <AlertCircle size={20} className="text-warning" />
-                            <span>{payrollSummary.onHold} On Hold</span>
-                        </div>
-                    </div>
-                    <button className="btn btn-primary btn-lg" onClick={() => setStep(2)}>
-                        Continue to Review
-                    </button>
-                </div>
-            )}
+            <div className="rp-content-wrapper">
 
-            {/* Step 2: Review */}
-            {step === 2 && (
-                <div className="payroll-content">
-                    <h2 className="payroll-title">Review Payroll Summary</h2>
-                    <div className="review-cards">
-                        <div className="review-card">
-                            <span className="review-card__label">Gross Salary</span>
-                            <span className="review-card__value">{formatCurrency(payrollSummary.estimatedGross)}</span>
+                {/* Header */}
+                <header className="rp-header">
+                    <div>
+                        <div className="rp-system-status">
+                            <Activity size={12} className="rp-pulse" />
+                            <span>System v4.0.1 Online</span>
                         </div>
-                        <div className="review-card">
-                            <span className="review-card__label">Total Deductions</span>
-                            <span className="review-card__value text-danger">{formatCurrency(payrollSummary.estimatedDeductions)}</span>
-                        </div>
-                        <div className="review-card review-card--highlight">
-                            <span className="review-card__label">Net Payable</span>
-                            <span className="review-card__value text-success">{formatCurrency(payrollSummary.estimatedNet)}</span>
+                        <h1 className="rp-title">
+                            Payroll <span className="text-gradient">Command</span>
+                        </h1>
+                        <p className="rp-subtitle">Advanced financial control unit. Secure session active.</p>
+                    </div>
+                    <div className="rp-security-badge">
+                        <div className="rp-label-mono">ENCRYPTION LEVEL</div>
+                        <div className="rp-value-mono text-emerald">
+                            <ShieldCheck size={16} /> 256-BIT AES
                         </div>
                     </div>
-                    <div className="payroll-actions">
-                        <button className="btn btn-secondary" onClick={() => setStep(1)}>
-                            Back
-                        </button>
-                        <button
-                            className="btn btn-primary btn-lg"
-                            onClick={handleRunPayroll}
-                            disabled={processing}
-                        >
-                            {processing ? (
-                                <>Processing...</>
-                            ) : (
-                                <><Play size={18} /> Run Payroll</>
+                </header>
+
+                {/* Progress Steps */}
+                <div className="rp-steps">
+                    <div className="rp-step-line-bg"></div>
+                    <div className="rp-step-line-fill" style={{ width: `${(step - 1) * 50}%` }}></div>
+
+                    {[1, 2, 3].map((s) => (
+                        <div key={s} className={`rp-step-item ${s <= step ? 'active' : ''} ${s === step ? 'current' : ''}`}>
+                            <div className="rp-step-circle">
+                                {s < step ? <CheckCircle size={18} /> : s}
+                            </div>
+                            <span className="rp-step-text">
+                                {s === 1 ? 'Period' : s === 2 ? 'Analysis' : 'Execution'}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="rp-viewport">
+                    {loading ? (
+                        <div className="rp-loading">
+                            <div className="rp-spinner-outer">
+                                <div className="rp-spinner-inner"></div>
+                            </div>
+                            <p className="rp-loading-text">CALIBRATING FINANCIAL MODELS...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* STEP 1: SELECT PERIOD */}
+                            {step === 1 && (
+                                <div className="rp-card-center">
+                                    <div className="rp-card rp-card-glow">
+                                        <div className="rp-card-blur-glow"></div>
+
+                                        <div className="rp-card-header">
+                                            <div className="rp-icon-box">
+                                                <Calendar size={24} />
+                                            </div>
+                                            <h2>Select Fiscal Period</h2>
+                                        </div>
+
+                                        <div className="rp-form-group">
+                                            <label>Month Selection</label>
+                                            <div className="rp-input-group">
+                                                <input
+                                                    type="month"
+                                                    value={selectedMonth}
+                                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                                    className="rp-input-lg"
+                                                />
+                                                <div className="rp-input-icon"><ChevronRight size={16} /></div>
+                                            </div>
+                                        </div>
+
+                                        <button onClick={() => setStep(2)} className="rp-btn-primary rp-btn-block group">
+                                            <span className="rp-btn-content">
+                                                INITIATE ANALYSIS <ArrowRight size={18} />
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
                             )}
-                        </button>
-                    </div>
-                </div>
-            )}
 
-            {/* Step 3: Complete */}
-            {step === 3 && (
-                <div className="payroll-content payroll-complete">
-                    <div className="complete-icon">
-                        <CheckCircle size={64} />
-                    </div>
-                    <h2 className="payroll-title">Payroll Processed Successfully!</h2>
-                    <p className="complete-message">
-                        Payroll for January 2026 has been generated for {payrollSummary.eligibleEmployees} employees.
-                    </p>
-                    <div className="complete-actions">
-                        <button className="btn btn-secondary">View Payslips</button>
-                        <button className="btn btn-primary">Download Report</button>
-                    </div>
+                            {/* STEP 2: REVIEW & PROCESS */}
+                            {step === 2 && (
+                                <div className="rp-grid animate-slide-up">
+                                    {/* Left Panel */}
+                                    <div className="rp-col-main">
+                                        <div className="rp-tabs">
+                                            <button
+                                                className={`rp-tab ${activeTab === 'overview' ? 'active' : ''}`}
+                                                onClick={() => setActiveTab('overview')}
+                                            >Overview</button>
+                                            <button
+                                                className={`rp-tab ${activeTab === 'anomalies' ? 'active' : ''}`}
+                                                onClick={() => setActiveTab('anomalies')}
+                                            >AI Insights <span className="rp-badge">2</span></button>
+                                        </div>
+
+                                        {activeTab === 'overview' && (
+                                            <div className="rp-tab-content animate-fade-in">
+                                                <div className="rp-stats-grid">
+                                                    <div className="rp-stat-box">
+                                                        <div className="rp-stat-header">
+                                                            <span>Total Est. Cost</span>
+                                                            <TrendingUp size={16} className="text-emerald" />
+                                                        </div>
+                                                        <div className="rp-stat-value">{formatCurrency(estimatedCost)}</div>
+                                                        <div className="rp-stat-meta">Based on current active employees</div>
+                                                    </div>
+                                                    <div className="rp-stat-box">
+                                                        <div className="rp-stat-header">
+                                                            <span>Employees</span>
+                                                            <Users size={16} className="text-info" />
+                                                        </div>
+                                                        <div className="rp-stat-value">{activeEmployeeCount > 0 ? activeEmployeeCount : '--'}</div>
+                                                        <div className="rp-stat-meta">Will be calculated on run</div>
+                                                    </div>
+                                                    <div className="rp-stat-box">
+                                                        <div className="rp-stat-header">
+                                                            <span>Compliance</span>
+                                                            <ShieldCheck size={16} className="text-brand" />
+                                                        </div>
+                                                        <div className="rp-stat-value">100%</div>
+                                                        <div className="rp-stat-meta">Tax Rules 2024</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="rp-control-panel">
+                                                    <div className="rp-control-header">
+                                                        <Sliders size={18} className="text-brand" />
+                                                        <h3>Adjustments Control (Simulation)</h3>
+                                                    </div>
+                                                    <div className="rp-slider-group">
+                                                        <div className="rp-slider-labels">
+                                                            <span>Bonus Pool Allocation</span>
+                                                            <span className="rp-mono-val">{bonusPool}%</span>
+                                                        </div>
+                                                        <input
+                                                            type="range" min="0" max="20" step="1"
+                                                            value={bonusPool}
+                                                            onChange={(e) => setBonusPool(Number(e.target.value))}
+                                                            className="rp-slider"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {activeTab === 'anomalies' && (
+                                            <div className="rp-tab-content animate-fade-in">
+                                                <div className="rp-alert rp-alert-danger">
+                                                    <div className="rp-alert-icon"><AlertTriangle size={20} /></div>
+                                                    <div>
+                                                        <h4>High Overtime Detected</h4>
+                                                        <p>3 Employees have logged &gt;40 hours overtime. Review recommended.</p>
+                                                    </div>
+                                                </div>
+                                                <div className="rp-alert rp-alert-info">
+                                                    <div className="rp-alert-icon"><Activity size={20} /></div>
+                                                    <div>
+                                                        <h4>New Tax Regime</h4>
+                                                        <p>5 Employees switched to New Tax Regime recently.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Right Panel: Security */}
+                                    <div className="rp-col-side">
+                                        <div className="rp-security-card">
+                                            <div className="rp-security-grid-bg"></div>
+                                            <div className="rp-security-content">
+                                                <h3 className="rp-security-title">
+                                                    <Lock size={18} /> Authorization Required
+                                                </h3>
+
+                                                {!isPinVerified ? (
+                                                    <div className="rp-pin-pad">
+                                                        <p className="rp-pin-label">ENTER SECURITY PIN (1234)</p>
+                                                        <div className="rp-pin-inputs">
+                                                            {securityPin.map((digit, idx) => (
+                                                                <input
+                                                                    key={idx}
+                                                                    id={`pin-${idx}`}
+                                                                    type="password"
+                                                                    maxLength={1}
+                                                                    value={digit}
+                                                                    onChange={(e) => handlePinChange(idx, e.target.value)}
+                                                                    className="rp-pin-input"
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="rp-verified-badge animate-zoom-in">
+                                                        <div className="rp-verified-icon"><CheckCircle size={20} /></div>
+                                                        <span className="rp-verified-text">Identity Verified</span>
+                                                    </div>
+                                                )}
+
+                                                <p className="rp-security-note">
+                                                    You are authorizing the payroll generation for <strong>{getMonthName(selectedMonth)}</strong>.
+                                                </p>
+                                            </div>
+
+                                            <div className="rp-security-actions">
+                                                <button
+                                                    onClick={handleGeneratePayroll}
+                                                    disabled={!isPinVerified || processing}
+                                                    className={`rp-btn-execute ${isPinVerified && !processing ? 'ready' : 'disabled'}`}
+                                                >
+                                                    {processing ? (
+                                                        <><Loader2 className="animate-spin" size={20} /> EXECUTING...</>
+                                                    ) : (
+                                                        <><Zap size={18} /> EXECUTE PAYROLL</>
+                                                    )}
+                                                </button>
+                                                <button onClick={() => setStep(1)} className="rp-btn-cancel">
+                                                    CANCEL OPERATION
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* STEP 3: SUCCESS */}
+                            {step === 3 && existingPeriod && (
+                                <div className="rp-success-container animate-zoom-in">
+                                    <div className="rp-success-card">
+                                        <div className="rp-success-beam"></div>
+                                        <div className="rp-success-content">
+                                            <div className="rp-success-icon-box">
+                                                <CheckCircle size={48} />
+                                            </div>
+
+                                            <h2>Funds Disbursed</h2>
+                                            <p className="rp-tx-hash">TRANSACTION ID: {existingPeriod.id}</p>
+
+                                            <div className="rp-receipt">
+                                                <div className="rp-receipt-row">
+                                                    <div>
+                                                        <span className="rp-receipt-label">Period</span>
+                                                        <span className="rp-receipt-val">{getMonthName(`${existingPeriod.year}-${existingPeriod.month.toString().padStart(2, '0')}`)}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="rp-receipt-label">Amount</span>
+                                                        <span className="rp-receipt-val text-emerald">{formatCurrency(existingPeriod.total_net_salary)}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="rp-receipt-label">Recipients</span>
+                                                        <span className="rp-receipt-val">{existingPeriod.processed_count}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="rp-receipt-label">Status</span>
+                                                        <span className="rp-receipt-val text-brand uppercase">{existingPeriod.status}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="rp-success-actions">
+                                                <Link href="/dashboard/payroll/payslips" className="rp-btn-outline">
+                                                    <FileText size={18} /> View Payslips
+                                                </Link>
+                                                <Link href="/dashboard/payroll" className="rp-btn-primary">
+                                                    <ArrowRight size={18} /> Dashboard
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }

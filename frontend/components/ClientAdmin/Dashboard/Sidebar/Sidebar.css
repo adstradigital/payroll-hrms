@@ -457,3 +457,225 @@
         box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
     }
 }
+
+/* ===============================
+   SIDEBAR MODALS
+   For logout confirmation and work report
+   =============================== */
+
+.sidebar-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.sidebar-modal {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-color);
+    width: 90%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+.sidebar-modal--lg {
+    max-width: 520px;
+}
+
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.sidebar-modal__header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-modal__header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-modal__close {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.35rem;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-modal__close:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.sidebar-modal__body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    text-align: center;
+}
+
+.sidebar-modal__icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+    color: var(--brand-primary);
+}
+
+[data-theme="dark"] .sidebar-modal__icon {
+    color: #f59e0b;
+}
+
+.sidebar-modal__body p {
+    margin: 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.sidebar-modal__footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background: var(--bg-tertiary);
+}
+
+/* Modal Buttons */
+.sidebar-modal__btn {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-modal__btn--secondary {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.sidebar-modal__btn--secondary:hover {
+    background: var(--bg-tertiary);
+}
+
+.sidebar-modal__btn--primary {
+    background: var(--brand-primary);
+    color: #000;
+}
+
+[data-theme="dark"] .sidebar-modal__btn--primary {
+    background: #f59e0b;
+    color: #000;
+}
+
+.sidebar-modal__btn--primary:hover {
+    filter: brightness(1.1);
+}
+
+.sidebar-modal__btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Form Groups */
+.sidebar-modal__form-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.sidebar-modal__form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.sidebar-modal__form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    resize: vertical;
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.sidebar-modal__form-group textarea:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+[data-theme="dark"] .sidebar-modal__form-group textarea:focus {
+    border-color: #f59e0b;
+}
+
+/* Spin animation for loader */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
