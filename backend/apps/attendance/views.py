@@ -1,5 +1,8 @@
 from datetime import date, datetime
-import holidays
+try:
+    import holidays
+except ImportError:
+    holidays = None
 from calendar import monthrange
 
 from django.db import transaction
@@ -740,6 +743,7 @@ class HolidayViewSet(viewsets.ModelViewSet):
     queryset = Holiday.objects.select_related('company')
     serializer_class = HolidaySerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['company', 'holiday_type', 'date']

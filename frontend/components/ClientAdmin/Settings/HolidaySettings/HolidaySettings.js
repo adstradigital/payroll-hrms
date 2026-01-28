@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import axiosInstance from '@/api/axiosInstance';
 import { CLIENTADMIN_ENDPOINTS } from '@/api/config';
+import { apiPreviewHolidays, apiImportHolidays } from '@/api/api_clientadmin';
 import './HolidaySettings.css';
 
 // Indian States for state-based holidays
@@ -71,31 +72,20 @@ function HolidayImportModal({ onClose, onImport, currentYear }) {
     const handleViewHolidays = async () => {
         setIsLoadingPreview(true);
         try {
-            // Call API to get preview of holidays
-            const response = await axiosInstance.post(
-                `${CLIENTADMIN_ENDPOINTS.HOLIDAYS}preview/`,
-                {
-                    year,
-                    country: selectedCountry,
-                    include_national: includeNational,
-                    states: selectedStates
-                }
-            );
+            // Call API to get preview of holidays via standard wrapper
+            const response = await apiPreviewHolidays({
+                year,
+                country: selectedCountry,
+                include_national: includeNational,
+                states: selectedStates
+            });
             setPreviewHolidays(response.data.holidays || []);
             setStep(3);
         } catch (error) {
             console.error('Failed to load preview:', error);
-            // Fallback to showing sample data if API fails
-            const holidays = [];
-            if (includeNational) {
-                holidays.push(
-                    { name: 'Republic Day', date: `${year}-01-26`, type: 'public', description: 'National Holiday' },
-                    { name: 'Independence Day', date: `${year}-08-15`, type: 'public', description: 'National Holiday' },
-                    { name: 'Gandhi Jayanti', date: `${year}-10-02`, type: 'public', description: 'National Holiday' },
-                );
-            }
-            setPreviewHolidays(holidays);
-            setStep(3);
+            const errorMsg = error.response?.data?.error || error.message || 'Failed to fetch holidays';
+            alert(`Error loading holidays: ${errorMsg}`);
+            setPreviewHolidays([]);
         } finally {
             setIsLoadingPreview(false);
         }
@@ -484,8 +474,8 @@ export default function HolidaySettings() {
 
     const handleImportHolidays = async (year, country, includeNational, selectedStates) => {
         try {
-            // Call your backend API to import holidays
-            await axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}import/`, {
+            // Call standardized API wrapper
+            await apiImportHolidays({
                 year,
                 country,
                 include_national: includeNational,
@@ -495,6 +485,8 @@ export default function HolidaySettings() {
             await fetchHolidays();
         } catch (error) {
             console.error('Failed to import holidays:', error);
+            const errorMsg = error.response?.data?.error || error.message || 'Import failed';
+            alert(`Error importing holidays: ${errorMsg}`);
             throw error;
         }
     };
@@ -531,10 +523,12 @@ export default function HolidaySettings() {
 
     const getHolidayForDate = (date) => {
         if (!date) return null;
-        return holidays.find(h => {
-            const hDate = new Date(h.date);
-            return isSameDate(date, hDate);
-        });
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
+        return holidays.find(h => h.date === dateStr);
     };
 
     const handleDateClick = (date) => {

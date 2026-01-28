@@ -5,6 +5,19 @@
 import axiosInstance from './axiosInstance';
 import { CLIENTADMIN_ENDPOINTS } from './config';
 
+console.log('--- api_clientadmin.js v2 loaded ---');
+if (typeof window !== 'undefined') window.__HOLIDAY_API_READY__ = true;
+
+export function apiPreviewHolidays(data) {
+    console.log('Calling apiPreviewHolidays with:', data);
+    return axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}preview/`, data);
+}
+
+export function apiImportHolidays(data) {
+    console.log('Calling apiImportHolidays with:', data);
+    return axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}import/`, data);
+}
+
 // Authentication
 export const login = (credentials) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOGIN, credentials);
 // Submit registration for approval (no password - credentials will be auto-generated)
