@@ -3,15 +3,367 @@
 import { useState, useEffect } from 'react';
 import {
     ChevronLeft, ChevronRight, X, Calendar, Loader2,
-    FileText, Printer, Download, Save
+    FileText, Printer, Download, Save, Upload
 } from 'lucide-react';
 import axiosInstance from '@/api/axiosInstance';
 import { CLIENTADMIN_ENDPOINTS } from '@/api/config';
 import './HolidaySettings.css';
 
+// Indian States for state-based holidays
+const INDIAN_STATES = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+    'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+    'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
+
+// --- Import Modal Component ---
+function HolidayImportModal({ onClose, onImport, currentYear }) {
+    const [step, setStep] = useState(1); // 1: Select Country, 2: Select States, 3: Preview
+    const [year, setYear] = useState(currentYear);
+    const [selectedCountry, setSelectedCountry] = useState('');
+    const [selectedStates, setSelectedStates] = useState([]);
+    const [includeNational, setIncludeNational] = useState(true);
+    const [isImporting, setIsImporting] = useState(false);
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+    const [previewHolidays, setPreviewHolidays] = useState([]);
+
+    const countries = [
+        { code: 'IN', name: 'India', flag: '🇮🇳' }
+    ];
+
+    const toggleState = (state) => {
+        setSelectedStates(prev =>
+            prev.includes(state)
+                ? prev.filter(s => s !== state)
+                : [...prev, state]
+        );
+    };
+
+    const selectAllStates = () => {
+        setSelectedStates(INDIAN_STATES);
+    };
+
+    const clearAllStates = () => {
+        setSelectedStates([]);
+    };
+
+    const handleNext = () => {
+        if (step === 1 && selectedCountry) {
+            setStep(2);
+        } else if (step === 2 && (includeNational || selectedStates.length > 0)) {
+            handleViewHolidays();
+        }
+    };
+
+    const handleBack = () => {
+        if (step === 3) {
+            setStep(2);
+            setPreviewHolidays([]);
+        } else if (step === 2) {
+            setStep(1);
+        }
+    };
+
+    const handleViewHolidays = async () => {
+        setIsLoadingPreview(true);
+        try {
+            // Call API to get preview of holidays
+            const response = await axiosInstance.post(
+                `${CLIENTADMIN_ENDPOINTS.HOLIDAYS}preview/`,
+                {
+                    year,
+                    country: selectedCountry,
+                    include_national: includeNational,
+                    states: selectedStates
+                }
+            );
+            setPreviewHolidays(response.data.holidays || []);
+            setStep(3);
+        } catch (error) {
+            console.error('Failed to load preview:', error);
+            // Fallback to showing sample data if API fails
+            const holidays = [];
+            if (includeNational) {
+                holidays.push(
+                    { name: 'Republic Day', date: `${year}-01-26`, type: 'public', description: 'National Holiday' },
+                    { name: 'Independence Day', date: `${year}-08-15`, type: 'public', description: 'National Holiday' },
+                    { name: 'Gandhi Jayanti', date: `${year}-10-02`, type: 'public', description: 'National Holiday' },
+                );
+            }
+            setPreviewHolidays(holidays);
+            setStep(3);
+        } finally {
+            setIsLoadingPreview(false);
+        }
+    };
+
+    const handleImport = async () => {
+        setIsImporting(true);
+        try {
+            await onImport(year, selectedCountry, includeNational, selectedStates);
+            onClose();
+        } catch (error) {
+            console.error('Import failed:', error);
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
+    const renderStep1 = () => (
+        <>
+            <div className="import-section">
+                <h4>Select Year</h4>
+                <div className="form-group">
+                    <input
+                        type="number"
+                        className="form-input"
+                        value={year}
+                        onChange={(e) => setYear(parseInt(e.target.value))}
+                        min={currentYear}
+                        max={currentYear + 10}
+                    />
+                </div>
+            </div>
+
+            <div className="import-section">
+                <h4>Select Country</h4>
+                <div className="country-grid">
+                    {countries.map(country => (
+                        <div
+                            key={country.code}
+                            className={`country-card ${selectedCountry === country.code ? 'selected' : ''}`}
+                            onClick={() => setSelectedCountry(country.code)}
+                        >
+                            <span className="country-flag">{country.flag}</span>
+                            <span className="country-name">{country.name}</span>
+                        </div>
+                    ))}
+                </div>
+                <p className="import-info-text">More countries coming soon...</p>
+            </div>
+        </>
+    );
+
+    const renderStep2 = () => (
+        <>
+            <div className="import-section">
+                <div className="settings-toggle-item wide">
+                    <div className="toggle-info">
+                        <span className="toggle-label">Include National Holidays</span>
+                        <span className="toggle-desc">Republic Day, Independence Day, Gandhi Jayanti, etc.</span>
+                    </div>
+                    <label className="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={includeNational}
+                            onChange={(e) => setIncludeNational(e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div className="import-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h4>State-Specific Holidays ({selectedStates.length} selected)</h4>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            className="btn-link"
+                            onClick={selectAllStates}
+                            type="button"
+                        >
+                            Select All
+                        </button>
+                        <button
+                            className="btn-link"
+                            onClick={clearAllStates}
+                            type="button"
+                        >
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+
+                <div className="state-grid">
+                    {INDIAN_STATES.map(state => (
+                        <div key={state} className="state-checkbox">
+                            <input
+                                type="checkbox"
+                                id={`state-${state}`}
+                                checked={selectedStates.includes(state)}
+                                onChange={() => toggleState(state)}
+                            />
+                            <label htmlFor={`state-${state}`}>{state}</label>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </>
+    );
+
+    const renderStep3 = () => (
+        <div className="import-section">
+            <div style={{ marginBottom: '16px' }}>
+                <h4>Preview Holidays ({previewHolidays.length} holidays)</h4>
+                <p className="import-info-text">
+                    Review the holidays before importing. These will be added to your calendar.
+                </p>
+            </div>
+
+            {isLoadingPreview ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
+                    <Loader2 className="animate-spin" size={32} color="var(--brand-primary)" />
+                </div>
+            ) : previewHolidays.length > 0 ? (
+                <div className="holiday-preview-list">
+                    {previewHolidays.map((holiday, index) => (
+                        <div key={index} className="holiday-preview-item">
+                            <div className="holiday-preview-date">
+                                <div className="date-day">
+                                    {new Date(holiday.date).toLocaleDateString('en-US', { day: 'numeric' })}
+                                </div>
+                                <div className="date-month">
+                                    {new Date(holiday.date).toLocaleDateString('en-US', { month: 'short' })}
+                                </div>
+                            </div>
+                            <div className="holiday-preview-info">
+                                <div className="holiday-preview-name">{holiday.name}</div>
+                                <div className="holiday-preview-meta">
+                                    <span className={`holiday-tag ${holiday.type || 'public'}`}>
+                                        {holiday.type || 'public'}
+                                    </span>
+                                    {holiday.description && (
+                                        <span className="holiday-preview-desc">{holiday.description}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    No holidays found for the selected options.
+                </div>
+            )}
+        </div>
+    );
+
+    const getStepTitle = () => {
+        switch (step) {
+            case 1: return 'Import Holidays - Select Country';
+            case 2: return 'Import Holidays - Select Regions';
+            case 3: return 'Import Holidays - Review';
+            default: return 'Import Holidays';
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content import-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>{getStepTitle()}</h3>
+                    <button className="close-btn" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="modal-body">
+                    {/* Step Indicator */}
+                    <div className="step-indicator">
+                        <div className={`step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
+                            <div className="step-number">1</div>
+                            <div className="step-label">Country</div>
+                        </div>
+                        <div className="step-line"></div>
+                        <div className={`step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
+                            <div className="step-number">2</div>
+                            <div className="step-label">Regions</div>
+                        </div>
+                        <div className="step-line"></div>
+                        <div className={`step ${step >= 3 ? 'active' : ''}`}>
+                            <div className="step-number">3</div>
+                            <div className="step-label">Review</div>
+                        </div>
+                    </div>
+
+                    {/* Step Content */}
+                    {step === 1 && renderStep1()}
+                    {step === 2 && renderStep2()}
+                    {step === 3 && renderStep3()}
+                </div>
+
+                <div className="modal-actions">
+                    {step > 1 && (
+                        <button
+                            className="btn-secondary"
+                            onClick={handleBack}
+                            disabled={isImporting || isLoadingPreview}
+                        >
+                            Back
+                        </button>
+                    )}
+
+                    <button
+                        className="btn-secondary"
+                        onClick={onClose}
+                        disabled={isImporting || isLoadingPreview}
+                    >
+                        Cancel
+                    </button>
+
+                    {step < 3 ? (
+                        <button
+                            className="btn-primary"
+                            onClick={handleNext}
+                            disabled={
+                                (step === 1 && !selectedCountry) ||
+                                (step === 2 && !includeNational && selectedStates.length === 0) ||
+                                isLoadingPreview
+                            }
+                        >
+                            {isLoadingPreview ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={16} />
+                                    Loading...
+                                </>
+                            ) : (
+                                <>
+                                    {step === 2 ? 'View Holidays' : 'Next'}
+                                    <ChevronRight size={16} />
+                                </>
+                            )}
+                        </button>
+                    ) : (
+                        <button
+                            className="btn-primary"
+                            onClick={handleImport}
+                            disabled={isImporting || previewHolidays.length === 0}
+                        >
+                            {isImporting ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={16} />
+                                    Importing...
+                                </>
+                            ) : (
+                                <>
+                                    <Upload size={16} />
+                                    Import {previewHolidays.length} Holidays
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // --- Report Modal Component ---
 function HolidayReportModal({ year, holidays, onClose }) {
-    // Filter holidays for the requested year and sort by date
     const yearHolidays = holidays
         .filter(h => new Date(h.date).getFullYear() === year)
         .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -99,10 +451,11 @@ export default function HolidaySettings() {
     const [holidays, setHolidays] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showReport, setShowReport] = useState(false);
+    const [showImport, setShowImport] = useState(false);
 
     // Modal State
     const [showModal, setShowModal] = useState(false);
-    const [modalMode, setModalMode] = useState('add'); // 'add' or 'delete'
+    const [modalMode, setModalMode] = useState('add');
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedHoliday, setSelectedHoliday] = useState(null);
 
@@ -129,11 +482,28 @@ export default function HolidaySettings() {
         }
     };
 
+    const handleImportHolidays = async (year, country, includeNational, selectedStates) => {
+        try {
+            // Call your backend API to import holidays
+            await axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}import/`, {
+                year,
+                country,
+                include_national: includeNational,
+                states: selectedStates
+            });
+
+            await fetchHolidays();
+        } catch (error) {
+            console.error('Failed to import holidays:', error);
+            throw error;
+        }
+    };
+
     const getDaysInMonth = (date) => {
         const year = date.getFullYear();
         const month = date.getMonth();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 is Sunday
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
 
         const days = [];
         for (let i = 0; i < firstDayOfMonth; i++) {
@@ -366,8 +736,20 @@ export default function HolidaySettings() {
                 </div>
 
                 <div className="calendar-controls">
-                    <button className="btn-secondary" onClick={() => setShowReport(true)} title="View Yearly Report" style={{ marginRight: '12px' }}>
-                        <FileText size={16} /> Yearly Report
+                    <button
+                        className="btn-secondary"
+                        onClick={() => setShowImport(true)}
+                        title="Import Holidays"
+                    >
+                        <Upload size={16} /> Import
+                    </button>
+
+                    <button
+                        className="btn-secondary"
+                        onClick={() => setShowReport(true)}
+                        title="View Yearly Report"
+                    >
+                        <FileText size={16} /> Report
                     </button>
 
                     <button className="calendar-nav-btn" onClick={handlePrevMonth}>
@@ -429,6 +811,14 @@ export default function HolidaySettings() {
                     year={currentDate.getFullYear()}
                     holidays={holidays}
                     onClose={() => setShowReport(false)}
+                />
+            )}
+
+            {showImport && (
+                <HolidayImportModal
+                    currentYear={currentDate.getFullYear()}
+                    onClose={() => setShowImport(false)}
+                    onImport={handleImportHolidays}
                 />
             )}
         </div>

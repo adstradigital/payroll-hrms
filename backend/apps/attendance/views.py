@@ -1,10 +1,13 @@
-from datetime import date
+from datetime import date, datetime
+import holidays
 from calendar import monthrange
 
 from django.db import transaction
 from django.db.models import Q, Sum, Count, Avg
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+
+from .holiday_engine import get_indian_holidays
 
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
@@ -731,6 +734,8 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
 
 # ================== HOLIDAYS ==================
+
+
 class HolidayViewSet(viewsets.ModelViewSet):
     queryset = Holiday.objects.select_related('company')
     serializer_class = HolidaySerializer
@@ -784,6 +789,116 @@ class HolidayViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'])
+    def preview(self, request):
+        """
+        Preview holidays before importing
+        """
+        try:
+            year = request.data.get('year')
+            country = request.data.get('country', 'IN')
+            include_national = request.data.get('include_national', True)
+            states = request.data.get('states', [])
+
+            if not year:
+                return Response(
+                    {'error': 'Year is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if country == 'IN':
+                holidays = get_indian_holidays(year, states, include_national)
+            else:
+                holidays = []
+
+            return Response({
+                'holidays': holidays,
+                'total': len(holidays)
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['post'])
+    def import_holidays(self, request):
+        """
+        Import Indian national and state-specific holidays for a given year
+        """
+        try:
+            year = request.data.get('year')
+            country = request.data.get('country', 'IN')
+            include_national = request.data.get('include_national', True)
+            states = request.data.get('states', [])
+
+            if not year:
+                return Response(
+                    {'error': 'Year is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Get user's company
+            user = request.user
+            company = None
+            if hasattr(user, 'employee_profile') and user.employee_profile:
+                company = user.employee_profile.company
+            elif hasattr(user, 'organization') and user.organization:
+                company = user.organization
+
+            if not company:
+                return Response(
+                    {'error': 'Could not determine company for current user'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            holiday_previews = []
+            if country == 'IN':
+                holiday_previews = get_indian_holidays(year, states, include_national)
+
+            holidays_to_create = []
+            created_count = 0
+            skipped_count = 0
+
+            for h_data in holiday_previews:
+                holiday_date = datetime.strptime(h_data['date'], '%Y-%m-%d').date()
+                
+                # Check if holiday already exists
+                if not Holiday.objects.filter(
+                    company=company,
+                    date=holiday_date,
+                    name=h_data['name']
+                ).exists():
+                    holidays_to_create.append(Holiday(
+                        company=company,
+                        name=h_data['name'],
+                        date=holiday_date,
+                        holiday_type=h_data['type'],
+                        description=h_data['description'],
+                        is_active=True
+                    ))
+                    created_count += 1
+                else:
+                    skipped_count += 1
+
+            # Bulk create holidays
+            if holidays_to_create:
+                Holiday.objects.bulk_create(holidays_to_create)
+
+            return Response({
+                'message': 'Holidays imported successfully',
+                'created': created_count,
+                'skipped': skipped_count,
+                'total': created_count + skipped_count
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 # ================== ATTENDANCE SUMMARY ==================

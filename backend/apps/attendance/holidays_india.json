@@ -1,0 +1,308 @@
+{
+    "2025": {
+        "national": [
+            {
+                "name": "New Year's Day",
+                "month": 1,
+                "day": 1,
+                "type": "public"
+            },
+            {
+                "name": "Republic Day",
+                "month": 1,
+                "day": 26,
+                "type": "public"
+            },
+            {
+                "name": "Maha Shivaratri",
+                "month": 2,
+                "day": 26,
+                "type": "public"
+            },
+            {
+                "name": "Holi",
+                "month": 3,
+                "day": 14,
+                "type": "public"
+            },
+            {
+                "name": "Eid ul-Fitr",
+                "month": 3,
+                "day": 31,
+                "type": "public"
+            },
+            {
+                "name": "Mahavir Jayanti",
+                "month": 4,
+                "day": 10,
+                "type": "public"
+            },
+            {
+                "name": "Ambedkar Jayanti",
+                "month": 4,
+                "day": 14,
+                "type": "public"
+            },
+            {
+                "name": "Good Friday",
+                "month": 4,
+                "day": 18,
+                "type": "public"
+            },
+            {
+                "name": "May Day",
+                "month": 5,
+                "day": 1,
+                "type": "public"
+            },
+            {
+                "name": "Buddha Purnima",
+                "month": 5,
+                "day": 12,
+                "type": "public"
+            },
+            {
+                "name": "Eid al-Adha",
+                "month": 6,
+                "day": 7,
+                "type": "public"
+            },
+            {
+                "name": "Muharram",
+                "month": 7,
+                "day": 6,
+                "type": "public"
+            },
+            {
+                "name": "Independence Day",
+                "month": 8,
+                "day": 15,
+                "type": "public"
+            },
+            {
+                "name": "Janmashtami",
+                "month": 8,
+                "day": 16,
+                "type": "public"
+            },
+            {
+                "name": "Ganesh Chaturthi",
+                "month": 8,
+                "day": 27,
+                "type": "public"
+            },
+            {
+                "name": "Gandhi Jayanti",
+                "month": 10,
+                "day": 2,
+                "type": "public"
+            },
+            {
+                "name": "Dussehra",
+                "month": 10,
+                "day": 2,
+                "type": "public"
+            },
+            {
+                "name": "Diwali",
+                "month": 10,
+                "day": 20,
+                "type": "public"
+            },
+            {
+                "name": "Guru Nanak Jayanti",
+                "month": 11,
+                "day": 5,
+                "type": "public"
+            },
+            {
+                "name": "Christmas Day",
+                "month": 12,
+                "day": 25,
+                "type": "public"
+            }
+        ],
+        "regional": {
+            "Karnataka": [
+                {
+                    "name": "Kannada Rajyotsava",
+                    "month": 11,
+                    "day": 1,
+                    "type": "public"
+                }
+            ],
+            "Maharashtra": [
+                {
+                    "name": "Maharashtra Day",
+                    "month": 5,
+                    "day": 1,
+                    "type": "public"
+                }
+            ],
+            "Kerala": [
+                {
+                    "name": "Vishu",
+                    "month": 4,
+                    "day": 14,
+                    "type": "public"
+                }
+            ]
+        }
+    },
+    "2026": {
+        "national": [
+            {
+                "name": "New Year's Day",
+                "month": 1,
+                "day": 1,
+                "type": "public"
+            },
+            {
+                "name": "Makar Sankranti / Pongal",
+                "month": 1,
+                "day": 14,
+                "type": "public"
+            },
+            {
+                "name": "Republic Day",
+                "month": 1,
+                "day": 26,
+                "type": "public"
+            },
+            {
+                "name": "Maha Shivaratri",
+                "month": 2,
+                "day": 15,
+                "type": "public"
+            },
+            {
+                "name": "Holi",
+                "month": 3,
+                "day": 3,
+                "type": "public"
+            },
+            {
+                "name": "Eid ul-Fitr",
+                "month": 3,
+                "day": 20,
+                "type": "public"
+            },
+            {
+                "name": "Mahavir Jayanti",
+                "month": 3,
+                "day": 31,
+                "type": "public"
+            },
+            {
+                "name": "Good Friday",
+                "month": 4,
+                "day": 3,
+                "type": "public"
+            },
+            {
+                "name": "Ambedkar Jayanti",
+                "month": 4,
+                "day": 14,
+                "type": "public"
+            },
+            {
+                "name": "May Day",
+                "month": 5,
+                "day": 1,
+                "type": "public"
+            },
+            {
+                "name": "Buddha Purnima",
+                "month": 5,
+                "day": 31,
+                "type": "public"
+            },
+            {
+                "name": "Eid al-Adha",
+                "month": 5,
+                "day": 27,
+                "type": "public"
+            },
+            {
+                "name": "Muharram",
+                "month": 6,
+                "day": 26,
+                "type": "public"
+            },
+            {
+                "name": "Independence Day",
+                "month": 8,
+                "day": 15,
+                "type": "public"
+            },
+            {
+                "name": "Janmashtami",
+                "month": 9,
+                "day": 4,
+                "type": "public"
+            },
+            {
+                "name": "Ganesh Chaturthi",
+                "month": 9,
+                "day": 14,
+                "type": "public"
+            },
+            {
+                "name": "Gandhi Jayanti",
+                "month": 10,
+                "day": 2,
+                "type": "public"
+            },
+            {
+                "name": "Dussehra",
+                "month": 10,
+                "day": 20,
+                "type": "public"
+            },
+            {
+                "name": "Diwali",
+                "month": 11,
+                "day": 8,
+                "type": "public"
+            },
+            {
+                "name": "Guru Nanak Jayanti",
+                "month": 11,
+                "day": 24,
+                "type": "public"
+            },
+            {
+                "name": "Christmas Day",
+                "month": 12,
+                "day": 25,
+                "type": "public"
+            }
+        ],
+        "regional": {
+            "Kerala": [
+                {
+                    "name": "Vishu",
+                    "month": 4,
+                    "day": 14,
+                    "type": "public"
+                }
+            ],
+            "Karnataka": [
+                {
+                    "name": "Kannada Rajyotsava",
+                    "month": 11,
+                    "day": 1,
+                    "type": "public"
+                }
+            ],
+            "Maharashtra": [
+                {
+                    "name": "Maharashtra Day",
+                    "month": 5,
+                    "day": 1,
+                    "type": "public"
+                }
+            ]
+        }
+    }
+}

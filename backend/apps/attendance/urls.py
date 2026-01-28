@@ -44,6 +44,8 @@ attendance_my_dashboard = AttendanceViewSet.as_view({'get': 'get_my_dashboard'})
 holiday_list = HolidayViewSet.as_view({'get': 'list', 'post': 'create'})
 holiday_detail = HolidayViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'})
 holiday_upcoming = HolidayViewSet.as_view({'get': 'upcoming'})
+holiday_import = HolidayViewSet.as_view({'post': 'import_holidays'})
+holiday_preview = HolidayViewSet.as_view({'post': 'preview'})
 
 # Regularization Request URLs
 regularization_list = AttendanceRegularizationRequestViewSet.as_view({'get': 'list', 'post': 'create'})
@@ -90,6 +92,8 @@ urlpatterns = [
     path('holidays/', holiday_list, name='holiday_list'),
     path('holidays/<uuid:pk>/', holiday_detail, name='holiday_detail'),
     path('holidays/upcoming/', holiday_upcoming, name='holiday_upcoming'),
+    path('holidays/import/', holiday_import, name='holiday_import'),
+    path('holidays/preview/', holiday_preview, name='holiday_preview'),
 
     # Regularization Requests
     path('regularization/', regularization_list, name='regularization_list'),

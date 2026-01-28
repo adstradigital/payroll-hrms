@@ -14,6 +14,7 @@ django-filter>=23.0
 
 # Date/Time utilities
 python-dateutil>=2.8.0
+holidays>=0.40
 
 # File handling (for Excel/PDF generation)
 openpyxl>=3.1.0  # Excel files
