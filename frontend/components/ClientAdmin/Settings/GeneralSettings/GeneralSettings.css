@@ -1,0 +1,246 @@
+/* GeneralSettings.css - Unique class names with gs- prefix */
+
+.general-settings {
+    max-width: 900px;
+}
+
+/* Notification */
+.gs-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--radius-lg);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    z-index: 1100;
+    animation: gsSlideIn 0.3s ease;
+    color: var(--text-primary);
+}
+
+.gs-notification.success {
+    border-left: 4px solid var(--color-success);
+}
+
+.gs-notification.error {
+    border-left: 4px solid var(--color-danger);
+}
+
+@keyframes gsSlideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Header */
+.gs-header {
+    margin-bottom: 1.5rem;
+}
+
+.gs-header h2 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    margin: 0 0 0.375rem 0;
+    color: var(--text-primary);
+}
+
+.gs-header p {
+    color: var(--text-secondary);
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+/* Cards */
+.gs-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.gs-card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--bg-tertiary);
+}
+
+.gs-card-header svg {
+    color: var(--brand-primary);
+}
+
+.gs-card-header h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.gs-card-body {
+    padding: 1.25rem;
+}
+
+.gs-card-footer {
+    padding: 1rem 1.25rem;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Fields */
+.gs-field-row {
+    display: flex;
+    gap: 1.25rem;
+}
+
+.gs-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.gs-field label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.gs-info {
+    margin-left: 0.5rem;
+    color: var(--text-muted);
+    cursor: help;
+    font-size: 0.75rem;
+}
+
+.gs-input {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+}
+
+.gs-input:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+}
+
+/* Toggle Items */
+.gs-toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border-color);
+}
+
+.gs-toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.gs-toggle-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.gs-toggle-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Toggle Switch */
+.gs-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.gs-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.gs-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    transition: 0.3s;
+}
+
+.gs-toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background: var(--card-bg);
+    border-radius: 50%;
+    transition: 0.3s;
+    box-shadow: var(--shadow-sm);
+}
+
+.gs-toggle-switch input:checked+.gs-toggle-slider {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.gs-toggle-switch input:checked+.gs-toggle-slider::before {
+    transform: translateX(20px);
+    background: white;
+}
+
+/* Buttons */
+.gs-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: var(--brand-primary);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.gs-btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .gs-field-row {
+        flex-direction: column;
+    }
+}

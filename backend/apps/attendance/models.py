@@ -491,6 +491,7 @@ class Holiday(models.Model):
         ('public', 'Public Holiday'),
         ('restricted', 'Restricted Holiday'),
         ('optional', 'Optional Holiday'),
+        ('working', 'Working Day'),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -499,6 +500,7 @@ class Holiday(models.Model):
     date = models.DateField(db_index=True)
     holiday_type = models.CharField(max_length=20, choices=HOLIDAY_TYPE_CHOICES, default='public')
     description = models.TextField(blank=True)
+    recurring = models.BooleanField(default=False)
     
     # Department specific (optional)
     departments = models.ManyToManyField(

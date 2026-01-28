@@ -239,7 +239,7 @@ class HolidaySerializer(serializers.ModelSerializer):
     class Meta:
         model = Holiday
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'company']
 
     def get_department_names(self, obj):
         return [dept.name for dept in obj.departments.all()]

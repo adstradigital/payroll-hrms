@@ -4,29 +4,57 @@ import { useState, useEffect } from 'react';
 import {
     Search, Filter, Plus, User,
     Mail, Calendar, Eye, Edit2, Trash2,
-    Users, List, LayoutGrid, Shield, ChevronLeft, ChevronRight
+    Users, List, LayoutGrid, Shield, ChevronLeft, ChevronRight,
+    Download, TrendingUp, UserCheck, UserX, ArrowUpDown, Briefcase
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { getAllEmployees, getAllDepartments } from '@/api/api_clientadmin';
 import './EmployeeList.css';
 
+// --- Stat Card Component ---
+const StatCard = ({ icon: Icon, label, value, colorClass, trend }) => (
+    <div className="emplist-stat-card">
+        <div>
+            <p className="emplist-stat-label">{label}</p>
+            <h3 className="emplist-stat-value">{value}</h3>
+            {trend && (
+                <span className="emplist-stat-trend">
+                    <TrendingUp size={12} /> {trend}
+                </span>
+            )}
+        </div>
+        <div className={`emplist-stat-icon ${colorClass}`}>
+            <Icon size={24} />
+        </div>
+    </div>
+);
+
 export default function EmployeeList({ onAdd, onEdit, onView, refreshTrigger }) {
-    const router = useRouter(); // Keeping router for now, but primary action is onView from props
+    // --- State ---
     const [employees, setEmployees] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Filters & Search
     const [searchTerm, setSearchTerm] = useState('');
     const [filterDept, setFilterDept] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
+
+    // Pagination & View
     const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
     const [currentPage, setCurrentPage] = useState(1);
-    const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
+    const [viewMode, setViewMode] = useState('table');
 
+    // Selection & Sorting
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+
+    // --- Effects ---
     useEffect(() => {
         fetchEmployees();
         fetchDepartments();
     }, [currentPage, filterDept, statusFilter, refreshTrigger]);
 
+    // --- API Calls ---
     const fetchEmployees = async () => {
         setLoading(true);
         try {
@@ -59,236 +87,368 @@ export default function EmployeeList({ onAdd, onEdit, onView, refreshTrigger }) 
         }
     };
 
+    // --- Handlers ---
     const handleSearch = (e) => {
         e.preventDefault();
         setCurrentPage(1);
         fetchEmployees();
     };
 
+    const handleSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+
+        const sorted = [...employees].sort((a, b) => {
+            const aVal = a[key] || '';
+            const bVal = b[key] || '';
+            if (aVal < bVal) return direction === 'ascending' ? -1 : 1;
+            if (aVal > bVal) return direction === 'ascending' ? 1 : -1;
+            return 0;
+        });
+        setEmployees(sorted);
+    };
+
+    const toggleSelection = (id) => {
+        if (selectedIds.includes(id)) {
+            setSelectedIds(selectedIds.filter(item => item !== id));
+        } else {
+            setSelectedIds([...selectedIds, id]);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === employees.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(employees.map(e => e.id));
+        }
+    };
+
+    const handleExport = () => {
+        const headers = ["Name", "ID", "Email", "Department", "Role", "Status"];
+        const rows = employees.map(e => [
+            e.full_name,
+            e.employee_id,
+            e.email,
+            e.department?.name || e.department,
+            e.designation?.name || e.designation,
+            e.status
+        ]);
+
+        let csvContent = "data:text/csv;charset=utf-8,"
+            + headers.join(",") + "\n"
+            + rows.map(row => row.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "employees_list.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // --- Helpers ---
+    const getInitials = (name) => {
+        if (!name) return 'U';
+        return name.match(/(\b\S)?/g).join("").match(/(^\S|\S$)?/g).join("").toUpperCase();
+    };
+
+    const getAvatarColor = (id) => {
+        const colors = ['emplist-avatar--indigo', 'emplist-avatar--purple', 'emplist-avatar--pink', 'emplist-avatar--emerald', 'emplist-avatar--orange', 'emplist-avatar--blue'];
+        return colors[(id || 0) % colors.length];
+    };
+
+    const getDeptName = (emp) => emp.department?.name || (typeof emp.department === 'string' ? emp.department : 'N/A');
+    const getDesignation = (emp) => emp.designation?.name || (typeof emp.designation === 'string' ? emp.designation : 'N/A');
+
+    // --- Render ---
     return (
-        <div className="employee-list-container animate-fade-in">
-            {/* Toolbar */}
-            <div className="employee-toolbar">
-                <form className="toolbar-search" onSubmit={handleSearch}>
-                    <Search size={20} />
-                    <input
-                        type="text"
-                        placeholder="Search employees..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </form>
-
-                <div className="toolbar-actions">
-
-                    {/* View Toggle */}
-                    <div className="view-toggle">
-                        <button
-                            onClick={() => setViewMode('table')}
-                            className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                            title="List View"
-                        >
-                            <List size={18} />
+        <div className="emplist-container emplist-animate-fade-in">
+            {/* ========== Header Section ========== */}
+            <div className="emplist-header">
+                <div className="emplist-header-row">
+                    <div>
+                        <h1 className="emplist-title">Employee Directory</h1>
+                        <p className="emplist-subtitle">Manage your team members and their account permissions.</p>
+                    </div>
+                    <div className="emplist-header-actions">
+                        <button onClick={handleExport} className="emplist-btn emplist-btn-secondary">
+                            <Download size={16} /> Export
                         </button>
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                            title="Grid View"
-                        >
-                            <LayoutGrid size={18} />
+                        <button onClick={onAdd} className="emplist-btn emplist-btn-primary">
+                            <Plus size={16} /> Add Employee
                         </button>
                     </div>
+                </div>
 
-                    <div className="filter-select">
-                        <Users size={16} />
-                        <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-                            <option value="All">All Depts</option>
-                            {departments.map(dept => (
-                                <option key={dept.id} value={dept.id}>{dept.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="filter-select">
-                        <Filter size={16} />
-                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                            <option value="All">All Status</option>
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                            <option value="On Leave">On Leave</option>
-                        </select>
-                    </div>
-
-                    <button className="btn-add" onClick={onAdd}>
-                        <Plus size={18} /> Add Employee
-                    </button>
-
+                {/* Stats Grid */}
+                <div className="emplist-stats-grid">
+                    <StatCard icon={Users} label="Total Employees" value={pagination.count || 0} colorClass="emplist-stat-icon--indigo" trend="+12%" />
+                    <StatCard icon={UserCheck} label="Active" value={employees.filter(e => e.status === 'active').length} colorClass="emplist-stat-icon--emerald" />
+                    <StatCard icon={Briefcase} label="Departments" value={departments.length} colorClass="emplist-stat-icon--blue" />
+                    <StatCard icon={UserX} label="On Leave" value={employees.filter(e => e.status === 'on_leave').length} colorClass="emplist-stat-icon--amber" />
                 </div>
             </div>
 
-            {/* Content Area */}
+            {/* ========== Toolbar ========== */}
+            <div className="emplist-toolbar">
+                <div className="emplist-toolbar-inner">
+                    {/* Search */}
+                    <form onSubmit={handleSearch} className="emplist-search-form">
+                        <Search className="emplist-search-icon" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by name, ID or email..."
+                            className="emplist-search-input"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </form>
+
+                    {/* Filters & Actions */}
+                    <div className="emplist-toolbar-actions">
+                        {selectedIds.length > 0 && (
+                            <div className="emplist-selection-badge">
+                                <span>{selectedIds.length} Selected</span>
+                                <button onClick={() => setSelectedIds([])} title="Clear Selection"><Trash2 size={16} /></button>
+                            </div>
+                        )}
+
+                        <div className="emplist-filter-select">
+                            <Users size={16} />
+                            <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+                                <option value="All">All Depts</option>
+                                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="emplist-filter-select">
+                            <Filter size={16} />
+                            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                                <option value="All">All Status</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="On Leave">On Leave</option>
+                            </select>
+                        </div>
+
+                        {/* View Toggle */}
+                        <div className="emplist-view-toggle">
+                            <button
+                                onClick={() => setViewMode('table')}
+                                className={`emplist-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                                title="List View"
+                            >
+                                <List size={18} />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={`emplist-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                                title="Grid View"
+                            >
+                                <LayoutGrid size={18} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ========== Content Area ========== */}
             {viewMode === 'table' ? (
                 /* TABLE VIEW */
-                <div className="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Employee</th>
-                                <th>ID & Joined</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                Array(5).fill(0).map((_, i) => (
-                                    <tr key={i} className="skeleton-row">
-                                        <td colSpan="5" style={{ padding: '1.5rem', textAlign: 'center' }}>Loading...</td>
-                                    </tr>
-                                ))
-                            ) : employees.length > 0 ? (
-                                employees.map((emp) => (
-                                    <tr key={emp.id} className="hoverable-row">
-                                        <td>
-                                            <div className="user-info-cell">
-                                                <div className="user-avatar-sm">
-                                                    {emp.full_name ? emp.full_name.charAt(0) : 'U'}
-                                                </div>
-                                                <div className="user-details">
-                                                    <div className="user-name">
-                                                        {emp.full_name}
-                                                        {emp.has_user_account && <Shield size={12} className="text-violet-500" />}
-                                                    </div>
-                                                    <div className="user-email">
-                                                        <Mail size={12} /> {emp.email}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="id-cell">
-                                                <span className="emp-id">{emp.employee_id}</span>
-                                                <span className="emp-date">
-                                                    <Calendar size={10} /> {emp.date_of_joining}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style={{ fontWeight: 500 }}>{emp.designation?.name || emp.designation}</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{emp.department?.name || emp.department}</div>
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${emp.status === 'active' ? 'badge-success' :
-                                                emp.status === 'on_leave' ? 'badge-warning' :
-                                                    'badge-danger'
-                                                }`}>
-                                                <span className={`status-dot ${emp.status === 'active' ? 'status-dot--active' :
-                                                    emp.status === 'on_leave' ? 'status-dot--warning' :
-                                                        'status-dot--inactive'
-                                                    }`}></span>
-                                                {emp.status ? emp.status.replace('_', ' ') : 'N/A'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="table-actions">
-                                                <button className="action-btn" onClick={() => onView && onView(emp.id)} title="View Profile">
-                                                    <Eye size={16} />
-                                                </button>
-                                                <button className="action-btn" onClick={() => onEdit(emp.id)} title="Edit">
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button className="action-btn action-btn--danger" title="Delete">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
+                <div className="emplist-table-container emplist-animate-fade-in-up">
+                    <div className="emplist-table-scroll">
+                        <table className="emplist-table">
+                            <thead>
                                 <tr>
-                                    <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <User size={48} style={{ marginBottom: '1rem', opacity: 0.2 }} />
-                                            <p style={{ fontWeight: 500 }}>No employees found</p>
+                                    <th style={{ width: '3rem', textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            onChange={toggleSelectAll}
+                                            checked={selectedIds.length === employees.length && employees.length > 0}
+                                            className="emplist-checkbox"
+                                        />
+                                    </th>
+                                    <th className="sortable" onClick={() => handleSort('full_name')}>
+                                        <div className="emplist-th-content">
+                                            Employee <ArrowUpDown size={12} className="emplist-sort-icon" />
                                         </div>
-                                    </td>
+                                    </th>
+                                    <th className="emplist-hidden-sm">ID & Joined</th>
+                                    <th className="emplist-hidden-md">Role</th>
+                                    <th>Status</th>
+                                    <th style={{ textAlign: 'right' }}>Actions</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    Array(5).fill(0).map((_, i) => (
+                                        <tr key={i} className="emplist-skeleton-row">
+                                            <td colSpan="6">
+                                                <div className="emplist-skeleton-cell">
+                                                    <div className="emplist-skeleton-avatar"></div>
+                                                    <div className="emplist-skeleton-text">
+                                                        <div className="emplist-skeleton-line emplist-skeleton-line--short"></div>
+                                                        <div className="emplist-skeleton-line emplist-skeleton-line--medium"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : employees.length > 0 ? (
+                                    employees.map((emp) => (
+                                        <tr key={emp.id} className={selectedIds.includes(emp.id) ? 'selected' : ''}>
+                                            <td style={{ textAlign: 'center' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(emp.id)}
+                                                    onChange={() => toggleSelection(emp.id)}
+                                                    className="emplist-checkbox"
+                                                />
+                                            </td>
+                                            <td>
+                                                <div className="emplist-employee-cell">
+                                                    <div className={`emplist-avatar ${getAvatarColor(emp.id)}`}>
+                                                        {getInitials(emp.full_name)}
+                                                    </div>
+                                                    <div className="emplist-employee-info">
+                                                        <div className="emplist-employee-name">
+                                                            {emp.full_name}
+                                                            {emp.has_user_account && <Shield size={12} />}
+                                                        </div>
+                                                        <div className="emplist-employee-email">
+                                                            <Mail size={10} /> {emp.email}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="emplist-hidden-sm">
+                                                <div className="emplist-id-badge">{emp.employee_id}</div>
+                                                <div className="emplist-date">
+                                                    <Calendar size={10} /> {emp.date_of_joining}
+                                                </div>
+                                            </td>
+                                            <td className="emplist-hidden-md">
+                                                <div className="emplist-role-title">{getDesignation(emp)}</div>
+                                                <div className="emplist-dept-name">{getDeptName(emp)}</div>
+                                            </td>
+                                            <td>
+                                                <span className={`emplist-status-badge emplist-status-badge--${emp.status || 'inactive'}`}>
+                                                    <span className={`emplist-status-dot emplist-status-dot--${emp.status || 'inactive'}`}></span>
+                                                    {emp.status ? emp.status.replace('_', ' ') : 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="emplist-actions">
+                                                    <button onClick={() => onView && onView(emp.id)} className="emplist-action-btn" title="View Profile">
+                                                        <Eye size={16} />
+                                                    </button>
+                                                    <button onClick={() => onEdit(emp.id)} className="emplist-action-btn emplist-action-btn--edit" title="Edit">
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button className="emplist-action-btn emplist-action-btn--delete" title="Delete">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6">
+                                            <div className="emplist-empty-state">
+                                                <div className="emplist-empty-icon">
+                                                    <User size={32} />
+                                                </div>
+                                                <p className="emplist-empty-title">No employees found</p>
+                                                <p className="emplist-empty-text">Try adjusting your filters or add a new employee.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ) : (
                 /* GRID VIEW */
-                <div className="employee-grid animate-fade-in">
+                <div className="emplist-grid emplist-animate-fade-in-up">
                     {employees.map(emp => (
-                        <div key={emp.id} className="employee-card-grid">
+                        <div key={emp.id} className="emplist-card">
+                            {/* Status Dot */}
+                            <span
+                                className={`emplist-card-status-dot emplist-status-dot--${emp.status || 'inactive'}`}
+                                title={emp.status}
+                            ></span>
 
-                            <div className={`status-dot-grid ${emp.status ? emp.status.toLowerCase() : ''}`} title={emp.status}></div>
-
-                            <div className="avatar-grid">
-                                {emp.full_name ? emp.full_name.charAt(0) : 'U'}
+                            <div className="emplist-card-header">
+                                <div className={`emplist-card-avatar ${getAvatarColor(emp.id)}`}>
+                                    {getInitials(emp.full_name)}
+                                </div>
+                                <h3 className="emplist-card-name">
+                                    {emp.full_name}
+                                    {emp.has_user_account && <Shield size={14} />}
+                                </h3>
+                                <p className="emplist-card-designation">{getDesignation(emp)}</p>
                             </div>
 
-                            <h3 className="card-name">
-                                {emp.full_name}
-                                {emp.has_user_account && <Shield size={14} style={{ color: '#7c3aed' }} />}
-                            </h3>
-                            <p className="card-designation">{emp.designation?.name || emp.designation}</p>
-
-                            <div className="grid-stats">
-                                <div className="stat-box">
-                                    <span className="stat-label">Dept</span>
-                                    <span className="stat-value">{emp.department?.name || emp.department || 'N/A'}</span>
+                            <div className="emplist-card-info">
+                                <div className="emplist-card-info-row">
+                                    <span className="emplist-card-info-label">Department</span>
+                                    <span className="emplist-card-info-value">{getDeptName(emp)}</span>
                                 </div>
-                                <div className="stat-box">
-                                    <span className="stat-label">ID</span>
-                                    <span className="stat-value">{emp.employee_id}</span>
+                                <div className="emplist-card-info-row">
+                                    <span className="emplist-card-info-label">ID</span>
+                                    <span className="emplist-card-info-value" style={{ fontFamily: 'monospace' }}>{emp.employee_id}</span>
+                                </div>
+                                <div className="emplist-card-info-row">
+                                    <span className="emplist-card-info-label">Email</span>
+                                    <span className="emplist-card-info-value" title={emp.email}>{emp.email}</span>
                                 </div>
                             </div>
 
-                            <div className="grid-actions">
-                                <button onClick={() => onView && onView(emp.id)} className="btn-grid-profile">Profile</button>
-                                <button onClick={() => onEdit(emp.id)} className="btn-grid-edit"><Edit2 size={18} /></button>
+                            <div className="emplist-card-actions">
+                                <button onClick={() => onView && onView(emp.id)} className="emplist-card-btn-profile">
+                                    Profile
+                                </button>
+                                <button onClick={() => onEdit(emp.id)} className="emplist-card-btn-edit">
+                                    <Edit2 size={18} />
+                                </button>
                             </div>
                         </div>
                     ))}
+
                     {employees.length === 0 && (
-                        <div style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                            <p>No employees found matching your criteria.</p>
+                        <div className="emplist-grid-empty">
+                            <p>No results found for your search.</p>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Pagination */}
+            {/* ========== Pagination ========== */}
             {pagination.count > 0 && (
-                <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '1rem', background: 'var(--card-bg, #fff)', borderRadius: '1rem',
-                    border: '1px solid var(--border-color, #e2e8f0)'
-                }}>
-                    <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                        Showing <b>{employees.length}</b> of <b>{pagination.count}</b> employees
+                <div className="emplist-pagination">
+                    <span className="emplist-pagination-text">
+                        Showing <strong>{employees.length}</strong> of <strong>{pagination.count}</strong> employees
                     </span>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div className="emplist-pagination-controls">
                         <button
                             disabled={!pagination.previous}
                             onClick={() => setCurrentPage(prev => prev - 1)}
-                            style={{
-                                padding: '0.25rem', borderRadius: '0.25rem', border: 'none', background: 'transparent',
-                                cursor: pagination.previous ? 'pointer' : 'default', opacity: pagination.previous ? 1 : 0.5
-                            }}
+                            className="emplist-pagination-btn"
                         >
                             <ChevronLeft size={18} />
                         </button>
+                        <span className="emplist-page-indicator">Page {currentPage}</span>
                         <button
                             disabled={!pagination.next}
                             onClick={() => setCurrentPage(prev => prev + 1)}
-                            style={{
-                                padding: '0.25rem', borderRadius: '0.25rem', border: 'none', background: 'transparent',
-                                cursor: pagination.next ? 'pointer' : 'default', opacity: pagination.next ? 1 : 0.5
-                            }}
+                            className="emplist-pagination-btn"
                         >
                             <ChevronRight size={18} />
                         </button>

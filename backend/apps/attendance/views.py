@@ -740,6 +740,33 @@ class HolidayViewSet(viewsets.ModelViewSet):
     filterset_fields = ['company', 'holiday_type', 'date']
     search_fields = ['name']
 
+    def get_queryset(self):
+        """Filter holidays by the current user's organization"""
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+            if company:
+                return queryset.filter(company=company)
+        elif hasattr(user, 'organization') and user.organization:
+            return queryset.filter(company=user.organization)
+            
+        return queryset.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+            
+        if company:
+            serializer.save(company=company)
+        else:
+            raise serializers.ValidationError({"company": "Could not determine company for current user."})
+
     def create(self, request, *args, **kwargs):
         try:
             return super().create(request, *args, **kwargs)

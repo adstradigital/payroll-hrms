@@ -83,6 +83,11 @@ export const CLIENTADMIN_ENDPOINTS = {
     CLOCK_OUT: `${BASE_URL}/attendance/clock-out/`,
     ATTENDANCE_REPORT: `${BASE_URL}/attendance/report/`,
     HOLIDAYS: `${BASE_URL}/attendance/holidays/`,
+    SHIFTS: `${BASE_URL}/attendance/shifts/`,
+    SHIFT_DETAIL: (id) => `${BASE_URL}/attendance/shifts/${id}/`,
+    ATTENDANCE_POLICIES: `${BASE_URL}/attendance/policies/`,
+    ATTENDANCE_POLICY_DETAIL: (id) => `${BASE_URL}/attendance/policies/${id}/`,
+    SHIFT_ASSIGNMENTS: `${BASE_URL}/attendance/shift-assignments/`,
 
     // Leave
     LEAVES: `${BASE_URL}/leave/requests/`,
