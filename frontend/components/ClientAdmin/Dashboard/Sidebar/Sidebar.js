@@ -31,6 +31,7 @@ const menuItems = [
     {
         id: 'employees',
         label: 'Employees',
+        module: 'HRMS',
         icon: Users,
         path: '/dashboard/employees',
         permission: ['employees.view', 'employee.view_employee', 'employee.view_employees'],
@@ -39,14 +40,15 @@ const menuItems = [
             { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments', permission: 'employees.view' },
             { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations', permission: 'employees.view' },
             { id: 'roles-permissions', label: 'Roles & Permissions', path: '/dashboard/employees/roles', adminOnly: true },
-            { id: 'document-requests', label: 'Document Requests', path: '/dashboard/employees/document-requests' },
-            { id: 'shift-requests', label: 'Shift Requests', path: '/dashboard/employees/shift-requests' },
-            { id: 'work-type-requests', label: 'Work Type Requests', path: '/dashboard/employees/work-type-requests' },
+            { id: 'document-requests', label: 'Document Requests', path: '/dashboard/employees/document-requests', permission: 'documents.view_document_requests' },
+            { id: 'shift-requests', label: 'Shift Requests', path: '/dashboard/employees/shift-requests', permission: 'shift.view_shift_requests' },
+            { id: 'work-type-requests', label: 'Work Type Requests', path: '/dashboard/employees/work-type-requests', permission: 'employee.view_work_type_requests' },
         ]
     },
     {
         id: 'attendance',
         label: 'Attendance',
+        module: 'HRMS',
         icon: CheckCircle2,
         path: '/dashboard/attendance',
         permission: ['attendance.view', 'attendance.view_attendance'],
@@ -66,6 +68,7 @@ const menuItems = [
     {
         id: 'leave',
         label: 'Leave Management',
+        module: 'HRMS',
         icon: Calendar,
         path: '/dashboard/leave',
         permission: ['leave.view', 'leave.view_leave'],
@@ -76,12 +79,14 @@ const menuItems = [
             { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types', adminOnly: true },
             { id: 'leave-holidays', label: 'Holiday Calendar', path: '/dashboard/leave/holidays' },
             { id: 'leave-balance', label: 'Leave Balance', path: '/dashboard/leave/balance' },
-            { id: 'leave-reports-sub', label: 'Reports', path: '/dashboard/leave/reports', permission: 'reports.view' },
+            { id: 'leave-reports-sub', label: 'Reports', path: '/dashboard/leave/reports', permission: 'reports.view_reports' },
+            { id: 'leave-settings', label: 'Settings', path: '/dashboard/leave/settings', adminOnly: true },
         ]
     },
     {
         id: 'payroll',
         label: 'Payroll',
+        module: 'Payroll',
         icon: Wallet,
         path: '/dashboard/payroll',
         permission: ['payroll.view', 'payroll.view_payslip', 'payroll.view_payslips'],
@@ -362,7 +367,7 @@ export default function Sidebar() {
                     <div className="sidebar__user-info">
                         <span className="sidebar__user-name">{user?.name || 'User'}</span>
                         <span className="sidebar__user-role">
-                            {user?.subscription_plan === 'both' ? 'Enterprise Plan' :
+                            {user?.subscription_plan === 'both' || user?.subscription_plan === 'enterprise' ? 'Enterprise Plan' :
                                 user?.subscription_plan === 'hrms' ? 'HRMS Plan' :
                                     user?.subscription_plan === 'payroll' ? 'Payroll Plan' :
                                         'Free Plan'}

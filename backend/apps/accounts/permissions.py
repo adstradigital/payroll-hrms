@@ -103,7 +103,7 @@ def is_client_admin(user):
         # Superusers are always admins
         if user.is_superuser:
             return True
-        
+            
         # Check if org creator
         if is_org_creator(user):
             return True

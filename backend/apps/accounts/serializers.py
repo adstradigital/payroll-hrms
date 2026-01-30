@@ -71,23 +71,27 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             'role_name': role_name,
             'is_admin': user_is_admin,
             'is_org_creator': user_is_org_creator,
-            'is_superuser': self.user.is_superuser
+            'is_superuser': self.user.is_superuser,
+            'subscription_plan': 'both' # Default to both for now, can be updated later with actual plan
         }
         
         # Include organization info
+        org = None
         if employee and employee.company:
-            data['organization'] = {
-                'id': str(employee.company.id),
-                'name': employee.company.name
-            }
+            org = employee.company
         elif user_is_org_creator:
-            # Get org for org creator
             org = Organization.objects.filter(created_by=self.user).first()
-            if org:
-                data['organization'] = {
-                    'id': str(org.id),
-                    'name': org.name
-                }
+            
+        if org:
+            data['organization'] = {
+                'id': str(org.id),
+                'name': org.name
+            }
+            # Try to get actual plan from subscription
+            from apps.subscriptions.models import Subscription
+            sub = Subscription.objects.filter(organization=org.get_root_parent()).first()
+            if sub:
+                data['user']['subscription_plan'] = 'both' if sub.package.package_type == 'free_trial' else 'enterprise'
             
         return data
 

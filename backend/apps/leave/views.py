@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from datetime import date
+from apps.accounts.permissions import is_client_admin
 from .models import LeaveType, LeaveBalance, LeaveRequest
 from .serializers import (
     LeaveTypeSerializer, LeaveBalanceSerializer, 
@@ -16,6 +17,21 @@ class LeaveTypeViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['company', 'is_paid', 'is_carry_forward', 'is_active']
     search_fields = ['name', 'code']
+
+    def create(self, request, *args, **kwargs):
+        if not is_client_admin(request.user):
+            return Response({'error': 'Admin access required'}, status=403)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if not is_client_admin(request.user):
+            return Response({'error': 'Admin access required'}, status=403)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not is_client_admin(request.user):
+            return Response({'error': 'Admin access required'}, status=403)
+        return super().destroy(request, *args, **kwargs)
 
 
 class LeaveBalanceViewSet(viewsets.ModelViewSet):
@@ -41,6 +57,9 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def allocate(self, request):
         """Allocate leaves to employees for a year"""
+        if not is_client_admin(request.user):
+            return Response({'error': 'Admin access required'}, status=403)
+            
         employee_ids = request.data.get('employees', [])
         year = request.data.get('year', date.today().year)
         company_id = request.data.get('company')
@@ -67,6 +86,9 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def run_accrual(self, request):
         """Run periodic leave accrual for all active employees"""
+        if not is_client_admin(request.user):
+            return Response({'error': 'Admin access required'}, status=403)
+            
         from django.db.models import F
         from datetime import date
         
@@ -139,6 +161,9 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def process(self, request, pk=None):
         """Approve or reject a leave request"""
+        if not is_client_admin(request.user):
+            return Response({'error': 'Admin access required'}, status=403)
+            
         leave_request = self.get_object()
         serializer = LeaveRequestApprovalSerializer(data=request.data)
         

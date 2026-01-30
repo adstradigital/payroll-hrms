@@ -10,7 +10,7 @@ export function PermissionProvider({ children }) {
     const { user } = useAuth();
     const [permissions, setPermissions] = useState([]);
     const [permissionCodes, setPermissionCodes] = useState([]);
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(user?.role === 'admin' || user?.is_admin === true || user?.is_superuser === true);
     const [loading, setLoading] = useState(true);
     const [designation, setDesignation] = useState(null);
 
@@ -58,6 +58,8 @@ export function PermissionProvider({ children }) {
     // Fetch permissions when user changes
     useEffect(() => {
         if (user) {
+            console.log('[PermissionContext] User updated, syncing flags:', user);
+            setIsAdmin(user.role === 'admin' || user.is_admin === true || user.is_superuser === true || user.is_org_creator === true);
             fetchPermissions();
         } else {
             setPermissions([]);
