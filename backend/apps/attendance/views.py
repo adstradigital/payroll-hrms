@@ -12,6 +12,8 @@ from django.db import transaction
 from django.db.models import Q, Sum, Count, Avg
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+import uuid
+from apps.accounts.permissions import is_client_admin
 
 from .holiday_engine import get_indian_holidays
 
@@ -211,7 +213,19 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_dashboard(self, request):
         try:
-            employee = getattr(request.user, 'employee_profile', None)
+            # Check for employee_id override (for Admin viewing employee profile)
+            employee_id = request.query_params.get('employee_id')
+            if employee_id and (request.user.is_staff or is_client_admin(request.user)):
+                # Validate UUID format
+                try:
+                    uuid.UUID(employee_id)
+                except ValueError:
+                    return Response({'error': 'Invalid employee ID format'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                employee = get_object_or_404(Employee, id=employee_id)
+            else:
+                employee = getattr(request.user, 'employee_profile', None)
+            
             if not employee:
                 return Response({'error': 'Employee profile not found'}, status=status.HTTP_404_NOT_FOUND)
             
@@ -253,10 +267,12 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 'is_on_break': is_on_break
             }
             
-            # 3. Recent Activity (Last 5 days)
+            # 3. Monthly Activity (Filtered by month/year)
             recent_logs = Attendance.objects.filter(
-                employee=employee
-            ).order_by('-date')[:5]
+                employee=employee,
+                date__year=year,
+                date__month=month
+            ).order_by('-date')
             
             logs_serializer = AttendanceListSerializer(recent_logs, many=True)
             
@@ -1508,10 +1524,12 @@ def generate_monthly_summary(request):
                 'working_hours': today_att.total_hours if today_att else 0
             }
             
-            # 3. Recent Activity (Last 5 days)
+            # 3. Monthly Activity (Filtered by month/year)
             recent_logs = Attendance.objects.filter(
-                employee=employee
-            ).order_by('-date')[:5]
+                employee=employee,
+                date__year=year,
+                date__month=month
+            ).order_by('-date')
             
             logs_serializer = AttendanceListSerializer(recent_logs, many=True)
             

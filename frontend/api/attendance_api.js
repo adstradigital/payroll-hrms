@@ -145,6 +145,14 @@ export const attendanceApi = {
     axiosInstance.get(`${API_BASE}/dashboard-stats/`),
 
   /**
+   * Get employee dashboard data (for Profile or Personal Dashboard)
+   * @param {Object} params - month, year, employee_id
+   * @returns {Promise}
+   */
+  getMyDashboard: (params = {}) =>
+    axiosInstance.get(`${API_BASE}/my_dashboard/`, { params }),
+
+  /**
    * Get monthly attendance summaries for all employees
    * @param {Object} params - month, year, employee filters
    * @returns {Promise}

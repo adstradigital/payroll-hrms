@@ -60,7 +60,10 @@ export default function MyAttendance() {
             const month = currentTime.getMonth() + 1;
             const year = currentTime.getFullYear();
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/my_dashboard/?month=${month}&year=${year}`, {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+            let url = `${baseUrl}/attendance/my_dashboard/?month=${month}&year=${year}`;
+
+            const response = await fetch(url, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -408,34 +411,32 @@ export default function MyAttendance() {
                                     </div>
                                 </div>
 
-                                <div className="action-row">
-                                    {!data.today.check_in ? (
-                                        <button className="btn btn-white" onClick={handleClockIn}>
-                                            <LogIn size={18} /> Clock In Now
+                                {!data.today.check_in ? (
+                                    <button className="btn btn-white" onClick={handleClockIn}>
+                                        <LogIn size={18} /> Clock In Now
+                                    </button>
+                                ) : !data.today.check_out ? (
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button className="btn btn-outline-white" onClick={handleClockOutClick}>
+                                            <LogOut size={18} /> Clock Out
                                         </button>
-                                    ) : !data.today.check_out ? (
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <button className="btn btn-outline-white" onClick={handleClockOutClick}>
-                                                <LogOut size={18} /> Clock Out
-                                            </button>
-                                            {data.settings?.track_break_time && (
-                                                !data.today.is_on_break ? (
-                                                    <button className="btn btn-white" onClick={handleStartBreak}>
-                                                        <Coffee size={18} /> Start Break
-                                                    </button>
-                                                ) : (
-                                                    <button className="btn btn-white" onClick={handleEndBreak} style={{ background: 'var(--color-warning)', color: 'white', border: 'none' }}>
-                                                        <CheckCircle2 size={18} /> End Break
-                                                    </button>
-                                                )
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="btn btn-outline-white" style={{ cursor: 'default' }}>
-                                            <CheckCircle2 size={18} /> Shift Completed
-                                        </div>
-                                    )}
-                                </div>
+                                        {data.settings?.track_break_time && (
+                                            !data.today.is_on_break ? (
+                                                <button className="btn btn-white" onClick={handleStartBreak}>
+                                                    <Coffee size={18} /> Start Break
+                                                </button>
+                                            ) : (
+                                                <button className="btn btn-white" onClick={handleEndBreak} style={{ background: 'var(--color-warning)', color: 'white', border: 'none' }}>
+                                                    <CheckCircle2 size={18} /> End Break
+                                                </button>
+                                            )
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="btn btn-outline-white" style={{ cursor: 'default' }}>
+                                        <CheckCircle2 size={18} /> Shift Completed
+                                    </div>
+                                )}
                             </div>
 
                             {/* Attendance Score Card */}

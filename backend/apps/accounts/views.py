@@ -25,7 +25,8 @@ from apps.subscriptions.models import Package, Subscription, Payment, FeatureUsa
 from .serializers import (
     MyTokenObtainPairSerializer, ModuleSerializer, PermissionSerializer,
     DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
-    DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer
+    DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer,
+    DepartmentDetailSerializer
 )
 from .permissions import is_client_admin, require_admin, require_permission, PermissionChecker
 
@@ -667,15 +668,11 @@ def department_list_create(request):
                 return Response({'error': 'Company identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Use serializer for validation and save
-            # We need to inject company into data or context, or handle in perform_create equivalent
-            # But here we can just update the data before passing to serializer or save manually with serializer validation
+            # Company is read-only in serializer, so we pass it directly to save()
             
-            data = request.data.copy()
-            data['company'] = company_id
-            
-            serializer = DepartmentDetailSerializer(data=data) # Use Detail serializer for creation to accept all fields
+            serializer = DepartmentDetailSerializer(data=request.data) # Use Detail serializer for creation to accept all fields
             if serializer.is_valid():
-                dept = serializer.save(created_by=request.user)
+                dept = serializer.save(created_by=request.user, company_id=company_id)
                 # Return serialized data matches frontend expectation
                 return Response({'success': True, 'id': str(dept.id), **DepartmentListSerializer(dept).data}, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
