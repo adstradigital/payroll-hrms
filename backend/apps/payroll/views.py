@@ -117,6 +117,99 @@ class EmployeeSalaryViewSet(viewsets.ModelViewSet):
             return queryset.filter(employee__company=user.organization)
         return queryset.none()
     
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        salary = serializer.save()
+        self._process_components(salary, self.request.data.get('components', []))
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def perform_update(self, serializer):
+        salary = serializer.save()
+        if 'components' in self.request.data:
+            self._process_components(salary, self.request.data.get('components', []))
+
+    def _process_components(self, salary, components_data):
+        """Helper to create/update components"""
+        # If components provided explicitly
+        if components_data and len(components_data) > 0:
+            # Remove old
+            salary.components.all().delete()
+            
+            total_earnings = Decimal(0)
+            total_deductions = Decimal(0)
+            
+            for comp_data in components_data:
+                component_id = comp_data.get('component_id') or comp_data.get('component')
+                amount = Decimal(str(comp_data.get('amount', 0)))
+                
+                if component_id:
+                    comp_obj = SalaryComponent.objects.get(id=component_id)
+                    EmployeeSalaryComponent.objects.create(
+                        employee_salary=salary,
+                        component_id=component_id,
+                        amount=amount
+                    )
+                    
+                    if comp_obj.component_type == 'earning':
+                        total_earnings += amount
+                    else:
+                        total_deductions += amount
+            
+            # Recalculate totals
+            salary.gross_salary = salary.basic_salary + total_earnings
+            salary.net_salary = salary.gross_salary - total_deductions
+            salary.save()
+            
+        # Else if structure provided, auto-generate defaults
+        elif salary.salary_structure:
+            salary.components.all().delete()
+            structure = salary.salary_structure
+            
+            total_earnings = Decimal(0)
+            total_deductions = Decimal(0)
+            
+            for struct_comp in structure.components.all():
+                amount = Decimal(0)
+                
+                # Logic to calculate amount based on type
+                if struct_comp.amount > 0:
+                    amount = struct_comp.amount
+                elif struct_comp.percentage > 0:
+                    amount = (salary.basic_salary * struct_comp.percentage) / 100
+                elif struct_comp.component.calculation_type == 'percentage' and struct_comp.component.default_percentage:
+                     amount = (salary.basic_salary * struct_comp.component.default_percentage) / 100
+                else:
+                    amount = struct_comp.component.default_amount
+                
+                EmployeeSalaryComponent.objects.create(
+                    employee_salary=salary,
+                    component=struct_comp.component,
+                    amount=amount
+                )
+                
+                if struct_comp.component.component_type == 'earning':
+                    total_earnings += amount
+                else:
+                    total_deductions += amount
+            
+            # Update totals
+            salary.gross_salary = salary.basic_salary + total_earnings
+            salary.net_salary = salary.gross_salary - total_deductions
+            salary.save()
+            
     @action(detail=False, methods=['get'])
     def current(self, request):
         """Get current salary for an employee"""
@@ -125,10 +218,12 @@ class EmployeeSalaryViewSet(viewsets.ModelViewSet):
             return Response({'error': 'employee parameter required'}, status=400)
         
         try:
-            salary = self.queryset.get(employee_id=employee_id, is_current=True)
+            salary = self.queryset.filter(employee_id=employee_id, is_current=True).first()
+            if not salary:
+                 return Response({'error': 'No current salary found'}, status=404)
             serializer = self.get_serializer(salary)
             return Response(serializer.data)
-        except EmployeeSalary.DoesNotExist:
+        except Exception:
             return Response({'error': 'No current salary found'}, status=404)
 
 
@@ -233,7 +328,24 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
             
             # Calculate LOP (absent without approved leave)
             lop_days = max(0, absent_days - approved_leaves)
-            
+
+            # Calculate Overtime
+            overtime_hours = attendances.aggregate(total=Sum('overtime_hours'))['total'] or Decimal(0)
+            overtime_amount = Decimal(0)
+
+            if overtime_hours > 0:
+                # Get policy (optimized: could fetch once outside loop in real-world, but safe here)
+                policy = employee.company.attendance_policies.filter(is_active=True).first()
+                multiplier = policy.overtime_rate_multiplier if policy else Decimal('1.5')
+                daily_hours = policy.full_day_hours if policy else Decimal('8.0')
+                
+                # Formula: (Gross / Days / Hours) * OT_Hours * Multiplier
+                # Using 'working_days' (month length) for per-day calculation consistency
+                if working_days > 0 and daily_hours > 0:
+                     per_day_salary = emp_salary.gross_salary / Decimal(working_days)
+                     per_hour_salary = per_day_salary / daily_hours
+                     overtime_amount = per_hour_salary * overtime_hours * multiplier
+
             # Create payslip
             payslip, _ = PaySlip.objects.update_or_create(
                 employee=employee,
@@ -245,6 +357,8 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                     'leave_days': leave_days,
                     'absent_days': absent_days,
                     'lop_days': lop_days,
+                    'overtime_hours': overtime_hours,
+                    'overtime_amount': overtime_amount,
                 }
             )
             
@@ -401,3 +515,12 @@ class PaySlipViewSet(viewsets.ModelViewSet):
             })
         except Exception as e:
              return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def recalculate(self, request, pk=None):
+        """Recalculate salary (useful after manual adjustments)"""
+        payslip = self.get_object()
+        payslip.calculate_salary()
+        payslip.save()
+        serializer = self.get_serializer(payslip)
+        return Response(serializer.data)
