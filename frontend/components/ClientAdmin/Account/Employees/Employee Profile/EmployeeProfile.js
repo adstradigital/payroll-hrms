@@ -98,6 +98,16 @@ export default function EmployeeProfile({ employeeId, onBack }) {
         { id: 'resignation', label: 'Resignation' }
     ];
 
+    const calculateYearsOfService = (joinDate) => {
+        if (!joinDate) return '0.0';
+        const start = new Date(joinDate);
+        const today = new Date();
+        if (start > today) return '0.0';
+        const diffTime = today - start;
+        const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+        return diffYears.toFixed(1);
+    };
+
     return (
         <div className="saas-wrapper">
             {/* --- Header --- */}
@@ -191,7 +201,7 @@ export default function EmployeeProfile({ employeeId, onBack }) {
                                 {/* Stats Row */}
                                 <div className="stats-grid">
                                     <div className="stat-card">
-                                        <div className="stat-value">2.5</div>
+                                        <div className="stat-value">{calculateYearsOfService(emp.joinDate)}</div>
                                         <div className="stat-label">Years of Service</div>
                                     </div>
                                     <div className="stat-card">

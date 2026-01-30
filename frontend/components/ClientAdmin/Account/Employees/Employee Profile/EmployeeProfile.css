@@ -140,8 +140,11 @@
 .saas-wrapper .btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 10px 16px;
+    padding: 0 16px;
+    height: 40px;
+    white-space: nowrap;
     border-radius: var(--radius-md);
     font-weight: 500;
     font-size: 0.9rem;
