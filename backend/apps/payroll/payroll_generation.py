@@ -172,20 +172,31 @@ class GeneratePayrollView(views.APIView):
                 ).select_related('component')
                 
                 for comp in salary_components:
+                    comp_amount = comp.amount
+                    
+                    if comp.component.calculation_type == 'attendance_prorated':
+                        # Reduce proportionally based on attendance
+                        comp_amount = comp.amount * attendance_factor
+                    elif comp.component.calculation_type == 'per_day':
+                        # Multiply daily rate by present days
+                        comp_amount = comp.amount * (present_days + half_days)
+
                     if comp.component.component_type == 'earning':
                         earnings.append({
                             'name': comp.component.name,
                             'code': comp.component.code,
-                            'amount': float(comp.amount)
+                            'amount': float(comp_amount),
+                            'calc_type': comp.component.calculation_type
                         })
-                        total_earnings += comp.amount
+                        total_earnings += comp_amount
                     else:
                         deductions.append({
                             'name': comp.component.name,
                             'code': comp.component.code,
-                            'amount': float(comp.amount)
+                            'amount': float(comp_amount),
+                            'calc_type': comp.component.calculation_type
                         })
-                        total_deductions += comp.amount
+                        total_deductions += comp_amount
             except Exception:
                 pass
             

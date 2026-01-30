@@ -18,6 +18,11 @@ export function apiImportHolidays(data) {
     return axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}import/`, data);
 }
 
+export function apiDeleteAllHolidays() {
+    console.log('Calling apiDeleteAllHolidays');
+    return axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}delete_all/`);
+}
+
 // Authentication
 export const login = (credentials) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOGIN, credentials);
 // Submit registration for approval (no password - credentials will be auto-generated)
@@ -78,6 +83,8 @@ export const getAllHolidays = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.HOLI
 export const createHoliday = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.HOLIDAYS, data);
 export const updateHoliday = (id, data) => axiosInstance.put(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/`, data);
 export const deleteHoliday = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/`);
+export const restoreHoliday = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/restore/`);
+export const getDeletedHolidays = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.HOLIDAYS, { params: { include_deleted: 'true', is_active: 'false' } });
 
 // Leave Management
 export const getAllLeaves = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVES, { params });

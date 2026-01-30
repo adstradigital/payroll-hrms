@@ -3,11 +3,17 @@
 import { useState, useEffect } from 'react';
 import {
     ChevronLeft, ChevronRight, X, Calendar, Loader2,
-    FileText, Printer, Download, Save, Upload
+    FileText, Printer, Download, Save, Upload, RotateCcw, Trash2
 } from 'lucide-react';
 import axiosInstance from '@/api/axiosInstance';
 import { CLIENTADMIN_ENDPOINTS } from '@/api/config';
-import { apiPreviewHolidays, apiImportHolidays } from '@/api/api_clientadmin';
+import {
+    apiPreviewHolidays,
+    apiImportHolidays,
+    restoreHoliday,
+    getDeletedHolidays,
+    apiDeleteAllHolidays
+} from '@/api/api_clientadmin';
 import './HolidaySettings.css';
 
 // Indian States for state-based holidays
@@ -435,6 +441,103 @@ function HolidayReportModal({ year, holidays, onClose }) {
     );
 }
 
+// --- Restore Modal Component ---
+function HolidayRestoreModal({ onClose, onRestore }) {
+    const [deletedHolidays, setDeletedHolidays] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRestoring, setIsRestoring] = useState(false);
+
+    useEffect(() => {
+        fetchDeleted();
+    }, []);
+
+    const fetchDeleted = async () => {
+        try {
+            setIsLoading(true);
+            const response = await getDeletedHolidays();
+            const data = response.data.results || response.data;
+            setDeletedHolidays(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch deleted holidays:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRestore = async (id) => {
+        try {
+            setIsRestoring(true);
+            await restoreHoliday(id);
+            await fetchDeleted();
+            onRestore();
+        } catch (error) {
+            console.error('Failed to restore holiday:', error);
+            alert('Failed to restore holiday');
+        } finally {
+            setIsRestoring(false);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content report-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>Restore Deleted Holidays</h3>
+                    <button className="close-btn" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="modal-body">
+                    {isLoading ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
+                            <Loader2 className="animate-spin" size={32} color="var(--brand-primary)" />
+                        </div>
+                    ) : deletedHolidays.length > 0 ? (
+                        <div className="holiday-preview-list">
+                            {deletedHolidays.map((holiday) => (
+                                <div key={holiday.id} className="holiday-preview-item">
+                                    <div className="holiday-preview-date">
+                                        <div className="date-day">
+                                            {new Date(holiday.date).toLocaleDateString('en-US', { day: 'numeric' })}
+                                        </div>
+                                        <div className="date-month">
+                                            {new Date(holiday.date).toLocaleDateString('en-US', { month: 'short' })}
+                                        </div>
+                                    </div>
+                                    <div className="holiday-preview-info">
+                                        <div className="holiday-preview-name">{holiday.name}</div>
+                                        <div className="holiday-preview-meta">
+                                            <span className={`holiday-tag ${holiday.holiday_type || 'public'}`}>
+                                                {holiday.holiday_type || 'public'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        className="btn-secondary"
+                                        onClick={() => handleRestore(holiday.id)}
+                                        disabled={isRestoring}
+                                        style={{ marginLeft: 'auto', padding: '6px 12px' }}
+                                    >
+                                        <RotateCcw size={14} style={{ marginRight: '6px' }} />
+                                        Restore
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            No deleted holidays found to restore.
+                        </div>
+                    )}
+                </div>
+                <div className="modal-actions">
+                    <button className="btn-secondary" onClick={onClose}>Close</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // --- Main Component ---
 export default function HolidaySettings() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -442,6 +545,7 @@ export default function HolidaySettings() {
     const [loading, setLoading] = useState(true);
     const [showReport, setShowReport] = useState(false);
     const [showImport, setShowImport] = useState(false);
+    const [showRestore, setShowRestore] = useState(false);
 
     // Modal State
     const [showModal, setShowModal] = useState(false);
@@ -488,6 +592,24 @@ export default function HolidaySettings() {
             const errorMsg = error.response?.data?.error || error.message || 'Import failed';
             alert(`Error importing holidays: ${errorMsg}`);
             throw error;
+        }
+    };
+
+    const handleDeleteAllHolidays = async () => {
+        if (!window.confirm('Are you sure you want to delete ALL holidays? This action can be undone via the Restore menu.')) {
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            await apiDeleteAllHolidays();
+            await fetchHolidays();
+            alert('All holidays have been moved to trash.');
+        } catch (error) {
+            console.error('Failed to delete all holidays:', error);
+            alert('Failed to delete holidays');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -740,6 +862,23 @@ export default function HolidaySettings() {
 
                     <button
                         className="btn-secondary"
+                        onClick={() => setShowRestore(true)}
+                        title="Restore Deleted"
+                    >
+                        <RotateCcw size={16} /> Restore
+                    </button>
+
+                    <button
+                        className="btn-secondary delete-all-btn"
+                        onClick={handleDeleteAllHolidays}
+                        title="Delete All Holidays"
+                        style={{ color: 'var(--status-error)' }}
+                    >
+                        <Trash2 size={16} /> Delete All
+                    </button>
+
+                    <button
+                        className="btn-secondary"
                         onClick={() => setShowReport(true)}
                         title="View Yearly Report"
                     >
@@ -813,6 +952,15 @@ export default function HolidaySettings() {
                     currentYear={currentDate.getFullYear()}
                     onClose={() => setShowImport(false)}
                     onImport={handleImportHolidays}
+                />
+            )}
+
+            {showRestore && (
+                <HolidayRestoreModal
+                    onClose={() => setShowRestore(false)}
+                    onRestore={() => {
+                        fetchHolidays();
+                    }}
                 />
             )}
         </div>

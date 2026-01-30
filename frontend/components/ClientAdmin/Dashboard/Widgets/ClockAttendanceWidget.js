@@ -24,6 +24,7 @@ export default function ClockAttendanceWidget() {
     const [loading, setLoading] = useState(true);
     const [isClockedIn, setIsClockedIn] = useState(false);
     const [isShiftComplete, setIsShiftComplete] = useState(false); // NEW: Track completion
+    const [isOnBreak, setIsOnBreak] = useState(false); // NEW: Track break status
     const [clockInTime, setClockInTime] = useState(null);
     const [elapsedWorkTime, setElapsedWorkTime] = useState(0);
     const [attendanceHistory, setAttendanceHistory] = useState([]);
@@ -70,15 +71,33 @@ export default function ClockAttendanceWidget() {
                     setIsShiftComplete(false);
                     const checkIn = new Date(data.today.check_in);
                     setClockInTime(checkIn);
-                    setElapsedWorkTime(new Date() - checkIn);
+
+                    // Handle Break Status
+                    const onBreak = data.today?.is_on_break || false;
+                    setIsOnBreak(onBreak);
+
+                    if (!onBreak) {
+                        setElapsedWorkTime(new Date() - checkIn);
+                    } else {
+                        // If on break, we might want to show the time frozen at break start, 
+                        // but getting break start might be complex here without more API data.
+                        // For now, we will just keep it running or freeze it? 
+                        // User request: "work session is still running" implies it SHOULD NOT run.
+                        // Ideally we freeze it at the last known work time or show "ON BREAK" text.
+                        setElapsedWorkTime(new Date() - checkIn); // Keep it strictly chronological for now but display differs? 
+                        // Actually, if we just want to PAUSE the visual update:
+                    }
+
                 } else if (data.today?.check_in && data.today?.check_out) {
                     setIsClockedIn(false);
                     setIsShiftComplete(true);
+                    setIsOnBreak(false);
                     setClockInTime(null);
                     setElapsedWorkTime(0);
                 } else {
                     setIsClockedIn(false);
                     setIsShiftComplete(false);
+                    setIsOnBreak(false);
                     setClockInTime(null);
                     setElapsedWorkTime(0);
                 }
@@ -92,7 +111,8 @@ export default function ClockAttendanceWidget() {
                         type: log.status === 'present' ? 'present' : 'absent', // simplified
                         in: log.check_in_time ? new Date(log.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
                         out: log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-                        duration: log.total_hours ? `${log.total_hours}h` : '--'
+                        duration: log.total_hours ? `${log.total_hours}h` : '--',
+                        isLate: log.is_late // NEW: Map is_late property
                     }));
                     setAttendanceHistory(history);
                 }
@@ -111,13 +131,16 @@ export default function ClockAttendanceWidget() {
     // Attendance Work Timer Logic
     useEffect(() => {
         let interval;
-        if (isClockedIn && clockInTime) {
+        if (isClockedIn && clockInTime && !isOnBreak) { // Only run if NOT on break
             interval = setInterval(() => {
                 setElapsedWorkTime(new Date() - clockInTime);
             }, 1000);
+        } else if (isOnBreak) {
+            // Optional: You could freeze it, or show a break timer.
+            // For now, let's just stop the work session update so it looks paused.
         }
         return () => clearInterval(interval);
-    }, [isClockedIn, clockInTime]);
+    }, [isClockedIn, clockInTime, isOnBreak]);
 
     const handleClockToggle = async () => {
         if (!dashboardData?.employee?.id) return;
@@ -152,6 +175,7 @@ export default function ClockAttendanceWidget() {
 
             if (response.ok) {
                 await fetchDashboard();
+                window.dispatchEvent(new Event('attendance-updated'));
             } else {
                 console.error('Failed to update status');
             }
@@ -161,6 +185,16 @@ export default function ClockAttendanceWidget() {
             setLoading(false);
         }
     };
+
+    // Listen for external updates (e.g., from MyAttendance page)
+    useEffect(() => {
+        const handleAttendanceUpdate = () => {
+            fetchDashboard();
+        };
+
+        window.addEventListener('attendance-updated', handleAttendanceUpdate);
+        return () => window.removeEventListener('attendance-updated', handleAttendanceUpdate);
+    }, []);
 
     // Load saved state on mount
     useEffect(() => {
@@ -305,7 +339,9 @@ export default function ClockAttendanceWidget() {
                         <div className="attendance-view animate-fade-in">
                             <div className="work-timer-card">
                                 <span className="work-timer-label">Work Session</span>
-                                <span className="work-timer-value">{formatWorkTime(elapsedWorkTime)}</span>
+                                <span className={`work-timer-value ${isOnBreak ? 'text-warning' : ''}`}>
+                                    {isOnBreak ? 'ON BREAK' : formatWorkTime(elapsedWorkTime)}
+                                </span>
 
                                 {showConfirmOut ? (
                                     <div className="confirm-out-box">
@@ -359,7 +395,10 @@ export default function ClockAttendanceWidget() {
                                                 {record.type === 'present' ? (
                                                     <div className="time-range">
                                                         <div className="time-point">
-                                                            <span className="label in">IN</span>
+                                                            <div className="time-label-group">
+                                                                <span className="label in">IN</span>
+                                                                {record.isLate && <span className="status-badge late">LATE</span>}
+                                                            </div>
                                                             <span className="value">{record.in}</span>
                                                         </div>
                                                         <div className="time-divider" />

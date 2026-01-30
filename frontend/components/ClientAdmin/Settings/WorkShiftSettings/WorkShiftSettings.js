@@ -22,6 +22,7 @@ export default function WorkShiftSettings() {
     const [showModal, setShowModal] = useState(false);
     const [editingShift, setEditingShift] = useState(null);
     const [notification, setNotification] = useState(null);
+    const [policyId, setPolicyId] = useState(null);
 
     // General settings (from attendance policy)
     const [settings, setSettings] = useState({
@@ -33,10 +34,33 @@ export default function WorkShiftSettings() {
         trackBreakTime: true
     });
 
-    // Fetch shifts on mount
+    // Fetch shifts and policy on mount
     useEffect(() => {
         fetchShifts();
+        fetchPolicy();
     }, []);
+
+    const fetchPolicy = async () => {
+        try {
+            const response = await axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICIES);
+            const policies = response.data.results || response.data || [];
+            const activePolicy = policies.find(p => p.is_active && p.policy_type === 'company');
+
+            if (activePolicy) {
+                setPolicyId(activePolicy.id);
+                setSettings({
+                    enableShiftSystem: activePolicy.enable_shift_system !== undefined ? activePolicy.enable_shift_system : true,
+                    allowFlexibleHours: activePolicy.allow_flexible_hours || false,
+                    graceMinutes: activePolicy.grace_period_minutes || 15,
+                    overtimeAfterMinutes: activePolicy.overtime_after_minutes || 480,
+                    autoAssignShift: true,
+                    trackBreakTime: activePolicy.track_break_time !== undefined ? activePolicy.track_break_time : true
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching policy:', error);
+        }
+    };
 
     const fetchShifts = async () => {
         try {
@@ -58,7 +82,10 @@ export default function WorkShiftSettings() {
                 isActive: shift.is_active !== undefined ? shift.is_active : true,
                 color: shift.color_code || '#f59e0b',
                 shiftType: shift.shift_type || 'general',
-                icon: getIconFromType(shift.shift_type)
+                icon: getIconFromType(shift.shift_type),
+                earlyDepartureGrace: shift.early_departure_grace_minutes || 0,
+                bufferBefore: shift.buffer_before_minutes || 30,
+                bufferAfter: shift.buffer_after_minutes || 30
             }));
 
             setShifts(transformedShifts);
@@ -127,10 +154,14 @@ export default function WorkShiftSettings() {
             end_time: shiftData.endTime + ':00',
             break_duration_minutes: shiftData.breakDuration,
             grace_period_minutes: shiftData.gracePeriod || 15,
-            working_days: shiftData.workingDays.map(day => dayToIndex[day]),
+            working_days: shiftData.working_days || shiftData.workingDays.map(day => dayToIndex[day]),
             is_active: true,
             color_code: shiftData.color,
-            shift_type: getTypeFromIcon(shiftData.icon)
+            shift_type: getTypeFromIcon(shiftData.icon),
+            early_departure_grace_minutes: shiftData.earlyDepartureGrace,
+            buffer_before_minutes: shiftData.bufferBefore,
+            buffer_after_minutes: shiftData.bufferAfter,
+            is_default: shiftData.isDefault
         };
 
         try {
@@ -145,6 +176,20 @@ export default function WorkShiftSettings() {
                     ...shiftData,
                     id: editingShift.id
                 } : s));
+
+                // Auto-calculate overtime if Default OR if it's the only shift
+                if (shiftData.isDefault || (shifts.length === 1 && shifts[0].id === editingShift.id)) {
+                    const startMin = parseInt(shiftData.startTime.split(':')[0]) * 60 + parseInt(shiftData.startTime.split(':')[1]);
+                    const endMin = parseInt(shiftData.endTime.split(':')[0]) * 60 + parseInt(shiftData.endTime.split(':')[1]);
+                    let duration = endMin - startMin;
+                    if (duration < 0) duration += 24 * 60;
+                    const workDuration = duration - (shiftData.breakDuration || 0);
+
+                    if (workDuration > 0) {
+                        setSettings(prev => ({ ...prev, overtimeAfterMinutes: workDuration }));
+                    }
+                }
+
                 showNotification('Shift updated successfully', 'success');
             } else {
                 // Create new shift
@@ -155,6 +200,20 @@ export default function WorkShiftSettings() {
                     isActive: true
                 };
                 setShifts([...shifts, newShift]);
+
+                // Auto-calculate overtime if Default OR if it's the first shift
+                if (shiftData.isDefault || shifts.length === 0) {
+                    const startMin = parseInt(shiftData.startTime.split(':')[0]) * 60 + parseInt(shiftData.startTime.split(':')[1]);
+                    const endMin = parseInt(shiftData.endTime.split(':')[0]) * 60 + parseInt(shiftData.endTime.split(':')[1]);
+                    let duration = endMin - startMin;
+                    if (duration < 0) duration += 24 * 60;
+                    const workDuration = duration - (shiftData.breakDuration || 0);
+
+                    if (workDuration > 0) {
+                        setSettings(prev => ({ ...prev, overtimeAfterMinutes: workDuration }));
+                    }
+                }
+
                 showNotification('Shift created successfully', 'success');
             }
             setShowModal(false);
@@ -176,11 +235,33 @@ export default function WorkShiftSettings() {
     const handleSaveSettings = async () => {
         setSaving(true);
         try {
-            // Settings would be saved to attendance policy in real implementation
-            await new Promise(resolve => setTimeout(resolve, 500));
+            const apiData = {
+                enable_shift_system: settings.enableShiftSystem,
+                track_break_time: settings.trackBreakTime,
+                allow_flexible_hours: settings.allowFlexibleHours,
+                grace_period_minutes: settings.graceMinutes,
+                overtime_after_minutes: settings.overtimeAfterMinutes,
+                name: 'Standard Policy',
+                policy_type: 'company',
+                is_active: true,
+                effective_from: new Date().toISOString().split('T')[0],
+            };
+
+            if (!policyId) {
+                // Create new policy if it doesn't exist
+                const response = await axiosInstance.post(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICIES, apiData);
+                setPolicyId(response.data.id);
+            } else {
+                // Update existing policy
+                await axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICY_DETAIL(policyId), apiData);
+            }
             showNotification('Configuration saved successfully', 'success');
         } catch (error) {
-            showNotification('Failed to save configuration', 'error');
+            console.error('Error saving policy:', error);
+            const errorMsg = error.response?.data?.detail ||
+                (error.response?.data && typeof error.response.data === 'object' ? Object.values(error.response.data)[0] : null) ||
+                'Failed to save configuration';
+            showNotification(errorMsg, 'error');
         } finally {
             setSaving(false);
         }
@@ -233,10 +314,12 @@ export default function WorkShiftSettings() {
                     <h2>Work Shift Settings</h2>
                     <p>Configure work hours and shift schedules for your organization</p>
                 </div>
-                <button className="shift-btn-primary" onClick={handleAddShift}>
-                    <Plus size={18} />
-                    Add New Shift
-                </button>
+                {(!settings.enableShiftSystem && shifts.length === 0) || settings.enableShiftSystem ? (
+                    <button className="shift-btn-primary" onClick={handleAddShift}>
+                        <Plus size={18} />
+                        Add New Shift
+                    </button>
+                ) : null}
             </div>
 
             {/* General Configuration */}
@@ -406,15 +489,17 @@ export default function WorkShiftSettings() {
             </div>
 
             {/* Modal */}
-            {showModal && (
-                <ShiftModal
-                    shift={editingShift}
-                    onSave={handleSaveShift}
-                    onClose={() => setShowModal(false)}
-                    saving={saving}
-                />
-            )}
-        </div>
+            {
+                showModal && (
+                    <ShiftModal
+                        shift={editingShift}
+                        onSave={handleSaveShift}
+                        onClose={() => setShowModal(false)}
+                        saving={saving}
+                    />
+                )
+            }
+        </div >
     );
 }
 
@@ -430,7 +515,10 @@ function ShiftModal({ shift, onSave, onClose, saving }) {
         workingDays: shift?.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
         isDefault: shift?.isDefault || false,
         color: shift?.color || '#f59e0b',
-        icon: shift?.icon || 'sun'
+        icon: shift?.icon || 'sun',
+        earlyDepartureGrace: shift?.earlyDepartureGrace || 0,
+        bufferBefore: shift?.bufferBefore || 30,
+        bufferAfter: shift?.bufferAfter || 30
     });
 
     const toggleDay = (day) => {
@@ -511,6 +599,58 @@ function ShiftModal({ shift, onSave, onClose, saving }) {
                                     required
                                 />
                             </div>
+                        </div>
+
+                        <div className="shift-field-row">
+                            <div className="shift-field">
+                                <label>Late Coming Grace (min)</label>
+                                <input
+                                    type="number"
+                                    value={formData.gracePeriod}
+                                    onChange={(e) => setFormData({ ...formData, gracePeriod: parseInt(e.target.value) })}
+                                    className="shift-input"
+                                    min="0"
+                                    max="60"
+                                />
+                            </div>
+                            <div className="shift-field">
+                                <label>Early Going Grace (min)</label>
+                                <input
+                                    type="number"
+                                    value={formData.earlyDepartureGrace}
+                                    onChange={(e) => setFormData({ ...formData, earlyDepartureGrace: parseInt(e.target.value) })}
+                                    className="shift-input"
+                                    min="0"
+                                    max="60"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="shift-field-row">
+                            <div className="shift-field">
+                                <label>Early Come Buffer (min)</label>
+                                <input
+                                    type="number"
+                                    value={formData.bufferBefore}
+                                    onChange={(e) => setFormData({ ...formData, bufferBefore: parseInt(e.target.value) })}
+                                    className="shift-input"
+                                    min="0"
+                                    max="120"
+                                    title="How many minutes before shift start employees can check in"
+                                />
+                            </div>
+                            <div className="shift-field">
+                                <label>Late Going Buffer (min)</label>
+                                <input
+                                    type="number"
+                                    value={formData.bufferAfter}
+                                    onChange={(e) => setFormData({ ...formData, bufferAfter: parseInt(e.target.value) })}
+                                    className="shift-input"
+                                    min="0"
+                                    max="120"
+                                    title="How many minutes after shift end employees can check out"
+                                />
+                            </div>
                             <div className="shift-field small">
                                 <label>Break (min)</label>
                                 <input
@@ -522,6 +662,17 @@ function ShiftModal({ shift, onSave, onClose, saving }) {
                                     max="120"
                                 />
                             </div>
+                        </div>
+
+                        <div className="shift-field">
+                            <label className="checkbox-label">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.isDefault}
+                                    onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
+                                />
+                                <span>Set as default shift for the company</span>
+                            </label>
                         </div>
 
                         <div className="shift-field">

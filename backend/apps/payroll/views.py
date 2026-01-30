@@ -39,6 +39,26 @@ class SalaryComponentViewSet(viewsets.ModelViewSet):
             return queryset.filter(company=user.organization)
         return queryset.none()
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+            
+        # Handle percentage_of mapping if code is provided instead of ID
+        percentage_of_data = self.request.data.get('percentage_of')
+        percentage_of_obj = None
+        if percentage_of_data and str(percentage_of_data) != 'BASIC' and not str(percentage_of_data).isdigit():
+            try:
+                percentage_of_obj = SalaryComponent.objects.filter(company=company, code=percentage_of_data).first()
+            except:
+                pass
+        
+        serializer.save(company=company, percentage_of=percentage_of_obj)
+
+
 
 class SalaryStructureViewSet(viewsets.ModelViewSet):
     queryset = SalaryStructure.objects.select_related('company').prefetch_related('components__component').all()

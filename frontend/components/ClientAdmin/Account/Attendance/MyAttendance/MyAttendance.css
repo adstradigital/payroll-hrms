@@ -262,6 +262,23 @@
     background: rgba(255, 255, 255, 0.2);
 }
 
+.btn-outline-primary {
+    background: transparent;
+    border: 1px solid var(--brand-primary);
+    color: var(--brand-primary);
+}
+
+.btn-outline-primary:hover {
+    background: var(--brand-primary);
+    color: white;
+    /* or black depending on contrast, let's assume white for now */
+}
+
+[data-theme="dark"] .btn-outline-primary:hover {
+    color: black;
+}
+
+
 /* Primary Button - Apply Leave */
 .my-attendance .btn-primary {
     background: var(--brand-primary);

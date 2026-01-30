@@ -12,7 +12,7 @@ from .views import (
 
 # AttendancePolicy URLs
 attendance_policy_list = AttendancePolicyViewSet.as_view({'get': 'list', 'post': 'create'})
-attendance_policy_detail = AttendancePolicyViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'})
+attendance_policy_detail = AttendancePolicyViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})
 
 # Shift URLs
 shift_list = ShiftViewSet.as_view({'get': 'list', 'post': 'create'})
@@ -37,7 +37,13 @@ attendance_overtime_pending = AttendanceViewSet.as_view({'get': 'overtime_pendin
 attendance_to_validate = AttendanceViewSet.as_view({'get': 'to_validate', 'post': 'to_validate'})
 attendance_analytics = AttendanceViewSet.as_view({'get': 'analytics'})
 attendance_department_overtime = AttendanceViewSet.as_view({'get': 'department_overtime'})
-attendance_my_dashboard = AttendanceViewSet.as_view({'get': 'get_my_dashboard'})
+attendance_department_overtime = AttendanceViewSet.as_view({'get': 'department_overtime'})
+attendance_department_overtime = AttendanceViewSet.as_view({'get': 'department_overtime'})
+attendance_my_dashboard = AttendanceViewSet.as_view({'get': 'my_dashboard'})
+attendance_monthly_matrix = AttendanceViewSet.as_view({'get': 'monthly_matrix'})
+attendance_start_break = AttendanceViewSet.as_view({'post': 'start_break'})
+attendance_end_break = AttendanceViewSet.as_view({'post': 'end_break'})
+attendance_regularize = AttendanceViewSet.as_view({'post': 'regularize'})
 
 
 # Holiday URLs
@@ -46,6 +52,8 @@ holiday_detail = HolidayViewSet.as_view({'get': 'retrieve', 'put': 'update', 'de
 holiday_upcoming = HolidayViewSet.as_view({'get': 'upcoming'})
 holiday_import = HolidayViewSet.as_view({'post': 'import_holidays'})
 holiday_preview = HolidayViewSet.as_view({'post': 'preview'})
+holiday_restore = HolidayViewSet.as_view({'post': 'restore'})
+holiday_delete_all = HolidayViewSet.as_view({'post': 'delete_all'})
 
 # Regularization Request URLs
 regularization_list = AttendanceRegularizationRequestViewSet.as_view({'get': 'list', 'post': 'create'})
@@ -87,6 +95,10 @@ urlpatterns = [
     path('analytics/', attendance_analytics, name='attendance_analytics'),
     path('department-overtime/', attendance_department_overtime, name='attendance_department_overtime'),
     path('my_dashboard/', attendance_my_dashboard, name='attendance_my_dashboard'),
+    path('monthly_matrix/', attendance_monthly_matrix, name='attendance_monthly_matrix'),
+    path('start_break/', attendance_start_break, name='attendance_start_break'),
+    path('end_break/', attendance_end_break, name='attendance_end_break'),
+    path('<uuid:pk>/regularize/', attendance_regularize, name='attendance_regularize'),
 
     # Holidays
     path('holidays/', holiday_list, name='holiday_list'),
@@ -94,6 +106,8 @@ urlpatterns = [
     path('holidays/upcoming/', holiday_upcoming, name='holiday_upcoming'),
     path('holidays/import/', holiday_import, name='holiday_import'),
     path('holidays/preview/', holiday_preview, name='holiday_preview'),
+    path('holidays/<uuid:pk>/restore/', holiday_restore, name='holiday_restore'),
+    path('holidays/delete_all/', holiday_delete_all, name='holiday_delete_all'),
 
     # Regularization Requests
     path('regularization/', regularization_list, name='regularization_list'),

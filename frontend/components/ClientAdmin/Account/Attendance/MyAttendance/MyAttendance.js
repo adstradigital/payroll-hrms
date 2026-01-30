@@ -19,7 +19,8 @@ import {
     Briefcase as BriefcaseIcon,
     Plus,
     X,
-    FileText
+    FileText,
+    Coffee
 } from 'lucide-react';
 import { getLeaveTypes } from '@/api/api_clientadmin';
 import ApplyLeaveModal from '@/components/ClientAdmin/Payroll/Leave/LeaveList/ApplyLeaveModal';
@@ -37,6 +38,13 @@ export default function MyAttendance() {
     const [showClockOutConfirm, setShowClockOutConfirm] = useState(false);
     const [showWorkReportModal, setShowWorkReportModal] = useState(false);
     const [workReport, setWorkReport] = useState({ tasks: '', notes: '' });
+
+
+    // Regularization Modal States
+    const [regularizeModalOpen, setRegularizeModalOpen] = useState(false);
+    const [selectedAttendanceId, setSelectedAttendanceId] = useState(null);
+    const [regularizeData, setRegularizeData] = useState({ check_out_time: '', reason: '' });
+    const [submittingRegularization, setSubmittingRegularization] = useState(false);
     const [submittingReport, setSubmittingReport] = useState(false);
 
     // Timer for clock
@@ -71,7 +79,8 @@ export default function MyAttendance() {
                     today: {
                         check_in: dashboardData.today?.check_in ? new Date(dashboardData.today.check_in) : null,
                         check_out: dashboardData.today?.check_out ? new Date(dashboardData.today.check_out) : null,
-                        status: dashboardData.today?.status // 'PRESENT', 'LATE', etc.
+                        status: dashboardData.today?.status, // 'PRESENT', 'LATE', etc.
+                        is_on_break: dashboardData.today?.is_on_break || false
                     },
                     stats: {
                         present: dashboardData.stats?.present || 0,
@@ -108,9 +117,11 @@ export default function MyAttendance() {
                             status: log.status?.toUpperCase() || '-',
                             in: log.check_in_time ? new Date(log.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
                             out: log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-                            hours: hours
+                            hours: hours,
+                            isLate: log.is_late // NEW: Map is_late property
                         };
-                    }) || []
+                    }) || [],
+                    settings: dashboardData.settings || { track_break_time: true, enable_shift_system: true }
                 });
             }
         } catch (err) {
@@ -162,7 +173,59 @@ export default function MyAttendance() {
     useEffect(() => {
         fetchDashboard();
         fetchLeaveTypes();
+
+        const handleAttendanceUpdate = () => {
+            fetchDashboard();
+        };
+
+        window.addEventListener('attendance-updated', handleAttendanceUpdate);
+        return () => window.removeEventListener('attendance-updated', handleAttendanceUpdate);
     }, []); // Only fetch once on mount (or when needed)
+
+
+    const handleStartBreak = async () => {
+        if (!data?.employee?.id) return;
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/start_break/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ employee: data.employee.id, break_type: 'lunch' })
+            });
+
+            if (response.ok) {
+                await fetchDashboard();
+                window.dispatchEvent(new Event('attendance-updated'));
+            }
+        } catch (err) {
+            console.error('Error starting break:', err);
+        }
+    };
+
+    const handleEndBreak = async () => {
+        if (!data?.employee?.id) return;
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/end_break/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ employee: data.employee.id })
+            });
+
+            if (response.ok) {
+                await fetchDashboard();
+                window.dispatchEvent(new Event('attendance-updated'));
+            }
+        } catch (err) {
+            console.error('Error ending break:', err);
+        }
+    };
 
     const handleClockIn = async () => {
         if (!data?.employee?.id) return;
@@ -180,6 +243,7 @@ export default function MyAttendance() {
 
             if (response.ok) {
                 await fetchDashboard();
+                window.dispatchEvent(new Event('attendance-updated'));
             }
         } catch (err) {
             console.error('Error clocking in:', err);
@@ -197,6 +261,44 @@ export default function MyAttendance() {
     const handleConfirmClockOut = () => {
         setShowClockOutConfirm(false);
         setShowWorkReportModal(true);
+    };
+
+    // --- REGULARIZATION HANDLERS ---
+    const handleOpenRegularize = (id) => {
+        setSelectedAttendanceId(id);
+        setRegularizeData({ check_out_time: '', reason: '' });
+        setRegularizeModalOpen(true);
+    };
+
+    const submitRegularization = async () => {
+        if (!selectedAttendanceId || !regularizeData.check_out_time || !regularizeData.reason) return;
+        setSubmittingRegularization(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/${selectedAttendanceId}/regularize/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(regularizeData)
+            });
+
+            if (response.ok) {
+                setRegularizeModalOpen(false);
+                setRegularizeData({ check_out_time: '', reason: '' });
+                await fetchDashboard();
+                window.dispatchEvent(new Event('attendance-updated'));
+            } else {
+                const errorData = await response.json();
+                console.error('Regularization failed:', errorData);
+                // Optionally show error to user
+            }
+        } catch (err) {
+            console.error('Error submitting regularization:', err);
+        } finally {
+            setSubmittingRegularization(false);
+        }
     };
 
     // Step 3: Submit work report and then clock out
@@ -234,6 +336,7 @@ export default function MyAttendance() {
                 setShowWorkReportModal(false);
                 setWorkReport({ tasks: '', notes: '' });
                 await fetchDashboard();
+                window.dispatchEvent(new Event('attendance-updated'));
             }
         } catch (err) {
             console.error('Error clocking out:', err);
@@ -311,9 +414,22 @@ export default function MyAttendance() {
                                             <LogIn size={18} /> Clock In Now
                                         </button>
                                     ) : !data.today.check_out ? (
-                                        <button className="btn btn-outline-white" onClick={handleClockOutClick}>
-                                            <LogOut size={18} /> Clock Out
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button className="btn btn-outline-white" onClick={handleClockOutClick}>
+                                                <LogOut size={18} /> Clock Out
+                                            </button>
+                                            {data.settings?.track_break_time && (
+                                                !data.today.is_on_break ? (
+                                                    <button className="btn btn-white" onClick={handleStartBreak}>
+                                                        <Coffee size={18} /> Start Break
+                                                    </button>
+                                                ) : (
+                                                    <button className="btn btn-white" onClick={handleEndBreak} style={{ background: 'var(--color-warning)', color: 'white', border: 'none' }}>
+                                                        <CheckCircle2 size={18} /> End Break
+                                                    </button>
+                                                )
+                                            )}
+                                        </div>
                                     ) : (
                                         <div className="btn btn-outline-white" style={{ cursor: 'default' }}>
                                             <CheckCircle2 size={18} /> Shift Completed
@@ -494,11 +610,24 @@ export default function MyAttendance() {
                                                 </div>
                                             </td>
                                             <td>
-                                                <span className={`badge badge-${log.status.toLowerCase()}`}>{log.status}</span>
+                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                    <span className={`badge badge-${log.status.toLowerCase()}`}>{log.status}</span>
+                                                    {log.isLate && <span className="badge badge-late">LATE</span>}
+                                                </div>
                                             </td>
                                             <td className="font-mono">{log.in}</td>
                                             <td className="font-mono">{log.out}</td>
-                                            <td style={{ fontWeight: 600 }}>{log.hours}</td>
+                                            <td style={{ fontWeight: 600 }}>
+                                                {log.out === '-' && log.in !== '-' ? (
+                                                    <button
+                                                        className="btn btn-sm btn-outline-primary"
+                                                        onClick={() => handleOpenRegularize(log.id)}
+                                                        style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', height: 'auto' }}
+                                                    >
+                                                        Regularize
+                                                    </button>
+                                                ) : log.hours}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -522,132 +651,210 @@ export default function MyAttendance() {
             />
 
             {/* Clock Out Confirmation Modal */}
-            {showClockOutConfirm && (
-                <div className="modal-overlay" onClick={() => setShowClockOutConfirm(false)}>
-                    <div className="modal-content modal-sm" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3><Clock size={20} /> End Your Shift</h3>
-                            <button className="modal-close" onClick={() => setShowClockOutConfirm(false)}>
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="modal-icon-wrapper">
-                                <LogOut size={48} />
+            {
+                showClockOutConfirm && (
+                    <div className="modal-overlay" onClick={() => setShowClockOutConfirm(false)}>
+                        <div className="modal-content modal-sm" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3><Clock size={20} /> End Your Shift</h3>
+                                <button className="modal-close" onClick={() => setShowClockOutConfirm(false)}>
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <p style={{ textAlign: 'center', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-                                <strong>Are you sure you want to clock out?</strong>
-                            </p>
-                            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                This will mark your shift as complete for today. You will need to submit a work report before clocking out.
-                            </p>
-                        </div>
-                        <div className="modal-footer">
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => setShowClockOutConfirm(false)}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleConfirmClockOut}
-                            >
-                                Yes, Continue
-                            </button>
+                            <div className="modal-body">
+                                <div className="modal-icon-wrapper">
+                                    <LogOut size={48} />
+                                </div>
+                                <p style={{ textAlign: 'center', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+                                    <strong>Are you sure you want to clock out?</strong>
+                                </p>
+                                <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                    This will mark your shift as complete for today. You will need to submit a work report before clocking out.
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowClockOutConfirm(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={handleConfirmClockOut}
+                                >
+                                    Yes, Continue
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Work Report Modal */}
-            {showWorkReportModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content modal-md" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3><FileText size={20} /> Daily Work Report</h3>
-                        </div>
-                        <div className="modal-body">
-                            <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-                                Please submit your work report before clocking out. This is required.
-                            </p>
-
-                            <div className="form-group">
-                                <label htmlFor="tasks">
-                                    Tasks Completed Today <span style={{ color: 'var(--color-danger)' }}>*</span>
-                                </label>
-                                <textarea
-                                    id="tasks"
-                                    rows={4}
-                                    placeholder="List the tasks you completed today..."
-                                    value={workReport.tasks}
-                                    onChange={(e) => setWorkReport(prev => ({ ...prev, tasks: e.target.value }))}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border-color)',
-                                        background: 'var(--bg-primary)',
-                                        color: 'var(--text-primary)',
-                                        resize: 'vertical',
-                                        fontFamily: 'inherit',
-                                        fontSize: '0.95rem'
-                                    }}
-                                />
+            {
+                showWorkReportModal && (
+                    <div className="modal-overlay">
+                        <div className="modal-content modal-md" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3><FileText size={20} /> Daily Work Report</h3>
                             </div>
+                            <div className="modal-body">
+                                <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                                    Please submit your work report before clocking out. This is required.
+                                </p>
 
-                            <div className="form-group" style={{ marginTop: '1rem' }}>
-                                <label htmlFor="notes">Additional Notes (Optional)</label>
-                                <textarea
-                                    id="notes"
-                                    rows={2}
-                                    placeholder="Any blockers, issues, or notes for tomorrow..."
-                                    value={workReport.notes}
-                                    onChange={(e) => setWorkReport(prev => ({ ...prev, notes: e.target.value }))}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border-color)',
-                                        background: 'var(--bg-primary)',
-                                        color: 'var(--text-primary)',
-                                        resize: 'vertical',
-                                        fontFamily: 'inherit',
-                                        fontSize: '0.95rem'
-                                    }}
-                                />
+                                <div className="form-group">
+                                    <label htmlFor="tasks">
+                                        Tasks Completed Today <span style={{ color: 'var(--color-danger)' }}>*</span>
+                                    </label>
+                                    <textarea
+                                        id="tasks"
+                                        rows={4}
+                                        placeholder="List the tasks you completed today..."
+                                        value={workReport.tasks}
+                                        onChange={(e) => setWorkReport(prev => ({ ...prev, tasks: e.target.value }))}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-primary)',
+                                            color: 'var(--text-primary)',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            fontSize: '0.95rem'
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="form-group" style={{ marginTop: '1rem' }}>
+                                    <label htmlFor="notes">Additional Notes (Optional)</label>
+                                    <textarea
+                                        id="notes"
+                                        rows={2}
+                                        placeholder="Any blockers, issues, or notes for tomorrow..."
+                                        value={workReport.notes}
+                                        onChange={(e) => setWorkReport(prev => ({ ...prev, notes: e.target.value }))}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-primary)',
+                                            color: 'var(--text-primary)',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            fontSize: '0.95rem'
+                                        }}
+                                    />
+                                </div>
                             </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => {
-                                    setShowWorkReportModal(false);
-                                    setWorkReport({ tasks: '', notes: '' });
-                                }}
-                                disabled={submittingReport}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleSubmitWorkReport}
-                                disabled={!workReport.tasks.trim() || submittingReport}
-                            >
-                                {submittingReport ? (
-                                    <>
-                                        <Loader size={16} className="animate-spin" /> Submitting...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle2 size={16} /> Submit & Clock Out
-                                    </>
-                                )}
-                            </button>
+                            <div className="modal-footer">
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setShowWorkReportModal(false);
+                                        setWorkReport({ tasks: '', notes: '' });
+                                    }}
+                                    disabled={submittingReport}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={handleSubmitWorkReport}
+                                    disabled={!workReport.tasks.trim() || submittingReport}
+                                >
+                                    {submittingReport ? (
+                                        <>
+                                            <Loader size={16} className="animate-spin" /> Submitting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={16} /> Submit & Clock Out
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+            {/* Regularization Modal */}
+            {
+                regularizeModalOpen && (
+                    <div className="modal-overlay" onClick={() => setRegularizeModalOpen(false)}>
+                        <div className="modal-content modal-sm" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3><Clock size={20} /> Regularize Attendance</h3>
+                                <button className="modal-close" onClick={() => setRegularizeModalOpen(false)}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="modal-body">
+                                <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                    Missed a clock-out? Enter the time you left work.
+                                </p>
+
+                                <div className="form-group">
+                                    <label>Actual Check Out Time <span className="text-danger">*</span></label>
+                                    <input
+                                        type="time"
+                                        className="form-control"
+                                        value={regularizeData.check_out_time}
+                                        onChange={(e) => setRegularizeData(prev => ({ ...prev, check_out_time: e.target.value }))}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-primary)',
+                                            color: 'var(--text-primary)',
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="form-group" style={{ marginTop: '1rem' }}>
+                                    <label>Reason <span className="text-danger">*</span></label>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="e.g. Forgot to clock out, Battery died..."
+                                        value={regularizeData.reason}
+                                        onChange={(e) => setRegularizeData(prev => ({ ...prev, reason: e.target.value }))}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-primary)',
+                                            color: 'var(--text-primary)',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setRegularizeModalOpen(false)}
+                                    disabled={submittingRegularization}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={submitRegularization}
+                                    disabled={!regularizeData.check_out_time || !regularizeData.reason || submittingRegularization}
+                                >
+                                    {submittingRegularization ? 'Saving...' : 'Submit Request'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }

@@ -515,6 +515,20 @@
     border-radius: 2px;
 }
 
+.status-badge {
+    font-size: 8px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.late {
+    background: #ffedd5;
+    color: #f97316;
+}
+
 .status-tag {
     font-size: 10px;
     font-weight: 700;
@@ -784,6 +798,11 @@
     .digital-time {
         font-size: 36px;
     }
+}
+
+.text-warning {
+    color: #f97316 !important;
+    /* Orange to match 'late' badge */
 }
 
 /* ========================================
