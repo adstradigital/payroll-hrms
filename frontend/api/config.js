@@ -83,6 +83,11 @@ export const CLIENTADMIN_ENDPOINTS = {
     CLOCK_OUT: `${BASE_URL}/attendance/clock-out/`,
     ATTENDANCE_REPORT: `${BASE_URL}/attendance/report/`,
     HOLIDAYS: `${BASE_URL}/attendance/holidays/`,
+    SHIFTS: `${BASE_URL}/attendance/shifts/`,
+    SHIFT_DETAIL: (id) => `${BASE_URL}/attendance/shifts/${id}/`,
+    ATTENDANCE_POLICIES: `${BASE_URL}/attendance/policies/`,
+    ATTENDANCE_POLICY_DETAIL: (id) => `${BASE_URL}/attendance/policies/${id}/`,
+    SHIFT_ASSIGNMENTS: `${BASE_URL}/attendance/shift-assignments/`,
 
     // Leave
     LEAVES: `${BASE_URL}/leave/requests/`,
@@ -97,9 +102,19 @@ export const CLIENTADMIN_ENDPOINTS = {
     PAYROLL_RUN: `${BASE_URL}/payroll/run/`,
     PAYSLIPS: `${BASE_URL}/payroll/payslips/`,
     PAYSLIP_DETAIL: (id) => `${BASE_URL}/payroll/payslips/${id}/`,
+    PAYSLIP_DASHBOARD_STATS: `${BASE_URL}/payroll/payslips/dashboard-stats/`,
+    PAYSLIP_MY_PAYSLIPS: `${BASE_URL}/payroll/payslips/my-payslips/`,
     SALARY_COMPONENTS: `${BASE_URL}/payroll/components/`,
+    SALARY_COMPONENT_DETAIL: (id) => `${BASE_URL}/payroll/components/${id}/`,
     SALARY_STRUCTURES: `${BASE_URL}/payroll/structures/`,
     SALARY_STRUCTURE_DETAIL: (id) => `${BASE_URL}/payroll/structures/${id}/`,
+    EMPLOYEE_SALARIES: `${BASE_URL}/payroll/employee-salaries/`,
+    EMPLOYEE_SALARY_DETAIL: (id) => `${BASE_URL}/payroll/employee-salaries/${id}/`,
+    EMPLOYEE_SALARY_CURRENT: `${BASE_URL}/payroll/employee-salaries/current/`,
+    PAYROLL_PERIODS: `${BASE_URL}/payroll/periods/`,
+    PAYROLL_PERIOD_DETAIL: (id) => `${BASE_URL}/payroll/periods/${id}/`,
+    PAYROLL_GENERATE: `${BASE_URL}/payroll/periods/generate/`,
+    PAYROLL_REPORTS: `${BASE_URL}/payroll/reports/`,
 
     // Reports
     REPORTS_ATTENDANCE: `${BASE_URL}/reports/attendance/`,

@@ -44,7 +44,7 @@ export function PermissionProvider({ children }) {
             if (data.permissions?.length > 0) {
                 console.log('[PermissionContext] 📋 User permissions:');
                 data.permissions.forEach(p => {
-                    console.log(`    - ${p.code} (${p.scope}) from ${p.source_role || p.source || 'system'}`);
+                    console.log(`    - ${p.permission} (${p.scope}) from ${p.source_role || p.source || 'system'}`);
                 });
             }
         } catch (error) {

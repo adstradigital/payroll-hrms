@@ -30,6 +30,35 @@ class SalaryComponentViewSet(viewsets.ModelViewSet):
     filterset_fields = ['company', 'component_type', 'is_statutory', 'is_active']
     search_fields = ['name', 'code']
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            return queryset.filter(company=user.employee_profile.company)
+        elif hasattr(user, 'organization') and user.organization:
+            return queryset.filter(company=user.organization)
+        return queryset.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+            
+        # Handle percentage_of mapping if code is provided instead of ID
+        percentage_of_data = self.request.data.get('percentage_of')
+        percentage_of_obj = None
+        if percentage_of_data and str(percentage_of_data) != 'BASIC' and not str(percentage_of_data).isdigit():
+            try:
+                percentage_of_obj = SalaryComponent.objects.filter(company=company, code=percentage_of_data).first()
+            except:
+                pass
+        
+        serializer.save(company=company, percentage_of=percentage_of_obj)
+
+
 
 class SalaryStructureViewSet(viewsets.ModelViewSet):
     queryset = SalaryStructure.objects.select_related('company').prefetch_related('components__component').all()
@@ -37,6 +66,15 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['company', 'is_active']
     search_fields = ['name', 'code']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            return queryset.filter(company=user.employee_profile.company)
+        elif hasattr(user, 'organization') and user.organization:
+            return queryset.filter(company=user.organization)
+        return queryset.none()
     
     @action(detail=True, methods=['post'])
     def add_component(self, request, pk=None):
@@ -69,6 +107,15 @@ class EmployeeSalaryViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['employee', 'is_current']
     search_fields = ['employee__employee_id', 'employee__first_name']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            return queryset.filter(employee__company=user.employee_profile.company)
+        elif hasattr(user, 'organization') and user.organization:
+            return queryset.filter(employee__company=user.organization)
+        return queryset.none()
     
     @action(detail=False, methods=['get'])
     def current(self, request):
@@ -91,6 +138,15 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['company', 'status', 'month', 'year']
     ordering_fields = ['year', 'month']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            return queryset.filter(company=user.employee_profile.company)
+        elif hasattr(user, 'organization') and user.organization:
+            return queryset.filter(company=user.organization)
+        return queryset.none()
     
     @action(detail=False, methods=['post'])
     def generate(self, request):
@@ -99,7 +155,19 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
         
-        company_id = serializer.validated_data['company']
+        company_id = serializer.validated_data.get('company')
+        
+        # If company not provided, infer from user
+        if not company_id:
+            user = request.user
+            if hasattr(user, 'employee_profile') and user.employee_profile:
+                company_id = user.employee_profile.company_id
+            elif hasattr(user, 'organization') and user.organization:
+                company_id = user.organization.id
+            
+            if not company_id:
+                return Response({'error': 'Could not determine organization context. Please contact support.'}, status=400)
+
         month = serializer.validated_data['month']
         year = serializer.validated_data['year']
         
@@ -149,7 +217,7 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                 date__range=[start_date, end_date]
             )
             
-            working_days = end_date.day  # Simplified - you'd calculate actual working days
+            working_days = end_date.day  # Simplified
             present_days = attendances.filter(status='present').count()
             half_days = attendances.filter(status='half_day').count() * Decimal(0.5)
             leave_days = attendances.filter(status='on_leave').count()
@@ -240,6 +308,25 @@ class PaySlipViewSet(viewsets.ModelViewSet):
     search_fields = ['employee__employee_id', 'employee__first_name']
     ordering_fields = ['payroll_period__year', 'payroll_period__month']
     
+    def get_queryset(self):
+        """Filter payslips by the current user's organization"""
+        try:
+            queryset = super().get_queryset()
+            user = self.request.user
+            
+            # If user has an employee profile, filter by their company
+            if hasattr(user, 'employee_profile') and user.employee_profile:
+                company = user.employee_profile.company
+                if company:
+                    queryset = queryset.filter(employee__company=company)
+            # If user is a ClientAdmin (has organization), filter by that
+            elif hasattr(user, 'organization') and user.organization:
+                queryset = queryset.filter(employee__company=user.organization)
+            
+            return queryset
+        except Exception as e:
+            return self.queryset.none()
+    
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return PaySlipDetailSerializer
@@ -248,10 +335,69 @@ class PaySlipViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_payslips(self, request):
         """Get all payslips for an employee"""
-        employee_id = request.query_params.get('employee')
-        if not employee_id:
-            return Response({'error': 'employee parameter required'}, status=400)
-        
-        payslips = self.queryset.filter(employee_id=employee_id)
-        serializer = PaySlipSerializer(payslips, many=True)
-        return Response(serializer.data)
+        try:
+            employee_id = request.query_params.get('employee')
+            if not employee_id:
+                return Response({'error': 'employee parameter required'}, status=400)
+            
+            payslips = self.get_queryset().filter(employee_id=employee_id)
+            serializer = PaySlipSerializer(payslips, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'])
+    def dashboard_stats(self, request):
+        """Get payroll dashboard statistics for a specific month/year"""
+        try:
+            month = int(request.query_params.get('month', date.today().month))
+            year = int(request.query_params.get('year', date.today().year))
+            
+            from django.db.models import Sum, Count, F, Value
+            from django.db.models.functions import Concat
+            
+            # Get payslips for the specified period (filtered by org)
+            payslips = self.get_queryset().filter(
+                payroll_period__month=month,
+                payroll_period__year=year
+            )
+            
+            # 1. Status Counts
+            # Mapping: 'generated'->'draft', 'approved'->'confirmed', 'paid'->'paid'
+            status_counts = {
+                'paid': payslips.filter(status='paid').count(),
+                'confirmed': payslips.filter(status='approved').count(),
+                'review_ongoing': 0, # Not currently used in model
+                'draft': payslips.filter(status='generated').count(),
+            }
+            
+            # 2. Totals
+            totals = payslips.aggregate(
+                payslips_generated=Count('id'),
+                total_gross=Sum('gross_earnings') or 0,
+                total_net=Sum('net_salary') or 0
+            )
+            
+            # 3. Employee Payslips (for chart)
+            employee_payslips = payslips.select_related('employee').annotate(
+                name=Concat('employee__first_name', Value(' '), 'employee__last_name'),
+                gross=F('gross_earnings')
+            ).values('id', 'name', 'gross', 'status')
+            
+            # 4. Department Breakdown
+            department_breakdown = payslips.values(
+                name=F('employee__department__name')
+            ).annotate(
+                employee_count=Count('id'),
+                total_gross=Sum('gross_earnings'),
+                total_net=Sum('net_salary')
+            ).order_by('name')
+            
+            return Response({
+                'status_counts': status_counts,
+                'totals': totals,
+                'employee_payslips': list(employee_payslips),
+                'department_breakdown': list(department_breakdown)
+            })
+        except Exception as e:
+             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

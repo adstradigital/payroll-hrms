@@ -6,7 +6,8 @@ import Link from 'next/link';
 import {
     LayoutDashboard, Users, Calendar, Clock,
     Wallet, FileText, Settings, ChevronDown,
-    ChevronRight, LogOut, Bell, User, CheckCircle2
+    ChevronRight, LogOut, Bell, User, CheckCircle2,
+    X, Loader, AlertCircle
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -19,13 +20,13 @@ const menuItems = [
         label: 'Dashboard',
         icon: LayoutDashboard,
         path: '/dashboard',
+        permission: 'dashboard.view',
     },
     {
         id: 'profile',
         label: 'My Profile',
         icon: User,
         path: '/dashboard/profile',
-        // No permission needed - everyone can see their own profile
     },
     {
         id: 'employees',
@@ -33,12 +34,11 @@ const menuItems = [
         module: 'HRMS',
         icon: Users,
         path: '/dashboard/employees',
-        permission: 'employee.view_employees',
-        adminOnly: false,
+        permission: ['employees.view', 'employee.view_employee', 'employee.view_employees'],
         children: [
-            { id: 'all-employees', label: 'All Employees', path: '/dashboard/employees', permission: 'employee.view_employees' },
-            { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments', permission: 'core.manage_departments' },
-            { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations', permission: 'core.manage_designations' },
+            { id: 'all-employees', label: 'All Employees', path: '/dashboard/employees', permission: ['employees.view', 'employee.view_employee', 'employee.view_employees'] },
+            { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments', permission: 'employees.view' },
+            { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations', permission: 'employees.view' },
             { id: 'roles-permissions', label: 'Roles & Permissions', path: '/dashboard/employees/roles', adminOnly: true },
             { id: 'document-requests', label: 'Document Requests', path: '/dashboard/employees/document-requests', permission: 'documents.view_document_requests' },
             { id: 'shift-requests', label: 'Shift Requests', path: '/dashboard/employees/shift-requests', permission: 'shift.view_shift_requests' },
@@ -51,12 +51,12 @@ const menuItems = [
         module: 'HRMS',
         icon: CheckCircle2,
         path: '/dashboard/attendance',
-        permission: 'attendance.view_attendance',
+        permission: ['attendance.view', 'attendance.view_attendance'],
         children: [
             { id: 'att-dashboard', label: 'Dashboard', path: '/dashboard/attendance' },
-            { id: 'att-register', label: 'Attendance Register', path: '/dashboard/attendance/register', permission: 'attendance.edit_attendance' },
-            { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests', permission: 'attendance.approve_attendance' },
             { id: 'att-my-attendance', label: 'My Attendance', path: '/dashboard/attendance/my-attendance' },
+            { id: 'att-register', label: 'Attendance Register', path: '/dashboard/attendance/register', permission: 'attendance.manage' },
+            { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests', permission: 'attendance.approve' },
             { id: 'att-work-hours', label: 'Work Hours (Hour Bank)', path: '/dashboard/attendance/work-hours' },
             { id: 'att-work-records', label: 'Work Records', path: '/dashboard/attendance/work-records' },
             { id: 'att-late-early', label: 'Late & Early Rules', path: '/dashboard/attendance/late-early-rules' },
@@ -71,11 +71,11 @@ const menuItems = [
         module: 'HRMS',
         icon: Calendar,
         path: '/dashboard/leave',
-        permission: 'leave.view_leave',
+        permission: ['leave.view', 'leave.view_leave'],
         children: [
             { id: 'leave-dashboard', label: 'Dashboard', path: '/dashboard/leave' },
-            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave/requests', permission: 'leave.view_leave' },
-            { id: 'leave-approvals', label: 'Approvals', path: '/dashboard/leave/approvals', permission: 'leave.approve_leave' },
+            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave/requests', permission: ['leave.view', 'leave.view_leave'] },
+            { id: 'leave-approvals', label: 'Approvals', path: '/dashboard/leave/approvals', permission: 'leave.view' },
             { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types', adminOnly: true },
             { id: 'leave-holidays', label: 'Holiday Calendar', path: '/dashboard/leave/holidays' },
             { id: 'leave-balance', label: 'Leave Balance', path: '/dashboard/leave/balance' },
@@ -89,11 +89,13 @@ const menuItems = [
         module: 'Payroll',
         icon: Wallet,
         path: '/dashboard/payroll',
-        permission: 'payroll.view_payroll',
+        permission: ['payroll.view', 'payroll.view_payslip', 'payroll.view_payslips'],
         children: [
-            { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure', permission: 'payroll.manage_salary_components' },
-            { id: 'payslips', label: 'Payslips', path: '/dashboard/payroll/payslips', permission: 'payroll.view_payslips' },
-            { id: 'run-payroll', label: 'Run Payroll', path: '/dashboard/payroll/run', permission: 'payroll.process_payroll' },
+            { id: 'salary-components', label: 'Salary Components', path: '/dashboard/payroll/salarycomponents', permission: 'payroll.manage' },
+            { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
+            { id: 'employee-salary', label: 'Employee Salary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },
+            { id: 'payslips', label: 'Payslips', path: '/dashboard/payroll/payslips' },
+            { id: 'run-payroll', label: 'Run Payroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
         ]
     },
     {
@@ -101,26 +103,32 @@ const menuItems = [
         label: 'Reports',
         icon: FileText,
         path: '/dashboard/reports',
-        permission: 'reports.view_reports',
+        permission: ['reports.view', 'reports.view_reports'],
     },
-
     {
         id: 'settings',
         label: 'Settings',
         icon: Settings,
         path: '/dashboard/settings',
-        adminOnly: true, // Only admins can access settings
+        adminOnly: true,
     },
 ];
 
 export default function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
-    const { hasHRMS, hasPayroll, hasPermission, isAdmin } = usePermissions();
-    const [expandedItems, setExpandedItems] = useState(() => {
-        // Initial state: opened items by default + items that are parents of the current path
-        const defaultExpanded = [];
+    const { hasHRMS, hasPayroll, hasPermission, hasAnyPermission, isAdmin } = usePermissions();
 
+    // Logout Flow States
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [showWorkReportModal, setShowWorkReportModal] = useState(false);
+    const [workReport, setWorkReport] = useState({ tasks: '', notes: '' });
+    const [submittingReport, setSubmittingReport] = useState(false);
+    const [attendanceStatus, setAttendanceStatus] = useState(null); // { checkedIn: bool, checkedOut: bool }
+    const [checkingAttendance, setCheckingAttendance] = useState(false);
+
+    const [expandedItems, setExpandedItems] = useState(() => {
+        const defaultExpanded = [];
         menuItems.forEach(item => {
             if (item.children && !defaultExpanded.includes(item.id)) {
                 if (item.children.some(child => pathname.startsWith(child.path))) {
@@ -131,33 +139,26 @@ export default function Sidebar() {
         return defaultExpanded;
     });
 
-    // Persistent scroll preservation
     useEffect(() => {
         const sidebarNav = document.querySelector('.sidebar__nav');
         if (sidebarNav) {
-            // Restore scroll position
             const savedScroll = sessionStorage.getItem('sidebar-scroll');
             if (savedScroll) {
-                // Use requestAnimationFrame to ensure DOM is ready/stable
                 requestAnimationFrame(() => {
                     sidebarNav.scrollTop = parseInt(savedScroll, 10);
                 });
             }
-
             const handleScroll = () => {
                 sessionStorage.setItem('sidebar-scroll', sidebarNav.scrollTop);
             };
-
             sidebarNav.addEventListener('scroll', handleScroll);
             return () => sidebarNav.removeEventListener('scroll', handleScroll);
         }
-    }, [pathname, expandedItems]); // Track expandedItems too to handle jumps during state changes
+    }, [pathname, expandedItems]);
 
-    // Auto-expand parent if a child is active (useful for direct navigation or URL changes)
     useEffect(() => {
         const itemsToExpand = [...expandedItems];
         let changed = false;
-
         menuItems.forEach(item => {
             if (item.children && !itemsToExpand.includes(item.id)) {
                 if (item.children.some(child => pathname.startsWith(child.path))) {
@@ -166,19 +167,13 @@ export default function Sidebar() {
                 }
             }
         });
-
-        if (changed) {
-            setExpandedItems(itemsToExpand);
-        }
+        if (changed) setExpandedItems(itemsToExpand);
     }, [pathname]);
 
     const toggleExpand = (itemId) => {
         setExpandedItems(prev => {
             const isExpanded = prev.includes(itemId);
-            const next = isExpanded
-                ? prev.filter(id => id !== itemId)
-                : [...prev, itemId];
-            return next;
+            return isExpanded ? prev.filter(id => id !== itemId) : [...prev, itemId];
         });
     };
 
@@ -191,33 +186,115 @@ export default function Sidebar() {
         return false;
     };
 
-    const filteredMenuItems = menuItems.filter(item => {
+    const checkPermission = (item) => {
         // 1. Check Subscription Plan
         if (item.module === 'HRMS' && !hasHRMS) return false;
         if (item.module === 'Payroll' && !hasPayroll) return false;
 
-        // 2. Check Admin-Only items
+        // 2. Check Admin-Only
         if (item.adminOnly && !isAdmin) return false;
 
         // 3. Check Granular Permission
-        if (item.permission && !hasPermission(item.permission)) {
-            return false;
+        if (item.permission) {
+            if (Array.isArray(item.permission)) {
+                if (!hasAnyPermission(item.permission)) return false;
+            } else {
+                if (!hasPermission(item.permission)) return false;
+            }
         }
-
         return true;
-    });
+    };
+
+    const filteredMenuItems = menuItems.filter(checkPermission);
 
     // Also filter children based on permissions
     const filterChildren = (children) => {
         if (!children) return [];
         return children.filter(child => {
             if (child.adminOnly && !isAdmin) return false;
-            if (child.permission && !hasPermission(child.permission)) return false;
+
+            if (child.permission) {
+                if (Array.isArray(child.permission)) {
+                    if (!hasAnyPermission(child.permission)) return false;
+                } else {
+                    if (!hasPermission(child.permission)) return false;
+                }
+            }
             return true;
         });
     };
 
-    return (
+    // Logout Flow Handlers
+    const handleLogoutClick = async () => {
+        setCheckingAttendance(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/my_dashboard/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const today = data.today;
+
+                // Check if clocked in but not clocked out
+                if (today?.check_in && !today?.check_out) {
+                    setAttendanceStatus({ checkedIn: true, checkedOut: false });
+                    setShowLogoutConfirm(true);
+                } else {
+                    // Already clocked out or not clocked in today - just logout
+                    logout();
+                }
+            } else {
+                // API error - just logout
+                logout();
+            }
+        } catch (err) {
+            console.error('Error checking attendance:', err);
+            logout();
+        } finally {
+            setCheckingAttendance(false);
+        }
+    };
+
+    const handleConfirmLogoutWithReport = () => {
+        setShowLogoutConfirm(false);
+        setShowWorkReportModal(true);
+    };
+
+    const handleSubmitReportAndLogout = async () => {
+        if (!workReport.tasks.trim()) return;
+
+        setSubmittingReport(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+
+            // Clock out with work report
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/check-out/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    work_report: {
+                        tasks_completed: workReport.tasks,
+                        notes: workReport.notes
+                    }
+                })
+            });
+
+            if (response.ok) {
+                setShowWorkReportModal(false);
+                setWorkReport({ tasks: '', notes: '' });
+                logout();
+            }
+        } catch (err) {
+            console.error('Error submitting report:', err);
+        } finally {
+            setSubmittingReport(false);
+        }
+    }; return (
         <aside className="sidebar">
             {/* Logo */}
             <div className="sidebar__logo">
@@ -296,11 +373,105 @@ export default function Sidebar() {
                                         'Free Plan'}
                         </span>
                     </div>
-                    <button className="sidebar__logout-btn" onClick={logout}>
-                        <LogOut size={18} />
+                    <button
+                        className="sidebar__logout-btn"
+                        onClick={handleLogoutClick}
+                        disabled={checkingAttendance}
+                    >
+                        {checkingAttendance ? <Loader size={18} className="animate-spin" /> : <LogOut size={18} />}
                     </button>
                 </div>
             </div>
+
+            {/* Logout Confirmation Modal */}
+            {showLogoutConfirm && (
+                <div className="sidebar-modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
+                    <div className="sidebar-modal" onClick={e => e.stopPropagation()}>
+                        <div className="sidebar-modal__header">
+                            <h3><AlertCircle size={20} /> Work Report Required</h3>
+                            <button className="sidebar-modal__close" onClick={() => setShowLogoutConfirm(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="sidebar-modal__body">
+                            <div className="sidebar-modal__icon">
+                                <Clock size={48} />
+                            </div>
+                            <p><strong>You haven't clocked out yet!</strong></p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                Please submit your work report and clock out before logging out.
+                            </p>
+                        </div>
+                        <div className="sidebar-modal__footer">
+                            <button className="sidebar-modal__btn sidebar-modal__btn--secondary" onClick={() => setShowLogoutConfirm(false)}>
+                                Cancel
+                            </button>
+                            <button className="sidebar-modal__btn sidebar-modal__btn--primary" onClick={handleConfirmLogoutWithReport}>
+                                Submit Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Work Report Modal */}
+            {showWorkReportModal && (
+                <div className="sidebar-modal-overlay">
+                    <div className="sidebar-modal sidebar-modal--lg" onClick={e => e.stopPropagation()}>
+                        <div className="sidebar-modal__header">
+                            <h3><FileText size={20} /> Daily Work Report</h3>
+                        </div>
+                        <div className="sidebar-modal__body">
+                            <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                                Please submit your work report before logging out. This is required.
+                            </p>
+
+                            <div className="sidebar-modal__form-group">
+                                <label>Tasks Completed Today <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                                <textarea
+                                    rows={4}
+                                    placeholder="List the tasks you completed today..."
+                                    value={workReport.tasks}
+                                    onChange={(e) => setWorkReport(prev => ({ ...prev, tasks: e.target.value }))}
+                                />
+                            </div>
+
+                            <div className="sidebar-modal__form-group">
+                                <label>Additional Notes (Optional)</label>
+                                <textarea
+                                    rows={2}
+                                    placeholder="Any blockers, issues, or notes for tomorrow..."
+                                    value={workReport.notes}
+                                    onChange={(e) => setWorkReport(prev => ({ ...prev, notes: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+                        <div className="sidebar-modal__footer">
+                            <button
+                                className="sidebar-modal__btn sidebar-modal__btn--secondary"
+                                onClick={() => {
+                                    setShowWorkReportModal(false);
+                                    setWorkReport({ tasks: '', notes: '' });
+                                }}
+                                disabled={submittingReport}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="sidebar-modal__btn sidebar-modal__btn--primary"
+                                onClick={handleSubmitReportAndLogout}
+                                disabled={!workReport.tasks.trim() || submittingReport}
+                            >
+                                {submittingReport ? (
+                                    <><Loader size={16} className="animate-spin" /> Submitting...</>
+                                ) : (
+                                    <><CheckCircle2 size={16} /> Submit & Logout</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </aside>
     );
 }

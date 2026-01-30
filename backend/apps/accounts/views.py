@@ -27,7 +27,7 @@ from .serializers import (
     DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
     DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer
 )
-from .permissions import is_client_admin, is_org_creator, require_admin, require_permission
+from .permissions import is_client_admin, require_admin, require_permission, PermissionChecker
 
 logger = logging.getLogger(__name__)
 
@@ -1043,103 +1043,39 @@ def get_my_profile(request):
 @permission_classes([IsAuthenticated])
 def get_my_permissions(request):
     """
-    Get the current user's permissions based on:
-    1. If admin/org creator -> All permissions
-    2. Otherwise -> Permissions from designation's mapped roles
+    Get the current user's permissions including basic rights and role-based permissions.
     """
     try:
         logger.info(f"[get_my_permissions] Fetching permissions for user: {request.user}")
         
-        # Check if user is admin
-        if is_client_admin(request.user):
-            logger.info(f"[get_my_permissions] User is admin - returning all permissions")
-            # Return all permissions
-            all_perms = Permission.objects.filter(is_active=True).select_related('module')
-            permissions = [
-                {
-                    'code': p.code,
-                    'name': p.name,
-                    'module': p.module.name,
-                    'module_code': p.module.code,
-                    'scope': 'organization'  # Admins have org-wide scope
-                }
-                for p in all_perms
-            ]
-            return Response({
-                'success': True,
-                'is_admin': True,
-                'role': 'admin',
-                'permissions': permissions,
-                'permission_codes': [p['code'] for p in permissions]
-            })
+        # Determine organization context
+        employee = Employee.objects.filter(user=request.user).first()
+        organization = employee.company.get_root_parent() if employee else None
         
-        # Get employee's designation and its roles
-        try:
-            employee = Employee.objects.select_related('designation').get(user=request.user)
-        except Employee.DoesNotExist:
-            logger.warning(f"[get_my_permissions] No employee record found")
-            return Response({
-                'success': True,
-                'is_admin': False,
-                'role': 'employee',
-                'permissions': [],
-                'permission_codes': []
-            })
+        # Use PermissionChecker to get consolidated permissions
+        checker = PermissionChecker(request.user, organization, log=False)
+        permissions = checker.get_user_permissions()
         
-        permissions = []
-        permission_codes = set()
+        # Extract straight permission codes for easy frontend checking
+        permission_codes = [p['permission'] for p in permissions]
         
-        if employee.designation:
-            logger.info(f"[get_my_permissions] Employee designation: {employee.designation.name}")
-            
-            # Get roles mapped to designation
-            roles = employee.designation.roles.filter(is_active=True)
-            logger.info(f"[get_my_permissions] Mapped roles: {[r.name for r in roles]}")
-            
-            for role in roles:
-                # Get permissions from each role
-                role_perms = RolePermission.objects.filter(role=role).select_related(
-                    'permission', 'permission__module', 'scope'
-                )
-                for rp in role_perms:
-                    if rp.permission.code not in permission_codes:
-                        permission_codes.add(rp.permission.code)
-                        permissions.append({
-                            'code': rp.permission.code,
-                            'name': rp.permission.name,
-                            'module': rp.permission.module.name,
-                            'module_code': rp.permission.module.code,
-                            'scope': rp.scope.code if rp.scope else 'self',
-                            'source_role': role.name
-                        })
-            
-            # Also check direct designation permissions
-            desig_perms = DesignationPermission.objects.filter(
-                designation=employee.designation
-            ).select_related('permission', 'permission__module', 'scope')
-            
-            for dp in desig_perms:
-                if dp.permission.code not in permission_codes:
-                    permission_codes.add(dp.permission.code)
-                    permissions.append({
-                        'code': dp.permission.code,
-                        'name': dp.permission.name,
-                        'module': dp.permission.module.name,
-                        'module_code': dp.permission.module.code,
-                        'scope': dp.scope.code if dp.scope else 'self',
-                        'source': 'direct'
-                    })
+        response_data = {
+            'success': True,
+            'is_admin': is_client_admin(request.user),
+            'role': 'admin' if is_client_admin(request.user) else 'employee',
+            'designation': employee.designation.name if employee and employee.designation else None,
+            'permissions': permissions,
+            'permission_codes': permission_codes
+        }
         
         logger.info(f"[get_my_permissions] Total permissions: {len(permissions)}")
+        return Response(response_data)
         
-        return Response({
-            'success': True,
-            'is_admin': False,
-            'role': 'employee',
-            'designation': employee.designation.name if employee.designation else None,
-            'permissions': permissions,
-            'permission_codes': list(permission_codes)
-        })
+    except Exception as e:
+        import traceback
+        logger.error(f"[get_my_permissions] Error: {str(e)}")
+        logger.error(traceback.format_exc())
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     except Exception as e:
         import traceback

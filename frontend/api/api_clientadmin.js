@@ -5,6 +5,24 @@
 import axiosInstance from './axiosInstance';
 import { CLIENTADMIN_ENDPOINTS } from './config';
 
+console.log('--- api_clientadmin.js v2 loaded ---');
+if (typeof window !== 'undefined') window.__HOLIDAY_API_READY__ = true;
+
+export function apiPreviewHolidays(data) {
+    console.log('Calling apiPreviewHolidays with:', data);
+    return axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}preview/`, data);
+}
+
+export function apiImportHolidays(data) {
+    console.log('Calling apiImportHolidays with:', data);
+    return axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}import/`, data);
+}
+
+export function apiDeleteAllHolidays() {
+    console.log('Calling apiDeleteAllHolidays');
+    return axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}delete_all/`);
+}
+
 // Authentication
 export const login = (credentials) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOGIN, credentials);
 // Submit registration for approval (no password - credentials will be auto-generated)
@@ -42,7 +60,7 @@ export const deleteDepartment = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOIN
 
 export const getAllDesignations = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DESIGNATIONS);
 export const createDesignation = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DESIGNATIONS, data);
-export const updateDesignation = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id), data);
+export const updateDesignation = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id), data);
 export const deleteDesignation = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.DESIGNATION_DETAIL(id));
 export const updateDesignationPermissions = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.DESIGNATION_PERMISSIONS(id), data);
 
@@ -65,6 +83,8 @@ export const getAllHolidays = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.HOLI
 export const createHoliday = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.HOLIDAYS, data);
 export const updateHoliday = (id, data) => axiosInstance.put(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/`, data);
 export const deleteHoliday = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/`);
+export const restoreHoliday = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/restore/`);
+export const getDeletedHolidays = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.HOLIDAYS, { params: { include_deleted: 'true', is_active: 'false' } });
 
 // Leave Management
 export const getAllLeaves = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVES, { params });
@@ -89,13 +109,42 @@ export const runPayroll = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAY
 export const getAllPayslips = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIPS, { params });
 export const getPayslipById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DETAIL(id));
 export const downloadPayslip = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DETAIL(id), { responseType: 'blob' });
-export const getSalaryComponents = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENTS);
+export const getPayslipDashboardStats = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DASHBOARD_STATS, { params });
+export const getMyPayslips = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_MY_PAYSLIPS);
+
+// Salary Components
+export const getSalaryComponents = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENTS, { params });
+export const getSalaryComponentById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENT_DETAIL(id));
+export const createSalaryComponent = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENTS, data);
+export const updateSalaryComponent = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENT_DETAIL(id), data);
+export const deleteSalaryComponent = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENT_DETAIL(id));
+
+// Salary Structures
 
 export const getSalaryStructures = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURES, { params });
+export const getSalaryStructureById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id));
 export const createSalaryStructure = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURES, data);
 export const updateSalaryStructure = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id), data);
 export const deleteSalaryStructure = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id));
-export const addComponentToStructure = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id)}add_component/`, data);
+export const addComponentToStructure = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id)}add-component/`, data);
+
+// Employee Salaries
+export const getEmployeeSalaries = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARIES, { params });
+export const getEmployeeSalaryById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_DETAIL(id));
+export const createEmployeeSalary = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARIES, data);
+export const updateEmployeeSalary = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_DETAIL(id), data);
+export const deleteEmployeeSalary = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_DETAIL(id));
+export const getCurrentEmployeeSalary = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_CURRENT, { params });
+
+// Payroll Periods
+export const getPayrollPeriods = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS, { params });
+export const getPayrollPeriodById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id));
+export const createPayrollPeriod = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS, data);
+export const updatePayrollPeriod = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id), data);
+export const generatePayrollForPeriod = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS}generate/`, data);
+export const markPeriodAsPaid = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id)}mark-paid/`);
+export const generateAdvancedPayroll = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAYROLL_GENERATE, data);
+export const getPayrollReportData = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_REPORTS, { params });
 
 // Reports
 export const getAttendanceReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_ATTENDANCE, { params });

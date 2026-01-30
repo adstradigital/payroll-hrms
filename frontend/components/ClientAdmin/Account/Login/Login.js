@@ -86,6 +86,44 @@ export default function Login() {
                 localStorage.setItem('rememberMe', 'true');
             }
 
+            // --- AUTO CLOCK-IN LOGIC ---
+            try {
+                // 1. Fetch Dashboard to get Employee ID
+                const date = new Date();
+                const dashboardRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/my_dashboard/?month=${date.getMonth() + 1}&year=${date.getFullYear()}`, {
+                    headers: { 'Authorization': `Bearer ${access}` }
+                });
+
+                if (dashboardRes.ok) {
+                    const dashboardData = await dashboardRes.json();
+                    const employeeId = dashboardData.employee?.id;
+
+                    if (employeeId) {
+                        // Store locally for logout use
+                        localStorage.setItem('employeeId', employeeId);
+
+                        // 2. Auto Check-in
+                        if (!dashboardData.today?.check_in) {
+                            console.log('[Login] 🕒 Auto Clock-in triggered...');
+                            await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/check-in/`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${access}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ employee: employeeId })
+                            });
+                            console.log('[Login] ✅ Auto Clock-in successful');
+                        } else {
+                            console.log('[Login] ℹ️ Already clocked in today');
+                        }
+                    }
+                }
+            } catch (clockErr) {
+                console.error('[Login] ⚠️ Auto clock-in failed (non-blocking):', clockErr);
+            }
+            // ---------------------------
+
             setStatus('success');
             setTimeout(() => {
                 router.push('/dashboard');

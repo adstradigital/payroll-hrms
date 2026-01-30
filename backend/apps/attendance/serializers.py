@@ -20,7 +20,9 @@ class AttendancePolicyListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'company', 'company_name', 'department', 'department_name',
             'name', 'policy_type', 'working_days', 'work_start_time',
-            'work_end_time', 'working_hours', 'is_active', 'effective_from'
+            'work_end_time', 'working_hours', 'is_active', 'effective_from',
+            'enable_shift_system', 'track_break_time', 'allow_flexible_hours',
+            'grace_period_minutes', 'overtime_after_minutes'
         ]
         read_only_fields = ['id']
 
@@ -37,7 +39,7 @@ class AttendancePolicyDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendancePolicy
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'company']
 
     def get_working_hours(self, obj):
         return obj.get_working_hours()
@@ -91,7 +93,7 @@ class ShiftDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shift
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'company']
 
     def get_duration_hours(self, obj):
         return obj.get_shift_duration()
@@ -239,7 +241,7 @@ class HolidaySerializer(serializers.ModelSerializer):
     class Meta:
         model = Holiday
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'company']
 
     def get_department_names(self, obj):
         return [dept.name for dept in obj.departments.all()]
@@ -357,9 +359,23 @@ class BulkAttendanceSerializer(serializers.Serializer):
         return value
 
 
+
+class AttendanceRegularizationActionSerializer(serializers.Serializer):
+    """Serializer for direct attendance regularization action"""
+    check_in_time = serializers.TimeField(required=False, format='%H:%M', input_formats=['%H:%M', '%H:%M:%S'])
+    check_out_time = serializers.TimeField(required=False, format='%H:%M', input_formats=['%H:%M', '%H:%M:%S'])
+    reason = serializers.CharField(required=True, max_length=500)
+
+    def validate(self, data):
+        if not data.get('check_in_time') and not data.get('check_out_time'):
+            raise serializers.ValidationError("At least one of Check-in or Check-out time must be provided.")
+        return data
+
+
 # Aliases for views
 AttendancePolicySerializer = AttendancePolicyDetailSerializer
 ShiftSerializer = ShiftDetailSerializer
-AttendanceRegularizationSerializer = AttendanceRegularizationRequestSerializer
+AttendanceRegularizationSerializer = AttendanceRegularizationActionSerializer # Points to the action serializer
+AttendanceRegularizationRequestAlias = AttendanceRegularizationRequestSerializer # Renamed alias for request model
 AttendanceSerializer = AttendanceListSerializer
 

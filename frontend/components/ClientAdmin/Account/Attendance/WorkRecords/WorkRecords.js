@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Download, Filter, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Filter, Calendar, ChevronLeft, ChevronRight, Search, ChevronDown } from 'lucide-react';
+
 import './WorkRecords.css';
 
 
@@ -11,6 +12,7 @@ export default function WorkRecords() {
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [daysInMonth, setDaysInMonth] = useState(31);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
@@ -50,121 +52,217 @@ export default function WorkRecords() {
         setViewDate(new Date(year, month - 1));
     };
 
-    const getStatusClass = (status) => {
-        if (status === 'P') return 'wr-cell-bubble p';
-        if (status === 'L') return 'wr-cell-bubble l';
-        if (status === 'A') return 'wr-cell-bubble a';
-        if (status === '!') return 'wr-cell-bubble conflict';
-        if (status === 'H') return 'wr-cell-bubble h';
-        if (status === 'O') return 'wr-cell-bubble o';
-        return 'wr-cell-bubble empty';
+    const shiftMonth = (delta) => {
+        setViewDate(prevDate => {
+            const newDate = new Date(prevDate);
+            newDate.setMonth(prevDate.getMonth() + delta);
+            return newDate;
+        });
+    };
+
+    const getStatusStyles = (status) => {
+        const base = "wr-status-bubble ";
+        switch (status) {
+            case 'P': return base + "status-p";
+            case 'L': return base + "status-l";
+            case 'A': return base + "status-a";
+            case '!': return base + "status-conflict";
+            case 'H': return base + "status-h";
+            case 'O': return base + "status-off";
+            default: return base;
+        }
     };
 
     const getTooltip = (status, day) => {
-        if (!status) return `No Record - ${day}`;
+        if (!status) return `No Record • Day ${day}`;
         const map = {
-            'P': `Present • ${day}`,
-            'L': `Leave • ${day}`,
-            'A': `Absent • ${day}`,
-            '!': `Conflict Alert • ${day}`,
-            'H': `Half Day • ${day}`,
-            'O': `On Leave (Present) • ${day}`
+            'P': `Present • Day ${day}`,
+            'L': `Leave • Day ${day}`,
+            'A': `Absent • Day ${day}`,
+            '!': `Conflict Alert • Day ${day}`,
+            'H': `Half Day • Day ${day}`,
+            'O': `Holiday / Week Off • Day ${day}`
         };
         return map[status] || status;
     };
 
+    const filteredEmployees = employees.filter(emp =>
+        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
-        <div className="timesheets-section">
-            {/* Header Area */}
-            <div className="wr-header">
-                <div className="wr-title-area">
-                    <h2>Work Records</h2>
-                    <p className="wr-subtitle">Monthly attendance overview and status</p>
-                </div>
-                <div className="wr-meta-area">
-                    <div className="wr-date-display">Date: {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
-                    <div className="wr-month-picker">
-                        <label>Month</label>
-                        <input
-                            type="month"
-                            className="wr-month-input"
-                            value={`${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}`}
-                            onChange={handleMonthChange}
-                        />
+        <div className="work-records-page">
+            {/* Container Card */}
+            <div className="work-records-container">
+
+                {/* Header Section */}
+                <div className="wr-header">
+                    {/* Subtle glow background */}
+                    <div className="wr-header-glow" />
+
+                    <div className="wr-header-content">
+                        <div className="wr-title-group">
+                            <div className="wr-title-wrapper">
+                                <div className="wr-icon-box">
+                                    <Calendar size={24} />
+                                </div>
+                                <h2 className="wr-title wr-title-gradient">
+                                    Work Records
+                                </h2>
+                            </div>
+                            <p className="wr-subtitle">Enterprise Attendance Lifecycle Management</p>
+                        </div>
+
+                        <div className="wr-controls">
+                            {/* Consolidated Date Navigator */}
+                            <div className="wr-date-navigator">
+                                <button
+                                    onClick={() => shiftMonth(-1)}
+                                    className="wr-nav-btn"
+                                    title="Previous Month"
+                                >
+                                    <ChevronLeft size={20} />
+                                </button>
+
+                                <div className="wr-month-picker-integrated">
+                                    <span className="wr-current-date-text">
+                                        {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                    </span>
+                                    <input
+                                        type="month"
+                                        className="wr-month-hidden-input"
+                                        value={`${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}`}
+                                        onChange={handleMonthChange}
+                                        title="Select Month"
+                                    />
+                                    <Calendar size={16} className="wr-calendar-icon-hint" />
+                                </div>
+
+                                <button
+                                    onClick={() => shiftMonth(1)}
+                                    className="wr-nav-btn"
+                                    title="Next Month"
+                                >
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Toolbar & Legend */}
-            <div className="wr-toolbar">
-                <div className="wr-toolbar-left">
-                    <button className="wr-export-btn">
-                        <Download size={16} /> Export
-                    </button>
-                    <button className="wr-filter-btn">
-                        <Filter size={16} /> Filter
-                    </button>
+                {/* Toolbar Section */}
+                <div className="wr-toolbar">
+                    <div className="wr-search-group">
+                        <div className="wr-search-wrapper">
+                            <Search className="wr-search-icon" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search employee..."
+                                className="wr-search-input"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <button className="wr-export-btn">
+                            <Download size={14} className="text-amber-500" />
+                            <span>Export</span>
+                        </button>
+                    </div>
+
+                    <div className="wr-legend">
+                        <div className="wr-legend-item"><span className="wr-legend-dot legend-dot-p"></span> Present</div>
+                        <div className="wr-legend-item"><span className="wr-legend-dot legend-dot-h"></span> Half Day</div>
+                        <div className="wr-legend-item"><span className="wr-legend-dot legend-dot-l"></span> Leave</div>
+                        <div className="wr-legend-item"><span className="wr-legend-dot legend-dot-a"></span> Absent</div>
+                        <div className="wr-legend-item"><span className="wr-legend-dot legend-dot-o"></span> Off/Holiday</div>
+                        <div className="wr-legend-item"><span className="wr-legend-dot legend-dot-c"></span> Conflict</div>
+                    </div>
                 </div>
 
-                <div className="wr-legend">
-                    <div className="legend-item"><span className="legend-dot present"></span> Present</div>
-                    <div className="legend-item"><span className="legend-dot half-day"></span> Half Day</div>
-                    <div className="legend-item"><span className="legend-dot on-leave-att"></span> Excused</div>
-                    <div className="legend-item"><span className="legend-dot leave"></span> Leave</div>
-                    <div className="legend-item"><span className="legend-dot absent"></span> Absent</div>
-                    <div className="legend-item"><span className="legend-dot conflict"></span> Conflict</div>
-                </div>
-            </div>
+                {/* Table Grid Wrapper */}
+                <div className="wr-table-wrapper">
+                    <table className="wr-table">
+                        <thead>
+                            <tr className="wr-tr">
+                                <th className="wr-th wr-th-sticky-left">
+                                    Employee Identity
+                                </th>
+                                <th className="wr-th wr-th-sticky-stats">Days</th>
+                                <th className="wr-th">Late</th>
+                                <th className="wr-th">Abs</th>
 
-            {/* Timeline Grid Table */}
-            <div className="wr-grid-container">
-                <table className="wr-table">
-                    <thead>
-                        <tr>
-                            <th className="emp-col sticky-col">Employee</th>
-                            <th className="stat-col sticky-col-2">Days</th>
-                            <th className="stat-col">Late</th>
-                            <th className="stat-col">Abs</th>
-                            {days.map(d => (
-                                <th key={d} className={d > daysInMonth ? 'wr-day-disabled' : ''}>{d}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading ? (
-                            <tr><td colSpan={35} className="text-center p-4">Loading work records...</td></tr>
-                        ) : employees.length === 0 ? (
-                            <tr><td colSpan={35} className="text-center p-4">No employees found</td></tr>
-                        ) : (
-                            employees.map(emp => (
-                                <tr key={emp.id}>
-                                    <td className="emp-name-cell sticky-col">
-                                        <div className="emp-info">
-                                            <span className="emp-name">{emp.name}</span>
-                                            <span className="emp-id">{emp.employee_id}</span>
-                                            {emp.meta && <span className="emp-badge terminated">{emp.meta}</span>}
+                                {days.map(d => (
+                                    <th key={d} className={`wr-th wr-th-day ${d > daysInMonth ? 'wr-th-day-inactive' : ''}`}>
+                                        {d}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={35} className="wr-loading-cell">
+                                        <div className="wr-loading-container">
+                                            <div className="wr-spinner"></div>
+                                            <div className="wr-loading-text">Synchronizing Records...</div>
                                         </div>
                                     </td>
-                                    <td className="stat-cell sticky-col-2 wr-stat-present">{emp.stats.P}</td>
-                                    <td className="stat-cell wr-stat-late">{emp.stats.H}</td>
-                                    <td className="stat-cell wr-stat-absent">{emp.stats.A}</td>
-                                    {days.map((day, idx) => (
-                                        <td key={day} className={`timeline-cell ${day > daysInMonth ? 'wr-day-disabled' : ''}`}>
-                                            {day <= daysInMonth && emp.status[idx] && (
-                                                <div
-                                                    className={getStatusClass(emp.status[idx])}
-                                                    title={getTooltip(emp.status[idx], day)}
-                                                >
-                                                    {emp.status[idx]}
-                                                </div>
-                                            )}
-                                        </td>
-                                    ))}
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                            ) : filteredEmployees.length === 0 ? (
+                                <tr>
+                                    <td colSpan={35} className="wr-loading-container" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                                        No matching personnel found for this period.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredEmployees.map(emp => (
+                                    <tr key={emp.id} className="wr-tr">
+                                        <td className="wr-td wr-td-sticky-left">
+                                            <div className="wr-emp-info">
+                                                <span className="wr-emp-name">
+                                                    {emp.name}
+                                                </span>
+                                                <div className="wr-emp-meta">
+                                                    <span className="wr-emp-id">{emp.employee_id}</span>
+                                                    {emp.meta && (
+                                                        <span className="wr-emp-badge">
+                                                            {emp.meta}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td className="wr-td wr-td-sticky-stats wr-td-stat wr-stat-p">
+                                            {emp.stats.P}
+                                        </td>
+
+                                        <td className="wr-td wr-td-stat wr-stat-h">{emp.stats.H}</td>
+                                        <td className="wr-td wr-td-stat wr-stat-a">{emp.stats.A}</td>
+
+                                        {days.map((day, idx) => (
+                                            <td key={day} className="wr-td wr-td-day">
+                                                <div className="wr-day-content">
+                                                    {day <= daysInMonth && emp.status[idx] ? (
+                                                        <div
+                                                            className={getStatusStyles(emp.status[idx])}
+                                                            title={getTooltip(emp.status[idx], day)}
+                                                        >
+                                                            {emp.status[idx]}
+                                                        </div>
+                                                    ) : (
+                                                        day <= daysInMonth && <div className="wr-empty-dot" />
+                                                    )}
+                                                </div>
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

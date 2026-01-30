@@ -112,6 +112,12 @@ class AttendancePolicy(models.Model):
         help_text='Radius in meters for geo-fencing'
     )
     
+    # Feature Toggles
+    enable_shift_system = models.BooleanField(default=True, help_text='Allow multiple work shifts')
+    track_break_time = models.BooleanField(default=True, help_text='Record break duration')
+    allow_flexible_hours = models.BooleanField(default=False, help_text='Employees can adjust timing')
+    overtime_after_minutes = models.PositiveIntegerField(default=480, help_text='Minutes after which overtime counts')
+    
     is_active = models.BooleanField(default=True)
     effective_from = models.DateField()
     effective_to = models.DateField(null=True, blank=True)
@@ -191,14 +197,21 @@ class Shift(models.Model):
     break_duration_minutes = models.PositiveIntegerField(default=60)
     
     # Grace and buffer
-    grace_period_minutes = models.PositiveIntegerField(default=15)
+    grace_period_minutes = models.PositiveIntegerField(
+        default=15,
+        help_text='Grace period for late arrival'
+    )
+    early_departure_grace_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text='Grace period for early departure'
+    )
     buffer_before_minutes = models.PositiveIntegerField(
         default=30,
-        help_text='How early employees can check in'
+        help_text='How early employees can check in (Early Come)'
     )
     buffer_after_minutes = models.PositiveIntegerField(
         default=30,
-        help_text='How late employees can check out'
+        help_text='How late employees can check out (Late Going)'
     )
     
     # Working days for this shift
@@ -208,6 +221,7 @@ class Shift(models.Model):
     )
     
     is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False)
     color_code = models.CharField(max_length=7, default='#3B82F6', help_text='Hex color code')
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -303,6 +317,7 @@ class Attendance(models.Model):
         default=0.0,
         help_text='Total working hours'
     )
+
     overtime_hours = models.DecimalField(
         max_digits=5, 
         decimal_places=2, 
@@ -366,20 +381,34 @@ class Attendance(models.Model):
 
     def calculate_hours(self):
         """Calculate total working hours"""
+        # Recalculate break hours from related AttendanceBreak objects
+        if self.pk:
+            total_break_seconds = 0
+            completed_breaks = self.breaks.filter(break_end__isnull=False)
+            for brk in completed_breaks:
+                duration = brk.break_end - brk.break_start
+                total_break_seconds += duration.total_seconds()
+            
+            self.break_hours = round(total_break_seconds / 3600, 2)
+        
         if self.check_in_time and self.check_out_time:
             duration = self.check_out_time - self.check_in_time
             total_seconds = duration.total_seconds()
             
             # Subtract break hours
             break_seconds = float(self.break_hours) * 3600
-            working_seconds = total_seconds - break_seconds
+            working_seconds = max(0, total_seconds - break_seconds) # Ensure non-negative
             
             self.total_hours = round(working_seconds / 3600, 2)
             
             # Calculate overtime if shift is assigned
             if self.shift:
                 expected_hours = self.shift.get_shift_duration()
-                if self.total_hours > expected_hours:
+                # Check overtime threshold from policy or default
+                policy = self.employee.company.attendance_policies.filter(is_active=True).first()
+                overtime_threshold = policy.overtime_after_minutes / 60 if (policy and policy.overtime_after_minutes) else expected_hours
+                
+                if self.total_hours > overtime_threshold:
                     self.overtime_hours = round(self.total_hours - expected_hours, 2)
             
             # Determine status based on hours
@@ -426,11 +455,14 @@ class Attendance(models.Model):
             if self.shift.end_time < self.shift.start_time:
                 expected_time += timedelta(days=1)
             
+            # Add early departure grace
+            grace_time = expected_time - timedelta(minutes=self.shift.early_departure_grace_minutes)
+            
             # Make timezone aware if needed
             if timezone.is_aware(self.check_out_time):
-                expected_time = timezone.make_aware(expected_time)
+                grace_time = timezone.make_aware(grace_time)
             
-            if self.check_out_time < expected_time:
+            if self.check_out_time < grace_time:
                 self.is_early_departure = True
                 self.early_departure_minutes = int((expected_time - self.check_out_time).total_seconds() / 60)
             else:
@@ -490,6 +522,7 @@ class Holiday(models.Model):
         ('public', 'Public Holiday'),
         ('restricted', 'Restricted Holiday'),
         ('optional', 'Optional Holiday'),
+        ('working', 'Working Day'),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -498,6 +531,7 @@ class Holiday(models.Model):
     date = models.DateField(db_index=True)
     holiday_type = models.CharField(max_length=20, choices=HOLIDAY_TYPE_CHOICES, default='public')
     description = models.TextField(blank=True)
+    recurring = models.BooleanField(default=False)
     
     # Department specific (optional)
     departments = models.ManyToManyField(

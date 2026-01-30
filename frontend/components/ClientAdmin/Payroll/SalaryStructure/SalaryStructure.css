@@ -1,223 +1,86 @@
-/* ===================================
-   Salary Structure Styles
-   =================================== */
+/* SalaryStructure.css */
 
-.salary-structure {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
+.salary-structure-container {
+    padding: var(--spacing-lg);
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-/* Tabs */
-.salary-tabs {
-    display: flex;
-    gap: var(--spacing-xs);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: var(--spacing-xs);
-}
-
-.salary-tab {
-    padding: var(--spacing-sm) var(--spacing-lg);
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all var(--transition-fast);
-    margin-bottom: -1px;
-}
-
-.salary-tab:hover {
-    color: var(--text-primary);
-}
-
-.salary-tab--active {
-    color: var(--brand-primary);
-    border-bottom-color: var(--brand-primary);
-}
-
-/* Content */
-.salary-content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-}
-
-/* Toolbar */
-.salary-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.salary-search {
-    position: relative;
-}
-
-.salary-search__icon {
-    position: absolute;
-    left: var(--spacing-sm);
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-}
-
-.salary-search__input {
-    padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) 36px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-    width: 250px;
-}
-
-/* Structure Grid */
 .structure-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--spacing-md);
-}
-
-.structure-card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-}
-
-.structure-card__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.structure-card__code {
-    background: var(--brand-primary-light);
-    color: var(--brand-primary);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-}
-
-.structure-card__name {
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-semibold);
-    color: var(--text-primary);
-}
-
-.structure-card__stats {
-    display: flex;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: var(--spacing-lg);
 }
 
-.structure-stat {
+/* Card Styling - Reusing generic component card styles but scoped */
+.component-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    transition: all var(--transition-normal);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xs);
 }
 
-.structure-stat__value {
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-semibold);
-    color: var(--text-primary);
+.component-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--brand-primary);
 }
 
-.structure-stat__label {
-    font-size: var(--font-size-xs);
-    color: var(--text-muted);
-}
-
-.structure-card__actions {
+.card-top {
     display: flex;
-    gap: var(--spacing-sm);
-    padding-top: var(--spacing-sm);
-    border-top: 1px solid var(--border-color);
+    gap: var(--spacing-md);
 }
 
-/* Component Table */
-.component-table-container {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
+.icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: var(--brand-primary-light);
+    color: var(--brand-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-.component-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.component-table th {
-    background: var(--bg-tertiary);
-    padding: var(--spacing-sm) var(--spacing-md);
-    text-align: left;
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    color: var(--text-secondary);
+.tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-weight: 600;
     text-transform: uppercase;
 }
 
-.component-table td {
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-bottom: 1px solid var(--border-color);
-    font-size: var(--font-size-sm);
-}
-
-.component-table tr:last-child td {
-    border-bottom: none;
-}
-
-.component-name {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    font-weight: var(--font-weight-medium);
-}
-
-.icon-earning {
+.tag.active {
+    background: var(--color-success-light);
     color: var(--color-success);
 }
 
-.icon-deduction {
-    color: var(--color-danger);
-}
-
-code {
+.tag.inactive {
     background: var(--bg-tertiary);
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }
 
-/* Action buttons */
-.action-btn {
+/* Modal Specifics */
+.modal-body {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.component-list-item {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--bg-tertiary);
+    padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    font-size: var(--font-size-xs);
-    cursor: pointer;
-    transition: all var(--transition-fast);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-sm);
+    background: var(--bg-tertiary);
 }
 
-.action-btn:hover {
-    background: var(--brand-primary);
+.component-list-item:hover {
     border-color: var(--brand-primary);
-    color: white;
-}
-
-.action-btn--danger:hover {
-    background: var(--color-danger);
-    border-color: var(--color-danger);
 }

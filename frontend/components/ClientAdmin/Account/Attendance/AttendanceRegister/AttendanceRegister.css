@@ -1,8 +1,9 @@
 .attendance-register {
-  background: #fff;
+  background: var(--bg-secondary);
   padding: 24px;
   border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
 }
 
 /* Header */
@@ -16,12 +17,12 @@
 .attendance-header h1 {
   font-size: 24px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .subtitle {
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 14px;
   margin-top: 4px;
 }
@@ -31,9 +32,9 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #f9fafb;
+  background: var(--bg-tertiary);
   border-radius: 8px;
-  color: #4b5563;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -57,10 +58,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   padding: 8px 12px;
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--bg-tertiary);
   min-width: 300px;
 }
 
@@ -70,6 +71,7 @@
   background: transparent;
   width: 100%;
   font-size: 14px;
+  color: var(--text-primary);
 }
 
 .filter-group {
@@ -80,8 +82,9 @@
 select {
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
   min-width: 140px;
@@ -102,27 +105,27 @@ select {
 }
 
 .btn.primary {
-  background: #4f46e5;
+  background: var(--brand-primary);
   color: #fff;
 }
 
 .btn.primary:hover {
-  background: #4338ca;
+  filter: brightness(1.1);
 }
 
 .btn.secondary {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .btn.secondary:hover {
-  background: #e5e7eb;
+  background: var(--bg-primary);
 }
 
 /* Bulk bar */
 .bulk-bar {
-  background: #fef3c7;
+  background: var(--bg-tertiary);
   padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 16px;
@@ -130,52 +133,61 @@ select {
   align-items: center;
   gap: 12px;
   animation: slideDown 0.3s ease;
+  border: 1px solid var(--border-color);
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .selected-count {
   font-weight: 600;
-  color: #92400e;
+  color: var(--brand-primary);
 }
 
 .bulk-btn {
   padding: 6px 12px;
   border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #fff;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
+  color: var(--text-primary);
 }
 
 .bulk-btn.approve {
-  background: #10b981;
+  background: var(--color-success);
   color: white;
-  border-color: #10b981;
+  border-color: var(--color-success);
 }
 
 .bulk-btn.approve:hover {
-  background: #059669;
+  filter: brightness(1.1);
 }
 
 .bulk-btn.danger {
-  color: #dc2626;
-  border-color: #dc2626;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 .bulk-btn.danger:hover {
-  background: #fee2e2;
+  background: var(--color-danger-light);
 }
 
 /* Table */
 .table-container {
   overflow-x: auto;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
 }
 
 .attendance-table {
@@ -185,25 +197,26 @@ select {
 }
 
 .attendance-table th {
-  background: #f9fafb;
+  background: var(--bg-tertiary);
   padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .attendance-table td {
   padding: 12px 16px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 .attendance-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--bg-tertiary);
 }
 
 .selected-row {
-  background: #f0f9ff !important;
+  background: rgba(var(--brand-primary-rgb), 0.1) !important;
 }
 
 /* Employee cell */
@@ -217,7 +230,7 @@ select {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #4f46e5;
+  background: var(--brand-primary);
   color: white;
   display: flex;
   align-items: center;
@@ -228,7 +241,7 @@ select {
 
 .muted {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -236,11 +249,11 @@ select {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #f3f4f6;
+  background: var(--bg-tertiary);
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 /* Time cell */
@@ -250,23 +263,28 @@ select {
   gap: 4px;
 }
 
-.time-in, .time-out {
+.time-in,
+.time-out {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: 13px;
+  color: var(--text-primary);
 }
 
-.time-in.missing, .time-out.missing {
-  color: #9ca3af;
+.time-in.missing,
+.time-out.missing {
+  color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .hours {
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .hours.low {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 /* Status badges */
@@ -279,17 +297,19 @@ select {
   text-transform: capitalize;
 }
 
-.badge.present { 
-  background: #d1fae5; 
-  color: #065f46; 
+.badge.present {
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
-.badge.late { 
-  background: #fef3c7; 
-  color: #92400e; 
+
+.badge.late {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
-.badge.absent { 
-  background: #fee2e2; 
-  color: #991b1b; 
+
+.badge.absent {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 /* Source */
@@ -299,33 +319,46 @@ select {
   border-radius: 6px;
   text-transform: capitalize;
 }
-.source.biometric { background: #e0f2fe; color: #0369a1; }
-.source.manual { background: #fef3c7; color: #92400e; }
-.source.system { background: #e5e7eb; color: #374151; }
+
+.source.biometric {
+  background: rgba(3, 105, 161, 0.1);
+  color: #0ea5e9;
+}
+
+.source.manual {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.source.system {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
 
 /* Approval cells */
-.approved-cell, .pending-cell {
+.approved-cell,
+.pending-cell {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .approved-cell {
-  color: #059669;
+  color: var(--color-success);
 }
 
 .pending-cell {
-  color: #f59e0b;
+  color: var(--color-warning);
 }
 
 /* Edit button */
 .edit-btn {
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 6px;
   cursor: pointer;
-  color: #4b5563;
+  color: var(--text-secondary);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -333,8 +366,8 @@ select {
 }
 
 .edit-btn:hover {
-  background: #e5e7eb;
-  color: #1f2937;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* Modal */
@@ -353,23 +386,37 @@ select {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .modal {
-  background: white;
+  background: var(--bg-secondary);
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
   animation: modalSlide 0.3s ease;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
 }
 
 @keyframes modalSlide {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -377,25 +424,25 @@ select {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .close-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-secondary);
   padding: 4px;
 }
 
 .close-btn:hover {
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .modal form {
@@ -412,7 +459,7 @@ select {
   gap: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
@@ -420,16 +467,18 @@ select {
 .form-group select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb), 0.1);
 }
 
 .time-inputs {
@@ -446,38 +495,39 @@ select {
 .status-option {
   flex: 1;
   padding: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--bg-tertiary);
   cursor: pointer;
   text-transform: capitalize;
   font-size: 14px;
   transition: all 0.2s;
+  color: var(--text-secondary);
 }
 
 .status-option.active {
-  border-color: #4f46e5;
-  background: #eef2ff;
-  color: #4f46e5;
+  border-color: var(--brand-primary);
+  background: rgba(var(--brand-primary-rgb), 0.1);
+  color: var(--brand-primary);
   font-weight: 500;
 }
 
 .status-option.present.active {
-  background: #d1fae5;
-  border-color: #10b981;
-  color: #065f46;
+  background: var(--color-success-light);
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .status-option.late.active {
-  background: #fef3c7;
-  border-color: #f59e0b;
-  color: #92400e;
+  background: var(--color-warning-light);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 .status-option.absent.active {
-  background: #fee2e2;
-  border-color: #ef4444;
-  color: #991b1b;
+  background: var(--color-danger-light);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .modal-actions {
@@ -486,5 +536,5 @@ select {
   gap: 12px;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-color);
 }

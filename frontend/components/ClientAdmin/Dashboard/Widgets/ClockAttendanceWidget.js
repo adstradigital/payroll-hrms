@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Clock, Play, Pause, RotateCcw,
     ArrowRight, LogIn, LogOut,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, Loader
 } from 'lucide-react';
 import './ClockAttendanceWidget.css';
 
@@ -20,18 +20,15 @@ export default function ClockAttendanceWidget() {
     const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
 
     // Attendance State
+    const [dashboardData, setDashboardData] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [isClockedIn, setIsClockedIn] = useState(false);
+    const [isShiftComplete, setIsShiftComplete] = useState(false); // NEW: Track completion
+    const [isOnBreak, setIsOnBreak] = useState(false); // NEW: Track break status
     const [clockInTime, setClockInTime] = useState(null);
     const [elapsedWorkTime, setElapsedWorkTime] = useState(0);
-
-    // Mock Attendance History
-    const attendanceHistory = [
-        { date: 'Oct 23', status: 'Holiday', type: 'holiday', day: 'Wed' },
-        { date: 'Oct 22', status: 'Present', type: 'present', in: '09:00 AM', out: '06:00 PM', duration: '9h 00m', day: 'Tue' },
-        { date: 'Oct 21', status: 'Absent', type: 'absent', day: 'Mon' },
-        { date: 'Oct 20', status: 'Weekend', type: 'weekend', day: 'Sun' },
-        { date: 'Oct 19', status: 'Weekend', type: 'weekend', day: 'Sat' },
-    ];
+    const [attendanceHistory, setAttendanceHistory] = useState([]);
+    const [showConfirmOut, setShowConfirmOut] = useState(false); // NEW: Confirm state
 
     // Live Clock Effect
     useEffect(() => {
@@ -50,25 +47,154 @@ export default function ClockAttendanceWidget() {
         return () => clearInterval(interval);
     }, [isStopwatchRunning]);
 
+    // Fetch Dashboard Data
+    const fetchDashboard = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const month = new Date().getMonth() + 1;
+            const year = new Date().getFullYear();
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/my_dashboard/?month=${month}&year=${year}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setDashboardData(data);
+
+                // Sync State
+                if (data.today?.check_in && !data.today?.check_out) {
+                    setIsClockedIn(true);
+                    setIsShiftComplete(false);
+                    const checkIn = new Date(data.today.check_in);
+                    setClockInTime(checkIn);
+
+                    // Handle Break Status
+                    const onBreak = data.today?.is_on_break || false;
+                    setIsOnBreak(onBreak);
+
+                    if (!onBreak) {
+                        setElapsedWorkTime(new Date() - checkIn);
+                    } else {
+                        // If on break, we might want to show the time frozen at break start, 
+                        // but getting break start might be complex here without more API data.
+                        // For now, we will just keep it running or freeze it? 
+                        // User request: "work session is still running" implies it SHOULD NOT run.
+                        // Ideally we freeze it at the last known work time or show "ON BREAK" text.
+                        setElapsedWorkTime(new Date() - checkIn); // Keep it strictly chronological for now but display differs? 
+                        // Actually, if we just want to PAUSE the visual update:
+                    }
+
+                } else if (data.today?.check_in && data.today?.check_out) {
+                    setIsClockedIn(false);
+                    setIsShiftComplete(true);
+                    setIsOnBreak(false);
+                    setClockInTime(null);
+                    setElapsedWorkTime(0);
+                } else {
+                    setIsClockedIn(false);
+                    setIsShiftComplete(false);
+                    setIsOnBreak(false);
+                    setClockInTime(null);
+                    setElapsedWorkTime(0);
+                }
+
+                // Map History
+                if (data.recent_logs) {
+                    const history = data.recent_logs.map(log => ({
+                        date: new Date(log.date).toLocaleString('default', { month: 'short', day: 'numeric' }),
+                        day: new Date(log.date).toLocaleString('default', { weekday: 'short' }),
+                        status: log.status === 'present' ? 'Present' : log.status,
+                        type: log.status === 'present' ? 'present' : 'absent', // simplified
+                        in: log.check_in_time ? new Date(log.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+                        out: log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+                        duration: log.total_hours ? `${log.total_hours}h` : '--',
+                        isLate: log.is_late // NEW: Map is_late property
+                    }));
+                    setAttendanceHistory(history);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching dashboard:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDashboard();
+    }, []);
+
     // Attendance Work Timer Logic
     useEffect(() => {
         let interval;
-        if (isClockedIn) {
+        if (isClockedIn && clockInTime && !isOnBreak) { // Only run if NOT on break
             interval = setInterval(() => {
-                setElapsedWorkTime((prev) => prev + 1000);
+                setElapsedWorkTime(new Date() - clockInTime);
             }, 1000);
+        } else if (isOnBreak) {
+            // Optional: You could freeze it, or show a break timer.
+            // For now, let's just stop the work session update so it looks paused.
         }
         return () => clearInterval(interval);
-    }, [isClockedIn]);
+    }, [isClockedIn, clockInTime, isOnBreak]);
 
-    const handleClockToggle = () => {
-        if (!isClockedIn) {
-            setIsClockedIn(true);
-            setClockInTime(new Date());
-        } else {
-            setIsClockedIn(false);
+    const handleClockToggle = async () => {
+        if (!dashboardData?.employee?.id) return;
+
+        // If clocking out, require confirmation
+        if (isClockedIn) {
+            setShowConfirmOut(true);
+            return;
+        }
+
+        // If clocking in, proceed directly
+        await processClockAction('/attendance/check-in/');
+    };
+
+    const confirmClockOut = async () => {
+        await processClockAction('/attendance/check-out/');
+        setShowConfirmOut(false);
+    };
+
+    const processClockAction = async (endpoint) => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ employee: dashboardData.employee.id })
+            });
+
+            if (response.ok) {
+                await fetchDashboard();
+                window.dispatchEvent(new Event('attendance-updated'));
+            } else {
+                console.error('Failed to update status');
+            }
+        } catch (err) {
+            console.error('Error toggling clock:', err);
+        } finally {
+            setLoading(false);
         }
     };
+
+    // Listen for external updates (e.g., from MyAttendance page)
+    useEffect(() => {
+        const handleAttendanceUpdate = () => {
+            fetchDashboard();
+        };
+
+        window.addEventListener('attendance-updated', handleAttendanceUpdate);
+        return () => window.removeEventListener('attendance-updated', handleAttendanceUpdate);
+    }, []);
 
     // Load saved state on mount
     useEffect(() => {
@@ -105,6 +231,7 @@ export default function ClockAttendanceWidget() {
     };
 
     const formatWorkTime = (ms) => {
+        if (ms < 0) return '00:00:00';
         const hours = Math.floor(ms / 3600000);
         const minutes = Math.floor((ms % 3600000) / 60000);
         const seconds = Math.floor((ms % 60000) / 1000);
@@ -164,7 +291,7 @@ export default function ClockAttendanceWidget() {
                         {/* Status Indicator */}
                         <div className="clock-badge__status">
                             <div className="clock-badge__status-icon">
-                                <Clock size={18} />
+                                {loading ? <Loader size={18} className="animate-spin" /> : <Clock size={18} />}
                             </div>
                             <span className="clock-badge__status-text">
                                 {isClockedIn ? 'IN' : 'OUT'}
@@ -212,15 +339,40 @@ export default function ClockAttendanceWidget() {
                         <div className="attendance-view animate-fade-in">
                             <div className="work-timer-card">
                                 <span className="work-timer-label">Work Session</span>
-                                <span className="work-timer-value">{formatWorkTime(elapsedWorkTime)}</span>
-                                <button
-                                    className={`attendance-btn ${isClockedIn ? 'clock-out' : 'clock-in'}`}
-                                    onClick={handleClockToggle}
-                                >
-                                    {isClockedIn ? <LogOut size={18} /> : <LogIn size={18} />}
-                                    {isClockedIn ? 'Clock Out' : 'Clock In'}
-                                </button>
-                                {isClockedIn && clockInTime && (
+                                <span className={`work-timer-value ${isOnBreak ? 'text-warning' : ''}`}>
+                                    {isOnBreak ? 'ON BREAK' : formatWorkTime(elapsedWorkTime)}
+                                </span>
+
+                                {showConfirmOut ? (
+                                    <div className="confirm-out-box">
+                                        <p className="confirm-text">
+                                            {elapsedWorkTime < 600000
+                                                ? "You've only worked for a few minutes. Are you sure you want to clock out?"
+                                                : "Are you sure you want to end your shift?"}
+                                        </p>
+                                        <div className="confirm-actions">
+                                            <button className="confirm-btn cancel" onClick={() => setShowConfirmOut(false)}>Cancel</button>
+                                            <button className="confirm-btn confirm" onClick={confirmClockOut}>Confirm Clock Out</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button
+                                        className={`attendance-btn ${isClockedIn ? 'clock-out' : 'clock-in'}`}
+                                        onClick={handleClockToggle}
+                                        disabled={loading || isShiftComplete}
+                                    >
+                                        {loading ? (
+                                            <Loader size={18} className="animate-spin" />
+                                        ) : isShiftComplete ? (
+                                            <Clock size={18} />
+                                        ) : (
+                                            isClockedIn ? <LogOut size={18} /> : <LogIn size={18} />
+                                        )}
+                                        {isShiftComplete ? 'Done for Today' : (isClockedIn ? 'Clock Out' : 'Clock In')}
+                                    </button>
+                                )}
+
+                                {isClockedIn && clockInTime && !showConfirmOut && (
                                     <span className="started-at">
                                         Started at {clockInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
@@ -243,7 +395,10 @@ export default function ClockAttendanceWidget() {
                                                 {record.type === 'present' ? (
                                                     <div className="time-range">
                                                         <div className="time-point">
-                                                            <span className="label in">IN</span>
+                                                            <div className="time-label-group">
+                                                                <span className="label in">IN</span>
+                                                                {record.isLate && <span className="status-badge late">LATE</span>}
+                                                            </div>
                                                             <span className="value">{record.in}</span>
                                                         </div>
                                                         <div className="time-divider" />

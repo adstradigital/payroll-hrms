@@ -2,31 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-    Shield, Check, Search, Save, AlertCircle, ChevronDown, ChevronRight,
-    Layers, Lock, User, Users, Globe
+    Search, Layers, Shield, Settings
 } from 'lucide-react';
 import {
-    getPermissions, getScopes, getAllDesignations, updateDesignationPermissions
+    getAllDesignations, getRoles, updateDesignation
 } from '@/api/api_clientadmin';
 import './RoleAndPermission.css';
 
 export default function RoleAndPermission() {
-    const [permissions, setPermissions] = useState([]);
-    const [scopes, setScopes] = useState([]);
     const [designations, setDesignations] = useState([]);
+    const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Selection
     const [selectedDesignation, setSelectedDesignation] = useState(null);
-    const [selectedPermissions, setSelectedPermissions] = useState({}); // { permId: scopeId }
-
-    // Simple Mode State: "Access Level"
-    // 1 = Self (Standard), 3 = Department (Manager), 6 = Organization (Admin)
-    const [accessLevel, setAccessLevel] = useState('1');
+    const [selectedRoleId, setSelectedRoleId] = useState(null);
 
     // UI State
-    const [groupedPermissions, setGroupedPermissions] = useState({});
-    const [expandedModules, setExpandedModules] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [saving, setSaving] = useState(false);
     const [notification, setNotification] = useState(null);
@@ -38,34 +30,16 @@ export default function RoleAndPermission() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [permsRes, scopesRes, desigRes] = await Promise.all([
-                getPermissions(),
-                getScopes(),
-                getAllDesignations()
+            const [desigRes, rolesRes] = await Promise.all([
+                getAllDesignations(),
+                getRoles()
             ]);
 
-            setPermissions(permsRes.data.permissions || []);
-            setScopes(scopesRes.data.scopes || []);
             setDesignations(desigRes.data.results || desigRes.data || []);
-
-            // Group permissions
-            const grouped = (permsRes.data.permissions || []).reduce((acc, perm) => {
-                // Friendly Name formatting
-                const moduleName = perm.module_name.replace(/_/g, ' ').toUpperCase() || 'GENERAL';
-                if (!acc[moduleName]) acc[moduleName] = [];
-                acc[moduleName].push(perm);
-                return acc;
-            }, {});
-
-            setGroupedPermissions(grouped);
-
-            // Auto-expand all
-            const allExpanded = {};
-            Object.keys(grouped).forEach(key => { allExpanded[key] = true; });
-            setExpandedModules(allExpanded);
-
+            setRoles(rolesRes.data.roles || rolesRes.data.results || []);
         } catch (error) {
             console.error('Error fetching data:', error);
+            setNotification({ type: 'error', message: 'Failed to load data.' });
         } finally {
             setLoading(false);
         }
@@ -73,97 +47,52 @@ export default function RoleAndPermission() {
 
     const handleDesignationSelect = (desig) => {
         setSelectedDesignation(desig);
-
-        // Convert API permissions to local map
-        const permMap = {};
-        let highestScopeLevel = 0;
-
-        (desig.permissions_data || []).forEach(dp => {
-            permMap[dp.permission] = dp.scope;
-
-            // Try to guess the "Access Level" based on existing permissions
-            const scopeObj = scopes.find(s => s.id === dp.scope);
-            if (scopeObj && scopeObj.level > highestScopeLevel) {
-                highestScopeLevel = scopeObj.level;
-            }
-        });
-
-        setSelectedPermissions(permMap);
-
-        // Auto-set the Access Level dropdown based on data
-        if (highestScopeLevel >= 6) setAccessLevel('6'); // Organization
-        else if (highestScopeLevel >= 3) setAccessLevel('3'); // Department
-        else setAccessLevel('1'); // Self
+        // Find currently assigned role (assuming single role for MVP simplicity)
+        // Adjust based on your API response structure for designation.roles
+        const currentRole = desig.roles && desig.roles.length > 0 ? desig.roles[0].id : null;
+        setSelectedRoleId(currentRole);
     };
 
-    // Helper to get scope ID based on "Simple Level"
-    const getCurrentScopeId = () => {
-        // Find scope code matching our simple level
-        // Level 1 = 'self', Level 3 = 'department', Level 6 = 'organization'
-        const targetCode = accessLevel === '6' ? 'organization' : (accessLevel === '3' ? 'department' : 'self');
-        const scope = scopes.find(s => s.code === targetCode) || scopes[0];
-        return scope?.id;
-    };
-
-    const togglePermission = (permId) => {
-        const scopeId = getCurrentScopeId();
-
-        setSelectedPermissions(prev => {
-            const newPerms = { ...prev };
-            if (newPerms[permId]) {
-                delete newPerms[permId];
-            } else {
-                if (scopeId) newPerms[permId] = scopeId;
-            }
-            return newPerms;
-        });
-    };
-
-    // When user changes "Access Level" (Standard vs Manager vs Admin)
-    const handleAccessLevelChange = (newLevel) => {
-        setAccessLevel(newLevel);
-
-        // OPTIONAL: Update all currently selected permissions to this new scope
-        const newScopeCode = newLevel === '6' ? 'organization' : (newLevel === '3' ? 'department' : 'self');
-        const newScopeId = scopes.find(s => s.code === newScopeCode)?.id;
-
-        if (newScopeId) {
-            setSelectedPermissions(prev => {
-                const updated = {};
-                Object.keys(prev).forEach(permId => {
-                    updated[permId] = newScopeId;
-                });
-                return updated;
-            });
-        }
+    const handleRoleSelect = (roleId) => {
+        setSelectedRoleId(roleId);
     };
 
     const handleSave = async () => {
-        if (!selectedDesignation) return;
+        if (!selectedDesignation || !selectedRoleId) return;
         setSaving(true);
         try {
-            const permissionsList = Object.entries(selectedPermissions).map(([permId, scopeId]) => ({
-                permission: permId,
-                scope: scopeId
-            }));
-
-            await updateDesignationPermissions(selectedDesignation.id, {
-                permissions: permissionsList
+            // Update designation to have this role
+            // NOTE: This replaces all roles with the single selected role
+            await updateDesignation(selectedDesignation.id, {
+                roles: [selectedRoleId]
             });
 
-            setNotification({ type: 'success', message: 'Saved successfully!' });
-            setTimeout(() => setNotification(null), 3000);
+            setNotification({ type: 'success', message: 'Role assigned successfully!' });
 
-            // Refresh data to keep sync
-            fetchData();
+            // Update local state to reflect change
+            setDesignations(prev => prev.map(d => {
+                if (d.id === selectedDesignation.id) {
+                    const selectedRoleObj = roles.find(r => r.id === selectedRoleId);
+                    return { ...d, roles: [selectedRoleObj] };
+                }
+                return d;
+            }));
+
+            setTimeout(() => setNotification(null), 3000);
         } catch (error) {
-            setNotification({ type: 'error', message: 'Failed to save.' });
+            console.error('Save error:', error);
+            setNotification({ type: 'error', message: 'Failed to save role assignment.' });
+            setTimeout(() => setNotification(null), 3000);
         } finally {
             setSaving(false);
         }
     };
 
     if (loading) return <div className="rp-loading">Loading...</div>;
+
+    // Filter roles into System and Custom (if any)
+    const systemRoles = roles.filter(r => r.is_system);
+    const customRoles = roles.filter(r => !r.is_system);
 
     return (
         <div className="rp-container">
@@ -175,14 +104,9 @@ export default function RoleAndPermission() {
 
             <div className="rp-header">
                 <div>
-                    <h1>Access Control</h1>
-                    <p>Manage what each Job Title can see and do.</p>
+                    <h1>🔐 Role Assignment</h1>
+                    <p>Assign pre-built roles to job titles. Custom roles can be created for advanced needs.</p>
                 </div>
-                {selectedDesignation && (
-                    <button className="rp-btn-primary" onClick={handleSave} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                )}
             </div>
 
             <div className="rp-split-view">
@@ -197,85 +121,98 @@ export default function RoleAndPermission() {
                         />
                     </div>
                     <div className="rp-desig-list-scroll">
-                        {designations.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase())).map(desig => (
-                            <div
-                                key={desig.id}
-                                className={`rp-desig-item ${selectedDesignation?.id === desig.id ? 'active' : ''}`}
-                                onClick={() => handleDesignationSelect(desig)}
-                            >
-                                <div className="rp-desig-avatar">{desig.name.charAt(0)}</div>
-                                <div className="rp-desig-info">
-                                    <span className="rp-desig-name">{desig.name}</span>
-                                    <span className="rp-desig-count">{desig.employee_count || 0} Employees</span>
+                        {designations
+                            .filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .map(desig => (
+                                <div
+                                    key={desig.id}
+                                    className={`rp-desig-item ${selectedDesignation?.id === desig.id ? 'active' : ''}`}
+                                    onClick={() => handleDesignationSelect(desig)}
+                                >
+                                    <div className="rp-desig-info">
+                                        <h3>{desig.name}</h3>
+                                        <p>{desig.employee_count || 0} employees</p>
+                                    </div>
                                 </div>
-                                <ChevronRight size={16} />
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 </div>
 
-                {/* Right: Permissions */}
+                {/* Right: Role Panel */}
                 <div className="rp-right-panel">
                     {selectedDesignation ? (
-                        <div className="rp-permissions-wrapper">
-                            <div className="rp-panel-header">
-                                <div className="rp-ph-content">
-                                    <h2>{selectedDesignation.name}</h2>
-                                    <p className="rp-subtitle">Configure access rights</p>
-                                </div>
+                        <div className="rp-role-panel">
+                            <div className="panel-header">
+                                <h2>{selectedDesignation.name}</h2>
+                                <p>Assign a role to define what employees with this designation can do.</p>
+                            </div>
 
-                                {/* THE SIMPLIFIED ACCESS LEVEL SWITCHER */}
-                                <div className="rp-access-level-control">
-                                    <label>Access Level:</label>
-                                    <select
-                                        value={accessLevel}
-                                        onChange={(e) => handleAccessLevelChange(e.target.value)}
-                                        className="rp-level-select"
-                                    >
-                                        <option value="1">👤 Standard (Own Data Only)</option>
-                                        <option value="3">👥 Manager (Department Data)</option>
-                                        <option value="6">🏢 Admin (All Company Data)</option>
-                                    </select>
+                            <div className="role-section">
+                                <h3>Built-in Roles</h3>
+                                <div className="role-grid">
+                                    {systemRoles.map(role => (
+                                        <div
+                                            key={role.id}
+                                            className={`role-card system ${selectedRoleId === role.id ? 'selected' : ''}`}
+                                            onClick={() => handleRoleSelect(role.id)}
+                                        >
+                                            <h4>{role.name}</h4>
+                                            <p>{role.description}</p>
+                                            <span className="role-badge">
+                                                {role.permissions_data ? role.permissions_data.length : 0} permissions
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
-                            <div className="rp-modules-list">
-                                {Object.entries(groupedPermissions).map(([module, modulePerms]) => (
-                                    <div key={module} className="rp-module-group expanded">
-                                        <div className="rp-module-header">
-                                            <span className="rp-module-title-text">{module}</span>
-                                        </div>
-                                        <div className="rp-module-content">
-                                            {modulePerms.map(perm => {
-                                                const isSelected = !!selectedPermissions[perm.id];
-                                                return (
-                                                    <div key={perm.id}
-                                                        className={`rp-perm-row ${isSelected ? 'selected' : ''}`}
-                                                        onClick={() => togglePermission(perm.id)}
-                                                    >
-                                                        <div className="rp-perm-check">
-                                                            <div className={`custom-checkbox ${isSelected ? 'checked' : ''}`}>
-                                                                {isSelected && <Check size={12} />}
-                                                            </div>
-                                                            <div className="rp-perm-text">
-                                                                <span className="rp-perm-name">
-                                                                    {perm.name.replace(/Can view/i, 'View').replace(/Can add/i, 'Add')}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                            {customRoles.length > 0 && (
+                                <div className="role-section">
+                                    <h3>Custom Roles</h3>
+                                    <div className="role-grid">
+                                        {customRoles.map(role => (
+                                            <div
+                                                key={role.id}
+                                                className={`role-card ${selectedRoleId === role.id ? 'selected' : ''}`}
+                                                onClick={() => handleRoleSelect(role.id)}
+                                            >
+                                                <h4>{role.name}</h4>
+                                                <p>{role.description}</p>
+                                                <span className="role-badge">
+                                                    {role.permissions_data ? role.permissions_data.length : 0} permissions
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                </div>
+                            )}
+
+                            <div className="role-section">
+                                <h3>Advanced Configuration</h3>
+                                <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                                    Need more specific control? You can create a custom role or modify permissions individually.
+                                </p>
+                                <button className="custom-role-btn" onClick={() => alert('Custom Role Creator coming soon!')}>
+                                    <Settings size={18} />
+                                    Advanced Permission Editor
+                                </button>
+                            </div>
+
+                            <div className="rp-actions">
+                                <button
+                                    className="save-button"
+                                    onClick={handleSave}
+                                    disabled={saving || !selectedRoleId}
+                                >
+                                    {saving ? 'Saving...' : 'Save Changes'}
+                                </button>
                             </div>
                         </div>
                     ) : (
-                        <div className="rp-placeholder">
-                            <Layers size={48} />
+                        <div className="rp-role-panel empty">
+                            <Layers size={64} />
                             <h3>Select a Job Title</h3>
-                            <p>Select a designation on the left to set permissions.</p>
+                            <p>Choose a designation from the left to assign roles</p>
                         </div>
                     )}
                 </div>

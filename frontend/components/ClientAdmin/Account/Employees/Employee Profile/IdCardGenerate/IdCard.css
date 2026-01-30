@@ -1,3 +1,4 @@
+/* --- Base Layout --- */
 .id-card-overlay {
     position: fixed;
     top: 0;
@@ -41,7 +42,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    color: white;
+    color: white !important;
 }
 
 .header-title h3 {
@@ -49,6 +50,7 @@
     font-weight: 700;
     margin: 0;
     letter-spacing: 0.5px;
+    color: white !important;
 }
 
 .header-actions {
@@ -118,7 +120,46 @@
     /* Contrast with dark modal */
     display: flex;
     justify-content: center;
+    align-items: center;
+    flex-direction: column;
     perspective: 1500px;
+}
+
+/* --- Template Selector (Dropdown) --- */
+.template-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 25px;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 50;
+    position: relative;
+}
+
+.template-controls label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+}
+
+.template-select {
+    border: 1px solid #e5e7eb;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #333;
+    outline: none;
+    cursor: pointer;
+    background: #f9fafb;
+    font-weight: 500;
+}
+
+.template-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
 /* 3D Flip Mechanics */
@@ -169,12 +210,14 @@
     transform: rotateY(180deg);
 }
 
-/* FRONT SIDE STYLES (Template V2) */
-.id-card-front-v2 {
+/* --- COMMON CARD STYLES --- */
+.id-card-face.template-modern {
     background: white;
+    font-family: 'Inter', sans-serif;
 }
 
-.v2-header {
+/* --- TEMPLATE: MODERN (Original V2) --- */
+.template-modern .v2-header {
     height: 160px;
     background: #c0392b;
     /* Darker Red/Orange */
@@ -257,6 +300,7 @@
     font-weight: 700;
     color: #e67e22;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .v2-info-grid {
@@ -330,7 +374,205 @@
     left: 0;
 }
 
-/* BACK SIDE STYLES (Template V2) */
+
+/* --- TEMPLATE: CORPORATE (Blue/Dark) --- */
+.id-card-face.template-corporate {
+    background: #f8fafc;
+}
+
+.template-corporate .t-corp-header {
+    height: 120px;
+    background: #1e293b;
+    position: relative;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.template-corporate .t-corp-logo {
+    color: white;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 1px;
+}
+
+.template-corporate .t-corp-chip {
+    width: 40px;
+    height: 30px;
+    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+    border-radius: 4px;
+    opacity: 0.8;
+}
+
+.template-corporate .t-corp-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: -50px;
+}
+
+.template-corporate .t-corp-photo {
+    width: 110px;
+    height: 110px;
+    border-radius: 12px;
+    background: white;
+    padding: 4px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.template-corporate .t-corp-photo-inner {
+    width: 100%;
+    height: 100%;
+    background: #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: #475569;
+    font-weight: 700;
+}
+
+.template-corporate .t-corp-details {
+    text-align: center;
+    margin-top: 15px;
+    width: 100%;
+}
+
+.template-corporate .t-corp-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.template-corporate .t-corp-role {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.template-corporate .t-corp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    text-align: left;
+    width: 100%;
+}
+
+.template-corporate .t-corp-field h4 {
+    font-size: 9px;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+
+.template-corporate .t-corp-field p {
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    word-break: break-all;
+}
+
+
+/* --- TEMPLATE: MINIIMALIST (Clean B&W) --- */
+.id-card-face.template-minimal {
+    background: white;
+    display: flex;
+    flex-direction: column;
+    padding: 30px;
+    border: 1px solid #e5e5e5;
+}
+
+.template-minimal .t-min-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 15px;
+}
+
+.template-minimal .t-min-logo {
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+}
+
+.template-minimal .t-min-photo {
+    width: 100px;
+    height: 120px;
+    background: #f0f0f0;
+    margin-bottom: 20px;
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: #999;
+}
+
+.template-minimal .t-min-content {
+    flex: 1;
+}
+
+.template-minimal .t-min-name {
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 5px;
+}
+
+.template-minimal .t-min-role {
+    font-size: 13px;
+    font-family: monospace;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.template-minimal .t-min-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.template-minimal .t-min-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+}
+
+.t-min-row span:first-child {
+    color: #999;
+}
+
+.t-min-row span:last-child {
+    font-weight: 600;
+}
+
+.template-minimal .t-min-footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.t-min-code {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+
+/* BACK SIDE ELEMENTS */
 .id-card-back-v2 {
     background: #c0392b;
     color: white;
@@ -471,6 +713,10 @@
         backdrop-filter: none !important;
     }
 
+    .template-controls {
+        display: none !important;
+    }
+
     .id-card-modal {
         box-shadow: none !important;
         border: none !important;
@@ -520,6 +766,21 @@
         print-color-adjust: exact;
         background: #c0392b !important;
         color: white !important;
+    }
+
+    /* Template Overrides for Print */
+    .template-card-modern .v2-header {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .template-corporate .t-corp-header {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .template-minimal {
+        border: 2px solid #000 !important;
     }
 }
 

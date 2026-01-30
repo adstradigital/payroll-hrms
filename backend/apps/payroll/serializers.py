@@ -9,9 +9,23 @@ class SalaryComponentSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     percentage_of_name = serializers.CharField(source='percentage_of.name', read_only=True)
     
+    # Aliases for frontend compatibility with safe defaults
+    amount = serializers.DecimalField(source='default_amount', max_digits=10, decimal_places=2, required=False, default=0)
+    percentage_value = serializers.DecimalField(source='default_percentage', max_digits=5, decimal_places=2, required=False, default=0)
+    percentage_of = serializers.PrimaryKeyRelatedField(queryset=SalaryComponent.objects.all(), required=False, allow_null=True)
+    
     class Meta:
         model = SalaryComponent
-        fields = '__all__'
+        fields = [
+            'id', 'company', 'company_name', 'name', 'code', 'component_type',
+            'calculation_type', 'percentage_of', 'percentage_of_name',
+            'default_amount', 'default_percentage', 'amount', 'percentage_value',
+            'is_taxable', 'is_statutory', 'statutory_type', 'display_order', 
+            'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['company']
+
+
 
 
 class SalaryStructureComponentSerializer(serializers.ModelSerializer):
@@ -93,6 +107,6 @@ class PaySlipDetailSerializer(serializers.ModelSerializer):
 
 class GeneratePayrollSerializer(serializers.Serializer):
     """For generating payroll for a period"""
-    company = serializers.IntegerField()
+    company = serializers.UUIDField(required=False)
     month = serializers.IntegerField(min_value=1, max_value=12)
     year = serializers.IntegerField(min_value=2020)

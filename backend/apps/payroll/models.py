@@ -15,6 +15,8 @@ class SalaryComponent(models.Model):
         ('fixed', 'Fixed Amount'),
         ('percentage', 'Percentage of Basic'),
         ('formula', 'Custom Formula'),
+        ('attendance_prorated', 'Attendance Prorated'),
+        ('per_day', 'Per Present Day'),
     ]
     
     company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='salary_components')

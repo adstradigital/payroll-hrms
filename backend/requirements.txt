@@ -1,9 +1,54 @@
-django
-django-environ
-djangorestframework
-djangorestframework-simplejwt
-django-cors-headers
-django-filter
-pymysql
-cryptography
-Pillow
+# Advanced Payroll System - Requirements
+# Generated: January 2024
+
+# Core Django
+Django>=4.2.0,<5.0.0
+djangorestframework>=3.14.0
+
+# Database
+psycopg2-binary>=2.9.0  # PostgreSQL
+mysqlclient>=2.1.0
+
+# Filtering and Search
+django-filter>=23.0
+
+# Date/Time utilities
+python-dateutil>=2.8.0
+holidays>=0.40
+
+# File handling (for Excel/PDF generation)
+openpyxl>=3.1.0  # Excel files
+reportlab>=4.0.0  # PDF generation
+Pillow>=10.0.0  # Image handling
+
+# API Documentation
+drf-yasg>=1.21.0  # Swagger/OpenAPI
+# drf-spectacular>=0.26.0  # Alternative to drf-yasg
+
+# Authentication & Security
+djangorestframework-simplejwt>=5.3.0  # JWT tokens
+django-cors-headers>=4.0.0  # CORS handling
+
+# Background Tasks (Optional but recommended)
+celery>=5.3.0
+redis>=5.0.0
+django-celery-beat>=2.5.0
+
+# Monitoring & Logging (Optional)
+sentry-sdk>=1.30.0
+django-extensions>=3.2.0
+
+# Testing
+pytest>=7.4.0
+pytest-django>=4.5.0
+pytest-cov>=4.1.0
+factory-boy>=3.3.0
+
+# Code Quality
+flake8>=6.0.0
+black>=23.0.0
+isort>=5.12.0
+
+# Development Tools
+django-debug-toolbar>=4.0.0
+ipython>=8.12.0
