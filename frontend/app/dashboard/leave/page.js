@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import LeaveDashboard from '@/components/ClientAdmin/Payroll/Leave/Dashboard/LeaveDashboard';
 import LeaveList from '@/components/ClientAdmin/Payroll/Leave/LeaveList/LeaveList';
+import MyLeaveRequests from '@/components/ClientAdmin/Payroll/Leave/MyRequests/MyLeaveRequests';
 import LeaveApprovals from '@/components/ClientAdmin/Payroll/Leave/Approvals/LeaveApprovals';
 import LeaveBalance from '@/components/ClientAdmin/Payroll/Leave/LeaveBalance/LeaveBalance';
 import LeaveTypes from '@/components/ClientAdmin/Payroll/Leave/LeaveTypes/LeaveTypes';
@@ -42,7 +43,8 @@ export default function LeavePage() {
     const renderContent = () => {
         switch (activeTab) {
             case 'dashboard': return <LeaveDashboard currentUser={currentUser} />;
-            case 'requests': return <LeaveList currentUser={currentUser} />;
+            case 'requests': return <MyLeaveRequests currentUser={currentUser} />;
+            case 'all-requests': return <LeaveList currentUser={currentUser} />;
             case 'approvals': return <LeaveApprovals />;
             case 'balance': return <LeaveBalance />;
             case 'types': return <LeaveTypes />;
@@ -56,6 +58,7 @@ export default function LeavePage() {
     const tabs = [
         { id: 'dashboard', label: 'Overview' },
         { id: 'requests', label: 'My Requests' },
+        { id: 'all-requests', label: 'All Requests', adminOnly: true },
         { id: 'approvals', label: 'Approvals' },
         { id: 'balance', label: 'Balances' },
         { id: 'types', label: 'Leave Types', adminOnly: true },

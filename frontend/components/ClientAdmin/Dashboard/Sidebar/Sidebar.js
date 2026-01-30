@@ -74,7 +74,8 @@ const menuItems = [
         permission: ['leave.view', 'leave.view_leave'],
         children: [
             { id: 'leave-dashboard', label: 'Dashboard', path: '/dashboard/leave' },
-            { id: 'leave-requests', label: 'Leave Requests', path: '/dashboard/leave/requests', permission: ['leave.view', 'leave.view_leave'] },
+            { id: 'leave-my-requests', label: 'My Leave Requests', path: '/dashboard/leave?tab=requests' },
+            { id: 'leave-requests-queue', label: 'Requests Queue', path: '/dashboard/leave?tab=all-requests', adminOnly: true },
             { id: 'leave-approvals', label: 'Approvals', path: '/dashboard/leave/approvals', permission: 'leave.view' },
             { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types', adminOnly: true },
             { id: 'leave-holidays', label: 'Holiday Calendar', path: '/dashboard/leave/holidays' },
