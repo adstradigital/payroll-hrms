@@ -78,11 +78,11 @@ def is_client_admin(user):
         logger.info(f"[is_client_admin] is_superuser: {user.is_superuser}")
         logger.info(f"[is_client_admin] is_staff: {user.is_staff}")
         
-        # Superusers are always admins
-        if user.is_superuser:
-            logger.info(f"[is_client_admin] ✓ GRANTED: User is superuser")
+        # Superusers and staff are always admins in this environment
+        if user.is_superuser or user.is_staff:
+            logger.info(f"[is_client_admin] ✓ GRANTED: User is superuser/staff")
             return True
-        
+            
         # Check if org creator
         if is_org_creator(user):
             logger.info(f"[is_client_admin] ✓ GRANTED: User is org creator")

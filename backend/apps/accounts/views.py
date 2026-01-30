@@ -27,7 +27,7 @@ from .serializers import (
     DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
     DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer
 )
-from .permissions import is_client_admin, require_admin, require_permission
+from .permissions import is_client_admin, is_org_creator, require_admin, require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -648,10 +648,9 @@ def department_list_create(request):
             paginated = paginator.paginate_queryset(queryset, request)
             serializer = DepartmentListSerializer(paginated, many=True)
             return paginator.get_paginated_response(serializer.data)
-        
         elif request.method == 'POST':
-            # Check permission - simple check for now
-            if not is_client_admin(request.user) and not is_org_creator(request.user):
+            # Check permission - requires Client Admin or Org Creator level access
+            if not is_client_admin(request.user):
                  return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
             # Determine company
@@ -905,7 +904,7 @@ def role_list_create(request):
             
         elif request.method == 'POST':
             # Only admins can create roles
-            if not employee or not employee.is_admin:
+            if not is_client_admin(request.user):
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
                 
             org = employee.company.get_root_parent() if hasattr(employee.company, 'get_root_parent') else employee.company
@@ -955,8 +954,13 @@ def role_detail(request, pk):
         if role.role_type == 'system' and request.method != 'GET':
             return Response({'error': 'System roles cannot be modified'}, status=status.HTTP_403_FORBIDDEN)
             
-        if role.organization != org:
-            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        # Permission Check: Superuser OR (Client Admin AND same organization)
+        is_admin = is_client_admin(request.user)
+        
+        # If not superuser, we must verify the organization match
+        if not request.user.is_superuser:
+            if not is_admin or role.organization != org:
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
         if request.method in ['PUT', 'PATCH']:
             serializer = RoleSerializer(role, data=request.data, partial=(request.method == 'PATCH'))

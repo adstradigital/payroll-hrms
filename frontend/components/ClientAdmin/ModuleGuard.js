@@ -4,10 +4,13 @@ import { usePermissions } from '@/context/PermissionContext';
 import { ShieldAlert } from 'lucide-react';
 
 export default function ModuleGuard({ children, module }) {
-    const permissions = usePermissions();
+    const { hasHRMS, hasPayroll, loading } = usePermissions();
 
-    // Force hasAccess to true for development to avoid "Access Denied" screens
-    const hasAccess = true;
+    if (loading) return null;
+
+    let hasAccess = true;
+    if (module === 'HRMS') hasAccess = hasHRMS;
+    if (module === 'Payroll') hasAccess = hasPayroll;
 
     if (!hasAccess) {
         return (
