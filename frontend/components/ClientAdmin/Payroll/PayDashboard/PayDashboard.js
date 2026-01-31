@@ -45,9 +45,9 @@ export default function PayDashboard() {
     }, [fetchDashboardData]);
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-PK', {
+        return new Intl.NumberFormat('en-IN', {
             style: 'currency',
-            currency: 'PKR',
+            currency: 'INR',
             maximumFractionDigits: 0
         }).format(amount || 0);
     };

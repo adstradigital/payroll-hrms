@@ -1,10 +1,12 @@
 from django.db import models
-from apps.accounts.models import Organization, Employee
+from apps.accounts.models import Organization, Employee, BaseModel
 from decimal import Decimal
+import uuid
 
 
-class SalaryComponent(models.Model):
+class SalaryComponent(BaseModel):
     """Earning or Deduction components"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     TYPE_CHOICES = [
         ('earning', 'Earning'),
@@ -44,8 +46,6 @@ class SalaryComponent(models.Model):
     # Display
     display_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ['company', 'code']
@@ -55,15 +55,14 @@ class SalaryComponent(models.Model):
         return f"{self.name} ({self.component_type})"
 
 
-class SalaryStructure(models.Model):
+class SalaryStructure(BaseModel):
     """Template for employee salary composition"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='salary_structures')
     name = models.CharField(max_length=100)  # Manager Grade, Executive Grade, etc.
     code = models.CharField(max_length=20, blank=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ['company', 'name']
@@ -73,8 +72,9 @@ class SalaryStructure(models.Model):
         return f"{self.name} ({self.company.name})"
 
 
-class SalaryStructureComponent(models.Model):
+class SalaryStructureComponent(BaseModel):
     """Components included in a salary structure"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     salary_structure = models.ForeignKey(
         SalaryStructure, on_delete=models.CASCADE, related_name='components'
     )
@@ -84,17 +84,15 @@ class SalaryStructureComponent(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         unique_together = ['salary_structure', 'component']
 
     def __str__(self):
         return f"{self.salary_structure.name} - {self.component.name}"
 
-
-class EmployeeSalary(models.Model):
+class EmployeeSalary(BaseModel):
     """Actual salary assigned to an employee"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='salaries')
     salary_structure = models.ForeignKey(
         SalaryStructure, on_delete=models.SET_NULL, null=True, blank=True
@@ -111,8 +109,6 @@ class EmployeeSalary(models.Model):
     is_current = models.BooleanField(default=True)
     
     remarks = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-effective_from']
@@ -130,16 +126,15 @@ class EmployeeSalary(models.Model):
         super().save(*args, **kwargs)
 
 
-class EmployeeSalaryComponent(models.Model):
+class EmployeeSalaryComponent(BaseModel):
     """Individual component breakup for employee's salary"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     employee_salary = models.ForeignKey(
         EmployeeSalary, on_delete=models.CASCADE, related_name='components'
     )
     component = models.ForeignKey(SalaryComponent, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         unique_together = ['employee_salary', 'component']
 
@@ -147,8 +142,9 @@ class EmployeeSalaryComponent(models.Model):
         return f"{self.employee_salary.employee.employee_id} - {self.component.name}: ₹{self.amount}"
 
 
-class PayrollPeriod(models.Model):
+class PayrollPeriod(BaseModel):
     """Monthly payroll batch"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     STATUS_CHOICES = [
         ('draft', 'Draft'),
@@ -178,9 +174,6 @@ class PayrollPeriod(models.Model):
     )
     processed_at = models.DateTimeField(null=True, blank=True)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
         unique_together = ['company', 'month', 'year']
         ordering = ['-year', '-month']
@@ -189,8 +182,9 @@ class PayrollPeriod(models.Model):
         return f"{self.name} ({self.company.name})"
 
 
-class PaySlip(models.Model):
+class PaySlip(BaseModel):
     """Individual employee payslip"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     STATUS_CHOICES = [
         ('generated', 'Generated'),
@@ -232,8 +226,6 @@ class PaySlip(models.Model):
     transaction_ref = models.CharField(max_length=100, blank=True)
     
     remarks = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ['employee', 'payroll_period']
@@ -243,47 +235,106 @@ class PaySlip(models.Model):
         return f"{self.employee.employee_id} - {self.payroll_period.name}"
     
     def calculate_salary(self):
-        """Calculate salary based on attendance"""
+        """
+        Calculate salary based on attendance and component types.
+        
+        Logic:
+        1. Determine working days and paid days.
+        2. Iterate through EmployeeSalary components:
+           - fixed: Full amount
+           - percentage: (Amount * Ratio)
+           - attendance_prorated: Amount * Ratio
+           - per_day: Amount * Paid Days
+        3. Generate/Update PaySlipComponent objects.
+        4. Update PaySlip totals.
+        """
         if not self.employee_salary:
             return
+
+        # 1. Determine Days
+        working_days_val = Decimal(self.working_days) if self.working_days > 0 else Decimal(1)
         
-        monthly_salary = self.employee_salary.gross_salary
-        per_day_salary = monthly_salary / Decimal(self.working_days) if self.working_days else 0
+        # Calculate derived paid days
+        # paid_days = working_days - lop_days
+        if self.working_days > 0:
+            paid_days = Decimal(self.working_days) - Decimal(self.lop_days)
+        else:
+            paid_days = Decimal(0)
+            
+        proration_ratio = paid_days / working_days_val if working_days_val > 0 else Decimal(0)
         
-        # Calculate LOP deduction
-        self.lop_deduction = per_day_salary * Decimal(self.lop_days)
+        # Clean up existing calculated components to regenerate them
+        self.components.all().delete()
         
         # Get components from employee salary
         components = self.employee_salary.components.select_related('component').all()
         
-        earnings = Decimal(0)
-        deductions = Decimal(0)
+        total_earnings = Decimal(0)
+        total_deductions = Decimal(0)
         
         for comp in components:
-            if comp.component.component_type == 'earning':
-                earnings += comp.amount
+            calc_type = comp.component.calculation_type
+            base_amount = comp.amount
+            final_amount = Decimal(0)
+            
+            # Apply Calculation Logic
+            if calc_type == 'fixed':
+                final_amount = base_amount
+                
+            elif calc_type == 'percentage':
+                # Assumption: Percentage components (like PF) are prorated.
+                final_amount = base_amount * proration_ratio
+                
+            elif calc_type == 'attendance_prorated':
+                final_amount = base_amount * proration_ratio
+                
+            elif calc_type == 'per_day':
+                # Assumes the EmployeeSalaryComponent.amount is the DAILY RATE
+                final_amount = base_amount * paid_days
+                
             else:
-                deductions += comp.amount
-        
-        # Adjust for LOP (proportionally reduce earnings)
-        if self.lop_days > 0 and self.working_days > 0:
-            lop_ratio = Decimal(self.lop_days) / Decimal(self.working_days)
-            self.lop_deduction = earnings * lop_ratio
-            earnings -= self.lop_deduction
-        
-        self.gross_earnings = earnings + self.overtime_amount
-        self.total_deductions = deductions
+                # Default to fixed if unknown or formula (for now)
+                final_amount = base_amount
+
+            # Round to 2 decimal places
+            final_amount = final_amount.quantize(Decimal('0.01'))
+            
+            # Create PaySlipComponent
+            PaySlipComponent.objects.create(
+                payslip=self,
+                component=comp.component,
+                amount=final_amount
+            )
+            
+            # Add to totals
+            if comp.component.component_type == 'earning':
+                total_earnings += final_amount
+            else:
+                total_deductions += final_amount
+                
+        # 4. Update Totals
+        self.gross_earnings = total_earnings + self.overtime_amount
+        self.total_deductions = total_deductions
         self.net_salary = self.gross_earnings - self.total_deductions
+        
+        # Determine LOP Deduction Amount for display calculation
+        # LOP Deduction = (Total Potential Earnings) - (Actual Earnings)
+        # Potential Earnings (as if 100% attendance)
+        potential_earnings = Decimal(0)
+        for comp in components:
+            if comp.component.component_type == 'earning':
+                potential_earnings += comp.amount
+                
+        self.lop_deduction = (potential_earnings - total_earnings).quantize(Decimal('0.01'))
 
 
-class PaySlipComponent(models.Model):
+class PaySlipComponent(BaseModel):
     """Line items in a payslip"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     payslip = models.ForeignKey(PaySlip, on_delete=models.CASCADE, related_name='components')
     component = models.ForeignKey(SalaryComponent, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         unique_together = ['payslip', 'component']
 

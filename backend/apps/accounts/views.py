@@ -26,7 +26,7 @@ from .serializers import (
     MyTokenObtainPairSerializer, ModuleSerializer, PermissionSerializer,
     DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
     DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer,
-    DepartmentDetailSerializer
+    DepartmentDetailSerializer, EmployeeListSerializer
 )
 from .permissions import is_client_admin, require_admin, require_permission, PermissionChecker
 
@@ -1127,10 +1127,8 @@ def employee_list_create(request):
             paginator = StandardResultsSetPagination()
             paginated = paginator.paginate_queryset(queryset, request)
             
-            data = [{'id': str(e.id), 'employee_id': e.employee_id, 'full_name': e.full_name,
-                    'email': e.email, 'department': e.department.name if e.department else None,
-                    'designation': e.designation.name if e.designation else None, 'status': e.status} for e in paginated]
-            return paginator.get_paginated_response(data)
+            serializer = EmployeeListSerializer(paginated, many=True)
+            return paginator.get_paginated_response(serializer.data)
         
         elif request.method == 'POST':
             # Handle empty strings for foreign keys

@@ -150,3 +150,44 @@ class WorkTypeRequestListCreate(generics.ListCreateAPIView):
     queryset = WorkTypeRequest.objects.all()
     serializer_class = WorkTypeRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+from .models import ReimbursementRequest, EncashmentRequest
+from .serializers import ReimbursementRequestSerializer, EncashmentRequestSerializer
+
+class ReimbursementRequestListCreate(generics.ListCreateAPIView):
+    serializer_class = ReimbursementRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = ReimbursementRequest.objects.select_related('employee').all()
+        employee_id = self.request.query_params.get('employee')
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        status = self.request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+        return queryset
+
+class EncashmentRequestListCreate(generics.ListCreateAPIView):
+    serializer_class = EncashmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = EncashmentRequest.objects.select_related('employee', 'leave_type').all()
+        employee_id = self.request.query_params.get('employee')
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        status = self.request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+        return queryset
+
+class ReimbursementRequestDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = ReimbursementRequest.objects.all()
+    serializer_class = ReimbursementRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class EncashmentRequestDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = EncashmentRequest.objects.all()
+    serializer_class = EncashmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]

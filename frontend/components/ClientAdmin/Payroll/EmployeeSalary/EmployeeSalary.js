@@ -6,14 +6,15 @@ import {
     TrendingUp, Briefcase, RefreshCw, Loader2,
     ArrowUpRight, ArrowDownRight,
     X, Save, Landmark, History, User, Building, AlertCircle,
-    FileText
+    FileText, Trash2
 } from 'lucide-react';
 import {
     getEmployeeSalaries,
     getAllEmployees,
     getSalaryStructures,
     createEmployeeSalary,
-    updateEmployeeSalary
+    updateEmployeeSalary,
+    deleteEmployeeSalary
 } from '@/api/api_clientadmin';
 import './EmployeeSalary.css';
 
@@ -61,7 +62,7 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
             setFormData({
                 employee: assignment.employee?.id || assignment.employee,
                 salary_structure: assignment.salary_structure?.id || assignment.salary_structure,
-                basic_amount: assignment.basic_amount || '',
+                basic_amount: assignment.basic_salary || assignment.basic_amount || '',
                 effective_from: assignment.effective_from || new Date().toISOString().split('T')[0],
                 is_current: assignment.is_current,
                 remarks: assignment.remarks || ''
@@ -69,7 +70,7 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
 
             if (assignment.components) {
                 setComponents(assignment.components.map(c => ({
-                    component: c.id || c.component,
+                    component: c.component,
                     component_name: c.component_name || 'Component',
                     component_type: c.component_type || 'earning',
                     amount: c.amount,
@@ -79,35 +80,71 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
         }
     }, [assignment]);
 
-    // Recalculate components when Structure or Basic changes
-    useEffect(() => {
-        if (!formData.salary_structure || !formData.basic_amount || assignment) return;
+    const calculateComponents = (structureId, basicAmount) => {
+        const structure = structures.find(s => s.id === structureId);
+        if (!structure || !structure.components) return [];
 
-        const structure = structures.find(s => s.id === parseInt(formData.salary_structure));
-        if (structure && structure.components) {
-            const basic = parseFloat(formData.basic_amount) || 0;
+        const basic = parseFloat(basicAmount) || 0;
 
-            const calculated = structure.components.map(sc => {
-                let amount = 0;
-                if (sc.amount > 0) {
-                    amount = parseFloat(sc.amount);
-                } else if (sc.percentage > 0) {
-                    amount = (basic * parseFloat(sc.percentage)) / 100;
-                } else {
-                    amount = parseFloat(sc.component_details?.default_amount || 0);
-                }
+        return structure.components.map(sc => {
+            let amount = 0;
+            const calcType = sc.calculation_type;
 
-                return {
-                    component: sc.component,
-                    component_name: sc.component_name || 'Component',
-                    component_type: sc.component_type || 'earning',
-                    amount: amount.toFixed(2),
-                    is_manual: false
-                };
-            });
-            setComponents(calculated);
-        }
-    }, [formData.salary_structure, formData.basic_amount, structures, assignment]);
+            // Priority: Structure Override > Component Default
+            const finalAmount = (sc.amount !== null && sc.amount !== undefined && parseFloat(sc.amount) > 0)
+                ? parseFloat(sc.amount)
+                : parseFloat(sc.default_amount || 0);
+
+            const finalPercent = (sc.percentage !== null && sc.percentage !== undefined && parseFloat(sc.percentage) > 0)
+                ? parseFloat(sc.percentage)
+                : parseFloat(sc.default_percentage || 0);
+
+            if (calcType === 'fixed' || calcType === 'attendance_prorated' || calcType === 'per_day') {
+                amount = finalAmount;
+            } else if (calcType === 'percentage') {
+                amount = (basic * finalPercent) / 100;
+            }
+
+            return {
+                component: sc.component,
+                component_name: sc.component_name || 'Component',
+                component_type: sc.component_type || 'earning',
+                amount: amount.toFixed(2),
+                percentage: calcType === 'percentage' ? finalPercent : 0,
+                calculation_type: calcType,
+                is_manual: false
+            };
+        });
+    };
+
+    const handleStructureChange = (e) => {
+        const structId = e.target.value;
+        const structure = structures.find(s => s.id === structId);
+
+        let newBasic = formData.basic_amount;
+
+        setFormData(prev => ({
+            ...prev,
+            salary_structure: structId,
+            basic_amount: newBasic
+        }));
+
+        setComponents(calculateComponents(structId, newBasic));
+    };
+
+    const handleBasicChange = (e) => {
+        const newBasic = e.target.value;
+        setFormData(prev => ({ ...prev, basic_amount: newBasic }));
+
+        // Only recalculate percentage-based components, keep manuals/fixed
+        setComponents(prevComponents => prevComponents.map(comp => {
+            if (comp.percentage > 0 && !comp.is_manual) {
+                const amount = (parseFloat(newBasic || 0) * parseFloat(comp.percentage)) / 100;
+                return { ...comp, amount: amount.toFixed(2) };
+            }
+            return comp;
+        }));
+    };
 
     const handleComponentChange = (index, val) => {
         const newComponents = [...components];
@@ -144,8 +181,9 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
         try {
             const payload = {
                 ...formData,
+                basic_salary: formData.basic_amount,
                 components: components.map(c => ({
-                    component: c.component,
+                    component: c.component?.id || c.component,
                     amount: parseFloat(c.amount)
                 }))
             };
@@ -209,7 +247,7 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
                                         >
                                             <option value="">Search & Select Employee...</option>
                                             {employees.map(emp => (
-                                                <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.employee_id})</option>
+                                                <option key={emp.id} value={emp.id}>{emp.full_name || 'No Name'} - {emp.employee_id}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -220,7 +258,7 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
                                             <select
                                                 className="custom-select-premium"
                                                 value={formData.salary_structure}
-                                                onChange={e => setFormData({ ...formData, salary_structure: e.target.value })}
+                                                onChange={handleStructureChange}
                                                 required
                                             >
                                                 <option value="">Select Compensation Structure...</option>
@@ -233,13 +271,13 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
                                         <div className="form-group-item">
                                             <label className="secondary-label">Basic Salary (Monthly)</label>
                                             <div className="input-with-symbol">
-                                                <span className="input-symbol">$</span>
+                                                <span className="input-symbol">₹</span>
                                                 <input
                                                     type="number"
                                                     className="premium-form-input basic-pay-input"
                                                     placeholder="0.00"
                                                     value={formData.basic_amount}
-                                                    onChange={e => setFormData({ ...formData, basic_amount: e.target.value })}
+                                                    onChange={handleBasicChange}
                                                     required
                                                 />
                                             </div>
@@ -316,7 +354,7 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
                                                             </div>
                                                         </div>
                                                         <div className="comp-input-wrapper">
-                                                            <span className="comp-symbol">$</span>
+                                                            <span className="comp-symbol">₹</span>
                                                             <input
                                                                 type="number"
                                                                 className={`component-input-premium ${comp.is_manual ? 'manual' : ''}`}
@@ -342,19 +380,19 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
                                         <div className="summary-list-container">
                                             <div className="summary-row">
                                                 <span>Basic Salary</span>
-                                                <span className="summary-amount">${basicPay.toLocaleString()}</span>
+                                                <span className="summary-amount">₹{basicPay.toLocaleString()}</span>
                                             </div>
                                             <div className="summary-row">
                                                 <span className="text-green">↗ Total Earnings</span>
-                                                <span className="summary-amount text-green">${totalEarnings.toLocaleString()}</span>
+                                                <span className="summary-amount text-green">₹{totalEarnings.toLocaleString()}</span>
                                             </div>
                                             <div className="summary-row">
                                                 <span className="text-red">↘ Total Deductions</span>
-                                                <span className="summary-amount text-red">-${totalDeductions.toLocaleString()}</span>
+                                                <span className="summary-amount text-red">-₹{totalDeductions.toLocaleString()}</span>
                                             </div>
                                             <div className="summary-row main-net">
                                                 <span>Net Salary</span>
-                                                <span className="summary-amount amount-accent">${netSalary.toLocaleString()}</span>
+                                                <span className="summary-amount amount-accent">₹{netSalary.toLocaleString()}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -410,13 +448,25 @@ export default function EmployeeSalary() {
         setShowForm(true);
     };
 
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this salary assignment?')) return;
+
+        try {
+            await deleteEmployeeSalary(id);
+            fetchAssignments();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete salary assignment');
+        }
+    };
+
     const filtered = assignments.filter(a =>
         (a.employee_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (a.employee_id_display || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const stats = useMemo(() => {
-        const total = assignments.reduce((acc, curr) => acc + (parseFloat(curr.basic_amount) || 0), 0);
+        const total = assignments.reduce((acc, curr) => acc + (parseFloat(curr.basic_salary) || 0), 0);
         const avg = assignments.length ? total / assignments.length : 0;
         return { total, avg, count: assignments.length };
     }, [assignments]);
@@ -444,13 +494,13 @@ export default function EmployeeSalary() {
             <section className="salary-dash-grid">
                 <article className="salary-dash-card">
                     <div className="dash-label">Total Monthly Fixed Payroll</div>
-                    <div className="dash-value">${stats.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    <div className="dash-value">₹{stats.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                     <Wallet size={64} className="dash-icon-bg" />
                     <ArrowUpRight className="stats-indicator text-green" size={24} />
                 </article>
                 <article className="salary-dash-card">
                     <div className="dash-label">Average Base Salary</div>
-                    <div className="dash-value text-brand-accent">${stats.avg.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    <div className="dash-value text-brand-accent">₹{stats.avg.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                     <TrendingUp size={64} className="dash-icon-bg" />
                 </article>
                 <article className="salary-dash-card">
@@ -509,7 +559,7 @@ export default function EmployeeSalary() {
                                         </div>
                                     </td>
                                     <td>
-                                        <span className="salary-amount-label">${parseFloat(assign.basic_amount).toLocaleString()}</span>
+                                        <span className="salary-amount-label">₹{parseFloat(assign.basic_salary || 0).toLocaleString()}</span>
                                     </td>
                                     <td>
                                         <div className="date-cell">
@@ -523,9 +573,19 @@ export default function EmployeeSalary() {
                                         </span>
                                     </td>
                                     <td className="text-right">
-                                        <button className="action-edit-btn" onClick={() => openModal(assign)}>
-                                            <Edit2 size={18} />
-                                        </button>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
+                                            <button className="action-edit-btn" onClick={() => openModal(assign)} title="Edit Configuration">
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button
+                                                className="action-edit-btn"
+                                                style={{ color: '#ef4444' }}
+                                                onClick={() => handleDelete(assign.id)}
+                                                title="Delete Assignment"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

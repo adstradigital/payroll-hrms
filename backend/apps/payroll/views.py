@@ -1,15 +1,20 @@
+from django.db import models
+from django.http import HttpResponse
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Sum
+from django.db.models import Sum, Count, Avg, F, Value
 from django.utils import timezone
 from datetime import date
 from calendar import monthrange
+import logging
 from decimal import Decimal
 
+logger = logging.getLogger(__name__)
+
 from apps.accounts.models import Employee
-from apps.attendance.models import Attendance
+from apps.attendance.models import Attendance, AttendanceSummary
 from apps.leave.models import LeaveRequest
 
 from .models import (
@@ -76,6 +81,22 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
             return queryset.filter(company=user.organization)
         return queryset.none()
     
+    def perform_create(self, serializer):
+        from django.db import IntegrityError
+        from rest_framework.exceptions import ValidationError
+
+        user = self.request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+            
+        try:
+            serializer.save(company=company)
+        except IntegrityError:
+            raise ValidationError({"name": ["A salary structure with this name already exists."]})
+
     @action(detail=True, methods=['post'])
     def add_component(self, request, pk=None):
         """Add a component to a salary structure"""
@@ -97,6 +118,62 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
         
         serializer = SalaryStructureComponentSerializer(ssc)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def update_components(self, request, pk=None):
+        """Bulk update components for a salary structure"""
+        structure = self.get_object()
+        components_data = request.data.get('components', [])
+        
+        # Keep track of kept component IDs to delete others later if needed
+        # Or simple approach: Delete all and recreate? 
+        # Delete all is safer to ensure sync, but IDs change. 
+        # Better: Update existing, Create new, Delete missing.
+        
+        incoming_component_ids = []
+        
+        for data in components_data:
+            component_id = data.get('component_id') or data.get('id')
+            # Handle cases where just ID is passed or object
+            if not component_id: 
+                continue
+                
+            amount = data.get('amount', 0)
+            # Check for 'value' from frontend logic which maps to amount or percentage depending on type
+            # But the backend model distinguishes amount vs percentage.
+            # We need to rely on the frontend sending correct keys or infer it.
+            # Let's assume frontend sends 'amount' and 'percentage' explicit keys, 
+            # OR 'value' and 'calculation_type'.
+            
+            calc_type = data.get('calculation_type')
+            value = data.get('value', 0)
+            
+            percentage = 0
+            fixed_amount = 0
+            
+            if calc_type == 'percentage':
+                percentage = value
+            else:
+                fixed_amount = value
+                
+            # If explicit keys provided, override
+            if 'amount' in data: fixed_amount = data['amount']
+            if 'percentage' in data: percentage = data['percentage']
+
+            ssc, created = SalaryStructureComponent.objects.update_or_create(
+                salary_structure=structure,
+                component_id=component_id,
+                defaults={
+                    'amount': fixed_amount, 
+                    'percentage': percentage
+                }
+            )
+            incoming_component_ids.append(component_id)
+            
+        # Delete components not in incoming list
+        SalaryStructureComponent.objects.filter(salary_structure=structure).exclude(component_id__in=incoming_component_ids).delete()
+        
+        return Response({'status': 'success', 'message': 'Components updated successfully'})
 
 
 class EmployeeSalaryViewSet(viewsets.ModelViewSet):
@@ -125,7 +202,7 @@ class EmployeeSalaryViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
-        salary = serializer.save()
+        salary = serializer.save(gross_salary=0, net_salary=0, ctc=0)
         self._process_components(salary, self.request.data.get('components', []))
 
     def update(self, request, *args, **kwargs):
@@ -156,7 +233,14 @@ class EmployeeSalaryViewSet(viewsets.ModelViewSet):
                 amount = Decimal(str(comp_data.get('amount', 0)))
                 
                 if component_id:
-                    comp_obj = SalaryComponent.objects.get(id=component_id)
+                    # DEBUG LOGGING
+                    logger.info(f"Processing component_id: {component_id} type: {type(component_id)}")
+                    try:
+                        comp_obj = SalaryComponent.objects.get(id=component_id)
+                    except SalaryComponent.DoesNotExist:
+                        logger.error(f"FAILED TO FIND COMPONENT ID: {component_id}")
+                        raise
+                    
                     EmployeeSalaryComponent.objects.create(
                         employee_salary=salary,
                         component_id=component_id,
@@ -225,6 +309,29 @@ class EmployeeSalaryViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Exception:
             return Response({'error': 'No current salary found'}, status=404)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get summary stats for all current salaries of active employees"""
+        queryset = self.get_queryset().filter(is_current=True, employee__status='active')
+        
+        stats = queryset.aggregate(
+            total_net=Sum('net_salary'),
+            total_gross=Sum('gross_salary'),
+            total_basic=Sum('basic_salary'),
+            avg_net=Avg('net_salary'),
+            employee_count=Count('id')
+        )
+        
+        # Ensure Decimals are converted to strings/floats for JSON compatibility if needed, 
+        # though DRF Response usually handles Decimal
+        return Response({
+            'total_net_salary': stats['total_net'] or 0,
+            'total_gross_salary': stats['total_gross'] or 0,
+            'total_basic_salary': stats['total_basic'] or 0,
+            'avg_net_salary': stats['avg_net'] or 0,
+            'employee_count': stats['employee_count'] or 0
+        })
 
 
 class PayrollPeriodViewSet(viewsets.ModelViewSet):
@@ -306,73 +413,69 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
             except EmployeeSalary.DoesNotExist:
                 continue
             
-            # Get attendance summary
-            attendances = Attendance.objects.filter(
+            # Get or Generate Attendance Summary
+            # We ensure it exists and is up to date
+            summary, _ = AttendanceSummary.objects.get_or_create(
                 employee=employee,
-                date__range=[start_date, end_date]
+                month=month,
+                year=year
             )
+            # Recalculate to ensure it captures latest attendance changes
+            summary.calculate_summary()
             
-            working_days = end_date.day  # Simplified
-            present_days = attendances.filter(status='present').count()
-            half_days = attendances.filter(status='half_day').count() * Decimal(0.5)
-            leave_days = attendances.filter(status='on_leave').count()
-            absent_days = attendances.filter(status='absent').count()
+            # Step 1: Determine Days (User Formula)
+            working_days = Decimal(summary.total_working_days)
             
-            # Get approved leaves
-            approved_leaves = LeaveRequest.objects.filter(
-                employee=employee,
-                status='approved',
-                start_date__lte=end_date,
-                end_date__gte=start_date
-            ).aggregate(total_days=Sum('days_count'))['total_days'] or 0
+            # paid_days calculation
+            # Note: summary.present_days is usually integer count of rows with status='present'.
+            # summary.half_days is count of 'half_day'.
+            effective_present = Decimal(summary.present_days) + (Decimal(summary.half_days) * Decimal(0.5))
+            paid_days = effective_present + Decimal(summary.leave_days) # + Holidays/WeekOffs? 
+            # WAIT: User formula said: "paid_days = summary.present_days + (summary.half_days * 0.5) + summary.leave_days"
+            # User formula for LOP: "lop_days = working_days - paid_days"
             
-            # Calculate LOP (absent without approved leave)
-            lop_days = max(0, absent_days - approved_leaves)
-
-            # Calculate Overtime
-            overtime_hours = attendances.aggregate(total=Sum('overtime_hours'))['total'] or Decimal(0)
+            # IMPORTANT: If 'working_days' excludes Holidays/WeekOffs (which it does in AttendanceSummary logic),
+            # then 'paid_days' being just present+leave is correct for "Working Days Only".
+            # BUT, standard payroll 'Working Days' often implies 'Billable Days' which 'total_working_days' might be.
+            # Let's strictly follow User Formula.
+            
+            lop_days = max(Decimal(0), working_days - paid_days)
+            
+            # Overtime from Summary
+            overtime_hours = Decimal(summary.overtime_hours)
             overtime_amount = Decimal(0)
 
             if overtime_hours > 0:
-                # Get policy (optimized: could fetch once outside loop in real-world, but safe here)
                 policy = employee.company.attendance_policies.filter(is_active=True).first()
                 multiplier = policy.overtime_rate_multiplier if policy else Decimal('1.5')
                 daily_hours = policy.full_day_hours if policy else Decimal('8.0')
                 
-                # Formula: (Gross / Days / Hours) * OT_Hours * Multiplier
-                # Using 'working_days' (month length) for per-day calculation consistency
                 if working_days > 0 and daily_hours > 0:
-                     per_day_salary = emp_salary.gross_salary / Decimal(working_days)
+                     per_day_salary = emp_salary.gross_salary / working_days
                      per_hour_salary = per_day_salary / daily_hours
                      overtime_amount = per_hour_salary * overtime_hours * multiplier
 
             # Create payslip
+            # We map summary fields to payslip fields
+            # Note: PaySlip.present_days is Decimal, AttendanceSummary.present_days is Int.
             payslip, _ = PaySlip.objects.update_or_create(
                 employee=employee,
                 payroll_period=period,
                 defaults={
                     'employee_salary': emp_salary,
                     'working_days': working_days,
-                    'present_days': present_days + half_days,
-                    'leave_days': leave_days,
-                    'absent_days': absent_days,
+                    'present_days': effective_present, # Store effective present days
+                    'leave_days': summary.leave_days,
+                    'absent_days': summary.absent_days,
                     'lop_days': lop_days,
                     'overtime_hours': overtime_hours,
                     'overtime_amount': overtime_amount,
                 }
             )
             
-            # Calculate salary
+            # Calculate salary (Generates components and totals)
             payslip.calculate_salary()
             payslip.save()
-            
-            # Create payslip components
-            for comp in emp_salary.components.all():
-                PaySlipComponent.objects.update_or_create(
-                    payslip=payslip,
-                    component=comp.component,
-                    defaults={'amount': comp.amount}
-                )
             
             payslips_created += 1
             total_gross += payslip.gross_earnings
@@ -391,7 +494,8 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
         return Response({
             'message': f'Payroll generated for {payslips_created} employees',
             'period_id': period.id,
-            'total_net': str(total_net)
+            'total_net': str(total_net),
+            'total_employees': payslips_created
         })
     
     @action(detail=True, methods=['post'])
@@ -514,7 +618,33 @@ class PaySlipViewSet(viewsets.ModelViewSet):
                 'department_breakdown': list(department_breakdown)
             })
         except Exception as e:
-             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        """Generate and download PDF payslip"""
+        try:
+            payslip = self.get_object()
+            from .utils import generate_payslip_pdf
+            
+            pdf_buffer = generate_payslip_pdf(payslip)
+            
+            response = HttpResponse(
+                pdf_buffer.getvalue(),
+                content_type='application/pdf'
+            )
+            filename = f"Payslip_{payslip.employee.first_name}_{payslip.payroll_period.name.replace(' ', '_')}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Length'] = len(pdf_buffer.getvalue())
+            
+            return response
+        except Exception as e:
+            logger.exception("Payslip download failed")
+            return HttpResponse(
+                f"Failed to generate payslip PDF: {str(e)}",
+                status=500,
+                content_type="text/plain"
+            )
 
     @action(detail=True, methods=['post'])
     def recalculate(self, request, pk=None):

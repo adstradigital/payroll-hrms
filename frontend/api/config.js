@@ -76,6 +76,10 @@ export const CLIENTADMIN_ENDPOINTS = {
     DOCUMENT_REQUESTS: `${BASE_URL}/account/employees/document-requests/`,
     SHIFT_REQUESTS: `${BASE_URL}/account/employees/shift-requests/`,
     WORK_TYPE_REQUESTS: `${BASE_URL}/account/employees/work-type-requests/`,
+    REIMBURSEMENT_REQUESTS: `${BASE_URL}/account/employees/reimbursement-requests/`,
+    REIMBURSEMENT_REQUEST_DETAIL: (id) => `${BASE_URL}/account/employees/reimbursement-requests/${id}/`,
+    ENCASHMENT_REQUESTS: `${BASE_URL}/account/employees/encashment-requests/`,
+    ENCASHMENT_REQUEST_DETAIL: (id) => `${BASE_URL}/account/employees/encashment-requests/${id}/`,
 
     // Attendance
     ATTENDANCE: `${BASE_URL}/attendance/`,
@@ -111,6 +115,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     EMPLOYEE_SALARIES: `${BASE_URL}/payroll/employee-salaries/`,
     EMPLOYEE_SALARY_DETAIL: (id) => `${BASE_URL}/payroll/employee-salaries/${id}/`,
     EMPLOYEE_SALARY_CURRENT: `${BASE_URL}/payroll/employee-salaries/current/`,
+    EMPLOYEE_SALARY_STATS: `${BASE_URL}/payroll/employee-salaries/stats/`,
     PAYROLL_PERIODS: `${BASE_URL}/payroll/periods/`,
     PAYROLL_PERIOD_DETAIL: (id) => `${BASE_URL}/payroll/periods/${id}/`,
     PAYROLL_GENERATE: `${BASE_URL}/payroll/periods/generate/`,

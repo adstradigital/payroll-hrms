@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import {
     getPayrollPeriods, generateAdvancedPayroll,
-    markPeriodAsPaid, getAllEmployees
+    markPeriodAsPaid, getAllEmployees, getEmployeeSalaryStats
 } from '@/api/api_clientadmin';
 import Link from 'next/link';
 import './RunPayroll.css';
@@ -30,6 +30,7 @@ export default function RunPayroll() {
 
     const [bonusPool, setBonusPool] = useState(0); // Simulation state only for now
     const [activeEmployeeCount, setActiveEmployeeCount] = useState(0);
+    const [salaryStats, setSalaryStats] = useState({ total_net_salary: 0 });
 
     useEffect(() => {
         if (step === 2) {
@@ -39,14 +40,22 @@ export default function RunPayroll() {
 
     const fetchActiveEmployees = async () => {
         try {
-            const res = await getAllEmployees({ status: 'active', page_size: 1 });
-            if (res.data) {
+            const [empRes, statsRes] = await Promise.all([
+                getAllEmployees({ status: 'active', page_size: 1 }),
+                getEmployeeSalaryStats()
+            ]);
+
+            if (empRes.data) {
                 // If paginated, count is in res.data.count, else length of results
-                const count = res.data.count || (Array.isArray(res.data) ? res.data.length : (res.data.results ? res.data.results.length : 0));
+                const count = empRes.data.count || (Array.isArray(empRes.data) ? empRes.data.length : (empRes.data.results ? empRes.data.results.length : 0));
                 setActiveEmployeeCount(count);
             }
+
+            if (statsRes.data) {
+                setSalaryStats(statsRes.data);
+            }
         } catch (error) {
-            console.error("Failed to fetch employee count", error);
+            console.error("Failed to fetch payroll data", error);
         }
     };
 
@@ -101,8 +110,8 @@ export default function RunPayroll() {
                 id: res.data.period_id,
                 month: parseInt(month),
                 year: parseInt(year),
-                total_net_salary: res.data.total_net,
-                processed_count: activeEmployeeCount,
+                total_net: res.data.total_net,
+                total_employees: res.data.total_employees,
                 status: 'Completed'
             });
             setStep(3);
@@ -147,8 +156,8 @@ export default function RunPayroll() {
         return date.toLocaleString('default', { month: 'long', year: 'numeric' });
     };
 
-    // Estimated calculation for preview
-    const estimatedCost = (activeEmployeeCount * 45000) * (1 + (bonusPool / 100)); // Approx 45k avg salary assumption
+    // Estimated calculation for preview using actual salary data
+    const estimatedCost = (parseFloat(salaryStats.total_net_salary) || 0) * (1 + (bonusPool / 100));
 
     return (
         <div className={`rp-container ${bootSequence ? 'rp-booted' : ''}`}>
@@ -410,11 +419,11 @@ export default function RunPayroll() {
                                                     </div>
                                                     <div>
                                                         <span className="rp-receipt-label">Amount</span>
-                                                        <span className="rp-receipt-val text-emerald">{formatCurrency(existingPeriod.total_net_salary)}</span>
+                                                        <span className="rp-receipt-val text-emerald">{formatCurrency(existingPeriod.total_net)}</span>
                                                     </div>
                                                     <div>
                                                         <span className="rp-receipt-label">Recipients</span>
-                                                        <span className="rp-receipt-val">{existingPeriod.processed_count}</span>
+                                                        <span className="rp-receipt-val">{existingPeriod.total_employees}</span>
                                                     </div>
                                                     <div>
                                                         <span className="rp-receipt-label">Status</span>

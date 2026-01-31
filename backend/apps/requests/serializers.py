@@ -33,3 +33,22 @@ class WorkTypeRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkTypeRequest
         fields = '__all__'
+
+from .models import ReimbursementRequest, EncashmentRequest
+
+class ReimbursementRequestSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
+    
+    class Meta:
+        model = ReimbursementRequest
+        fields = '__all__'
+
+class EncashmentRequestSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
+    leave_type_name = serializers.CharField(source='leave_type.name', read_only=True)
+    
+    class Meta:
+        model = EncashmentRequest
+        fields = '__all__'
