@@ -21,6 +21,7 @@ from .models import (
     InviteCode, NotificationPreference, Role, Module, Permission,
     DataScope, RolePermission, DesignationPermission
 )
+from apps.audit.utils import log_activity
 from apps.subscriptions.models import Package, Subscription, Payment, FeatureUsage
 from .serializers import (
     MyTokenObtainPairSerializer, ModuleSerializer, PermissionSerializer,
@@ -1211,6 +1212,18 @@ def employee_list_create(request):
                 created_by=request.user
             )
             logger.info(f"[employee_create] ✓ SUCCESS: Created employee {emp.full_name} (ID: {emp.id})")
+            
+            # Log activity
+            log_activity(
+                user=request.user,
+                action_type='CREATE',
+                module='EMPLOYEE',
+                description=f"Created employee profile for '{emp.full_name}' ({emp.employee_id})",
+                reference_id=str(emp.id),
+                new_value={'employee_id': emp.employee_id, 'email': emp.email, 'department': str(emp.department_id)},
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            
             return Response({'success': True, 'id': str(emp.id), 'employee_id': emp.employee_id}, status=status.HTTP_201_CREATED)
     except Exception as e:
         import traceback
@@ -1290,13 +1303,37 @@ def employee_detail(request, pk):
                         if password:
                             emp.user.set_password(password)
                             emp.user.save()
+                
+                # Log activity
+                log_activity(
+                    user=request.user,
+                    action_type='UPDATE',
+                    module='EMPLOYEE',
+                    description=f"Updated employee profile for '{emp.full_name}'",
+                    reference_id=str(emp.id),
+                    new_value=data, # For simplicity, logging the incoming request data
+                    ip_address=request.META.get('REMOTE_ADDR')
+                )
             
                 return Response({'success': True, 'message': 'Employee updated', 'has_user': emp.user is not None})
             else:
                 return Response({'error': str(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
         
         elif request.method == 'DELETE':
+            full_name = emp.full_name
+            emp_id = emp.id
             emp.delete()
+            
+            # Log activity
+            log_activity(
+                user=request.user,
+                action_type='DELETE',
+                module='EMPLOYEE',
+                description=f"Deleted employee profile for '{full_name}'",
+                reference_id=str(emp_id),
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            
             return Response({'message': 'Employee deleted'}, status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         import traceback

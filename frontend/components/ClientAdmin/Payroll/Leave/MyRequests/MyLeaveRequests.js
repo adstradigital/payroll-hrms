@@ -153,8 +153,16 @@ export default function MyLeaveRequests({ currentUser }) {
             <div className="requests-grid">
                 {filteredRequests.length === 0 ? (
                     <div className="empty-state">
-                        <Calendar size={48} />
-                        <p>{searchTerm ? 'No matching requests found.' : 'You haven\'t submitted any leave requests yet.'}</p>
+                        <div className="empty-state__icon">
+                            <Calendar size={64} />
+                        </div>
+                        <h3>No Leave Requests</h3>
+                        <p>{searchTerm ? 'No matching requests found for your search.' : 'You haven\'t submitted any leave requests yet. Start by applying for one!'}</p>
+                        {!searchTerm && (
+                            <button className="btn-apply btn-apply--large" onClick={() => setShowApplyModal(true)}>
+                                <Plus size={20} /> Apply for Leave
+                            </button>
+                        )}
                     </div>
                 ) : (
                     filteredRequests.map(req => {
@@ -213,6 +221,7 @@ export default function MyLeaveRequests({ currentUser }) {
                     onClose={() => setShowApplyModal(false)}
                     currentUser={currentUser}
                     leaveTypes={leaveTypes}
+                    isMyLeave={true}
                     onSuccess={() => {
                         setShowApplyModal(false);
                         fetchData();

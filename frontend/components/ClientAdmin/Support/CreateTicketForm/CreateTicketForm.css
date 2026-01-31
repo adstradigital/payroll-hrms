@@ -1,0 +1,340 @@
+.create-ticket {
+    padding: var(--spacing-lg);
+    max-width: 800px;
+    /* Constrained width for better readability */
+    margin: 0 auto;
+}
+
+/* Header Styling */
+.create-ticket__header {
+    margin-bottom: var(--spacing-xl);
+}
+
+.create-ticket__back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    padding: var(--spacing-sm) 0;
+    margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+    border: none;
+}
+
+.create-ticket__back-btn:hover {
+    color: var(--brand-primary);
+}
+
+.create-ticket__header-content h1 {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.5px;
+}
+
+.create-ticket__header-content p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-md);
+    max-width: 600px;
+}
+
+/* Error Message */
+.create-ticket__error {
+    background: rgba(239, 68, 68, 0.1);
+    /* Red with opacity */
+    color: var(--color-danger);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+}
+
+/* Form Container */
+.create-ticket__form-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-sm);
+}
+
+.create-ticket__form-group {
+    margin-bottom: var(--spacing-xl);
+}
+
+.create-ticket__form-group:last-child {
+    margin-bottom: 0;
+}
+
+.create-ticket__form-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.create-ticket__required {
+    color: var(--color-danger);
+    margin-left: 2px;
+}
+
+/* Inputs & Textareas */
+.create-ticket__form-group input,
+.create-ticket__form-group select,
+.create-ticket__form-group textarea {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: var(--bg-primary);
+    /* Slightly distinct from card bg */
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-family: inherit;
+    transition: all var(--transition-fast);
+}
+
+.create-ticket__form-group input:hover,
+.create-ticket__form-group select:hover,
+.create-ticket__form-group textarea:hover {
+    border-color: var(--text-muted);
+}
+
+.create-ticket__form-group input:focus,
+.create-ticket__form-group select:focus,
+.create-ticket__form-group textarea:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 4px var(--input-focus-ring);
+    background: var(--input-bg);
+}
+
+.create-ticket__form-group textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.6;
+}
+
+.create-ticket__char-count {
+    display: block;
+    text-align: right;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-top: var(--spacing-xs);
+}
+
+/* Form Rows */
+.create-ticket__form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    /* Subject takes more space if in row, but currently vertical stack preferred for mobile first, though CSS keeps row for desktop */
+    gap: var(--spacing-lg);
+}
+
+/* File Upload Section */
+.create-ticket__field-hint {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-md);
+    margin-top: -0.25rem;
+}
+
+.create-ticket__file-upload {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    text-align: center;
+    transition: all var(--transition-normal);
+    background: rgba(var(--bg-tertiary-rgb), 0.3);
+}
+
+.create-ticket__file-upload:hover {
+    border-color: var(--brand-primary);
+    background: rgba(var(--brand-primary-rgb), 0.05);
+}
+
+.create-ticket__file-input {
+    display: none;
+}
+
+.create-ticket__file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 0.625rem 1.25rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.create-ticket__file-label:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.create-ticket__file-hint {
+    display: block;
+    margin-top: var(--spacing-sm);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* File List */
+.create-ticket__file-list {
+    margin-top: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.create-ticket__file-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    transition: background var(--transition-fast);
+}
+
+.create-ticket__file-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.create-ticket__file-name {
+    flex: 1;
+    color: var(--text-primary);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: var(--spacing-md);
+}
+
+.create-ticket__file-size {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    margin-right: var(--spacing-md);
+}
+
+.create-ticket__file-remove {
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+}
+
+.create-ticket__file-remove:hover {
+    color: var(--color-danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Action Buttons */
+.create-ticket__form-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: flex-end;
+    margin-top: var(--spacing-xl);
+}
+
+.create-ticket__cancel-btn,
+.create-ticket__submit-btn {
+    padding: 0.875rem 2rem;
+    /* Larger comfortable touch targets */
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.create-ticket__cancel-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+}
+
+.create-ticket__cancel-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.create-ticket__submit-btn {
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+    color: white;
+    border: none;
+    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+}
+
+.create-ticket__submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
+}
+
+.create-ticket__submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.create-ticket__submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
+}
+
+/* Dark Mode Overrides (if needed beyond variables) */
+[data-theme="dark"] .create-ticket__form-card {
+    background: rgba(30, 41, 59, 0.7);
+    /* Darker glass effect */
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .create-ticket {
+        padding: var(--spacing-md);
+    }
+
+    .create-ticket__header h1 {
+        font-size: var(--font-size-2xl);
+    }
+
+    .create-ticket__form-card {
+        padding: var(--spacing-md);
+    }
+
+    .create-ticket__form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .create-ticket__form-actions {
+        flex-direction: column-reverse;
+        gap: var(--spacing-sm);
+    }
+
+    .create-ticket__cancel-btn,
+    .create-ticket__submit-btn {
+        width: 100%;
+        text-align: center;
+    }
+}

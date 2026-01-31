@@ -16,6 +16,7 @@ from .models import (
     SalaryComponent, SalaryStructure, SalaryStructureComponent,
     EmployeeSalary, EmployeeSalaryComponent, PayrollPeriod, PaySlip, PaySlipComponent
 )
+from apps.audit.utils import log_activity
 from .serializers import (
     SalaryComponentSerializer, SalaryStructureSerializer, SalaryStructureComponentSerializer,
     EmployeeSalarySerializer, EmployeeSalaryComponentSerializer,
@@ -274,6 +275,17 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
         period.processed_at = timezone.now()
         period.save()
         
+        # Log activity
+        log_activity(
+            user=request.user,
+            action_type='PROCESS',
+            module='PAYROLL',
+            description=f"Generated payroll for {payslips_created} employees for period {period.name}",
+            reference_id=str(period.id),
+            new_value={'total_net': str(total_net), 'total_employees': payslips_created},
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
         return Response({
             'message': f'Payroll generated for {payslips_created} employees',
             'period_id': period.id,
@@ -295,6 +307,17 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
         
         period.status = 'paid'
         period.save()
+        
+        # Log activity
+        log_activity(
+            user=request.user,
+            action_type='APPROVE', # Or 'PROCESS'
+            module='PAYROLL',
+            description=f"Marked payroll period {period.name} as Paid",
+            reference_id=str(period.id),
+            new_value={'payment_date': payment_date, 'payment_mode': payment_mode},
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
         
         return Response({'message': 'Payroll marked as paid'})
 
