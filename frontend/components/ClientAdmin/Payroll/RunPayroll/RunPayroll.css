@@ -925,3 +925,36 @@
         transform: scale(1);
     }
 }
+
+/* Calculation Breakdown Styles */
+.rp-receipt-divider {
+    height: 1px;
+    background: var(--rp-border);
+    margin: var(--spacing-lg) 0;
+}
+
+.rp-calc-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.rp-calc-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-size-sm);
+    color: var(--rp-text-muted);
+}
+
+.rp-calc-row.text-danger {
+    color: #ef4444;
+}
+
+.rp-calc-row.rp-calc-total {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px dashed var(--rp-border);
+    font-weight: 700;
+    color: white;
+    font-size: var(--font-size-md);
+}

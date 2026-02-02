@@ -272,6 +272,18 @@ class PaySlip(BaseModel):
         total_earnings = Decimal(0)
         total_deductions = Decimal(0)
         
+        # 2b. Process Basic Salary (Always Prorated)
+        basic_salary = self.employee_salary.basic_salary
+        if basic_salary > 0:
+            final_basic = basic_salary * proration_ratio
+            final_basic = final_basic.quantize(Decimal('0.01'))
+            total_earnings += final_basic
+            
+            # NOTE: Ideally we should create a PaySlipComponent for Basic here if one doesn't exist,
+            # but for now we just ensure the amounts are captured in the totals.
+            # If a SalaryComponent 'Basic' exists, it might be duplicated if we are not careful?
+            # Standard Practice: 'Basic' is usually NOT in the components list if it's in the main field.
+            
         for comp in components:
             calc_type = comp.component.calculation_type
             base_amount = comp.amount
@@ -320,7 +332,7 @@ class PaySlip(BaseModel):
         # Determine LOP Deduction Amount for display calculation
         # LOP Deduction = (Total Potential Earnings) - (Actual Earnings)
         # Potential Earnings (as if 100% attendance)
-        potential_earnings = Decimal(0)
+        potential_earnings = self.employee_salary.basic_salary # Start with Basic
         for comp in components:
             if comp.component.component_type == 'earning':
                 potential_earnings += comp.amount

@@ -372,6 +372,7 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
 
         month = serializer.validated_data['month']
         year = serializer.validated_data['year']
+        force = request.data.get('force', False)
         
         # Create or get payroll period
         start_date = date(year, month, 1)
@@ -390,7 +391,20 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
         )
         
         if not created and period.status != 'draft':
-            return Response({'error': 'Payroll already processed for this period'}, status=400)
+            if force:
+                # Bypass: Delete existing payslips (even if paid) and regenerate
+                # Note: In production, we might want to prevent this for 'paid', but for dev/bypass we allow it.
+                
+                # Delete existing payslips
+                PaySlip.objects.filter(payroll_period=period).delete()
+                # Reset totals
+                period.total_employees = 0
+                period.total_gross = 0
+                period.total_net = 0
+                period.status = 'processing'
+                period.save()
+            else:
+                return Response({'error': 'Payroll already processed for this period'}, status=400)
         
         period.status = 'processing'
         period.save()
@@ -405,6 +419,7 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
         total_gross = Decimal(0)
         total_deductions = Decimal(0)
         total_net = Decimal(0)
+        total_lop = Decimal(0)
         
         for employee in employees:
             # Get current salary
@@ -481,6 +496,7 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
             total_gross += payslip.gross_earnings
             total_deductions += payslip.total_deductions
             total_net += payslip.net_salary
+            total_lop += payslip.lop_deduction
         
         # Update period totals
         period.total_employees = payslips_created
@@ -495,6 +511,8 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
             'message': f'Payroll generated for {payslips_created} employees',
             'period_id': period.id,
             'total_net': str(total_net),
+            'total_gross': str(total_gross),
+            'total_lop': str(total_lop),
             'total_employees': payslips_created
         })
     

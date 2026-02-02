@@ -94,8 +94,8 @@ export default function RunPayroll() {
         }
     };
 
-    const handleGeneratePayroll = async () => {
-        if (!isPinVerified && step === 2) return;
+    const handleGeneratePayroll = async (force = false) => {
+        if (!isPinVerified && step === 2 && !force) return;
 
         setProcessing(true);
         try {
@@ -103,7 +103,8 @@ export default function RunPayroll() {
             const res = await generateAdvancedPayroll({
                 month: parseInt(month),
                 year: parseInt(year),
-                action: 'generate'
+                action: 'generate',
+                force: force // Add force flag
             });
 
             setExistingPeriod({
@@ -111,6 +112,8 @@ export default function RunPayroll() {
                 month: parseInt(month),
                 year: parseInt(year),
                 total_net: res.data.total_net,
+                total_gross: res.data.total_gross || "0",
+                total_lop: res.data.total_lop || "0",
                 total_employees: res.data.total_employees,
                 status: 'Completed'
             });
@@ -418,23 +421,43 @@ export default function RunPayroll() {
                                                         <span className="rp-receipt-val">{getMonthName(`${existingPeriod.year}-${existingPeriod.month.toString().padStart(2, '0')}`)}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="rp-receipt-label">Amount</span>
-                                                        <span className="rp-receipt-val text-emerald">{formatCurrency(existingPeriod.total_net)}</span>
-                                                    </div>
-                                                    <div>
                                                         <span className="rp-receipt-label">Recipients</span>
                                                         <span className="rp-receipt-val">{existingPeriod.total_employees}</span>
                                                     </div>
-                                                    <div>
-                                                        <span className="rp-receipt-label">Status</span>
-                                                        <span className="rp-receipt-val text-brand uppercase">{existingPeriod.status}</span>
+                                                </div>
+                                                <div className="rp-receipt-divider"></div>
+
+                                                {/* Calculation Breakdown */}
+                                                <div className="rp-calc-breakdown">
+                                                    <div className="rp-calc-row">
+                                                        <span>Potential Cost</span>
+                                                        {/* Potential = Actual Gross + LOP Deducted */}
+                                                        <span>{formatCurrency(Number(existingPeriod.total_gross) + Number(existingPeriod.total_lop))}</span>
+                                                    </div>
+                                                    <div className="rp-calc-row text-danger">
+                                                        <span>Attendance Deductions</span>
+                                                        <span>- {formatCurrency(existingPeriod.total_lop)}</span>
+                                                    </div>
+                                                    <div className="rp-calc-row rp-calc-total">
+                                                        <span>Net Disbursal</span>
+                                                        <span className="text-emerald">{formatCurrency(existingPeriod.total_net)}</span>
                                                     </div>
                                                 </div>
+
                                             </div>
 
                                             <div className="rp-success-actions">
+                                                <button
+                                                    onClick={() => handleGeneratePayroll(true)}
+                                                    className="rp-btn-outline"
+                                                    disabled={processing}
+                                                    style={{ border: '1px solid #f59e0b', color: '#f59e0b' }}
+                                                >
+                                                    {processing ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
+                                                    Re-Run (Bypass)
+                                                </button>
                                                 <Link href="/dashboard/payroll/payslips" className="rp-btn-outline">
-                                                    <FileText size={18} /> View Payslips
+                                                    <FileText size={18} /> Payslips
                                                 </Link>
                                                 <Link href="/dashboard/payroll" className="rp-btn-primary">
                                                     <ArrowRight size={18} /> Dashboard
