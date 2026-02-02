@@ -5,20 +5,30 @@ import { useRouter } from 'next/navigation';
 import { Search, Bell, Settings, Globe, ChevronDown, Building2, Check, MapPin } from 'lucide-react';
 import ThemeToggle from '@/components/ClientAdmin/Dashboard/ThemeToggle/ThemeToggle';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import axiosInstance from '@/api/axiosInstance';
 import { CLIENTADMIN_ENDPOINTS } from '@/api/config';
 import './Header.css';
 
+const LANGUAGES = [
+    { code: 'en', label: 'English', flag: '🇺🇸' },
+    { code: 'ml', label: 'മലയാളം', flag: '🇮🇳' },
+    { code: 'ar', label: 'العربية', flag: '🇦🇪' }
+];
+
 export default function Header({ title, subtitle, breadcrumbs = [] }) {
     const router = useRouter();
     const { user } = useAuth();
+    const { language, changeLanguage, t } = useLanguage();
     const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'AD';
 
     // Company selector state
     const [companies, setCompanies] = useState([]);
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+    const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
     const companyDropdownRef = useRef(null);
+    const languageDropdownRef = useRef(null);
 
     // Fetch companies for the organization
     useEffect(() => {
@@ -76,6 +86,9 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
             if (companyDropdownRef.current && !companyDropdownRef.current.contains(event.target)) {
                 setShowCompanyDropdown(false);
             }
+            if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
+                setShowLanguageDropdown(false);
+            }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
@@ -119,7 +132,7 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
                     <Search size={16} className="header__search-icon" />
                     <input
                         type="text"
-                        placeholder="Search..."
+                        placeholder={t('common.search')}
                         className="header__search-input"
                     />
                 </div>
@@ -190,11 +203,35 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
                 </button>
 
                 {/* Language Switcher */}
-                <button className="header__utility-btn header__language">
-                    <Globe size={14} />
-                    <span>EN</span>
-                    <ChevronDown size={12} />
-                </button>
+                <div className="header__language-selector" ref={languageDropdownRef}>
+                    <button
+                        className="header__utility-btn header__language"
+                        onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                    >
+                        <Globe size={14} />
+                        <span>{language.toUpperCase()}</span>
+                        <ChevronDown size={12} className={showLanguageDropdown ? 'rotated' : ''} />
+                    </button>
+
+                    {showLanguageDropdown && (
+                        <div className="header__language-dropdown glass-panel animate-slide-up">
+                            {LANGUAGES.map((lang) => (
+                                <button
+                                    key={lang.code}
+                                    className={`header__language-item ${language === lang.code ? 'active' : ''}`}
+                                    onClick={() => {
+                                        changeLanguage(lang.code);
+                                        setShowLanguageDropdown(false);
+                                    }}
+                                >
+                                    <span className="lang-flag">{lang.flag}</span>
+                                    <span className="lang-label">{lang.label}</span>
+                                    {language === lang.code && <Check size={14} className="check-icon" />}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 {/* Settings */}
                 <button

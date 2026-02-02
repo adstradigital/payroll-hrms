@@ -7,10 +7,11 @@ import {
     LayoutDashboard, Users, Calendar, Clock,
     Wallet, FileText, Settings, ChevronDown,
     ChevronRight, LogOut, Bell, User, CheckCircle2,
-    X, Loader, AlertCircle
+    X, Loader, AlertCircle, HelpCircle, Upload, Activity
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import ThemeToggle from '@/components/ClientAdmin/Dashboard/ThemeToggle/ThemeToggle';
 import './Sidebar.css';
 
@@ -18,6 +19,7 @@ const menuItems = [
     {
         id: 'dashboard',
         label: 'Dashboard',
+        translationKey: 'common.dashboard',
         icon: LayoutDashboard,
         path: '/dashboard',
         permission: 'dashboard.view',
@@ -25,90 +27,132 @@ const menuItems = [
     {
         id: 'profile',
         label: 'My Profile',
+        translationKey: 'common.profile',
         icon: User,
         path: '/dashboard/profile',
     },
     {
         id: 'employees',
         label: 'Employees',
+        translationKey: 'common.employees',
         module: 'HRMS',
         icon: Users,
         path: '/dashboard/employees',
         permission: ['employees.view', 'employee.view_employee', 'employee.view_employees'],
         children: [
-            { id: 'all-employees', label: 'All Employees', path: '/dashboard/employees', permission: ['employees.view', 'employee.view_employee', 'employee.view_employees'] },
-            { id: 'departments', label: 'Departments', path: '/dashboard/employees/departments', permission: 'employees.view' },
-            { id: 'designations', label: 'Designations', path: '/dashboard/employees/designations', permission: 'employees.view' },
-            { id: 'roles-permissions', label: 'Roles & Permissions', path: '/dashboard/employees/roles', adminOnly: true },
-            { id: 'document-requests', label: 'Document Requests', path: '/dashboard/employees/document-requests', permission: 'documents.view_document_requests' },
-            { id: 'shift-requests', label: 'Shift Requests', path: '/dashboard/employees/shift-requests', permission: 'shift.view_shift_requests' },
-            { id: 'work-type-requests', label: 'Work Type Requests', path: '/dashboard/employees/work-type-requests', permission: 'employee.view_work_type_requests' },
+            { id: 'all-employees', label: 'All Employees', translationKey: 'common.allEmployees', path: '/dashboard/employees', permission: ['employees.view', 'employee.view_employee', 'employee.view_employees'] },
+            { id: 'departments', label: 'Departments', translationKey: 'common.departments', path: '/dashboard/employees/departments', permission: 'employees.view' },
+            { id: 'designations', label: 'Designations', translationKey: 'common.designations', path: '/dashboard/employees/designations', permission: 'employees.view' },
+            { id: 'roles-permissions', label: 'Roles & Permissions', translationKey: 'common.rolesPermissions', path: '/dashboard/employees/roles', adminOnly: true },
+            { id: 'document-requests', label: 'Document Requests', translationKey: 'common.documentRequests', path: '/dashboard/employees/document-requests', permission: 'documents.view_document_requests' },
+            { id: 'shift-requests', label: 'Shift Requests', translationKey: 'common.shiftRequests', path: '/dashboard/employees/shift-requests', permission: 'shift.view_shift_requests' },
+            { id: 'work-type-requests', label: 'Work Type Requests', translationKey: 'common.workTypeRequests', path: '/dashboard/employees/work-type-requests', permission: 'employee.view_work_type_requests' },
         ]
     },
     {
         id: 'attendance',
         label: 'Attendance',
+        translationKey: 'common.attendance',
         module: 'HRMS',
         icon: CheckCircle2,
         path: '/dashboard/attendance',
         permission: ['attendance.view', 'attendance.view_attendance'],
         children: [
-            { id: 'att-dashboard', label: 'Dashboard', path: '/dashboard/attendance' },
-            { id: 'att-my-attendance', label: 'My Attendance', path: '/dashboard/attendance/my-attendance' },
-            { id: 'att-register', label: 'Attendance Register', path: '/dashboard/attendance/register', permission: 'attendance.manage' },
-            { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests', permission: 'attendance.approve' },
-            { id: 'att-work-hours', label: 'Work Hours (Hour Bank)', path: '/dashboard/attendance/work-hours' },
-            { id: 'att-work-records', label: 'Work Records', path: '/dashboard/attendance/work-records' },
-            { id: 'att-late-early', label: 'Late & Early Rules', path: '/dashboard/attendance/late-early-rules' },
-            { id: 'att-holidays', label: 'Holiday Calendar', path: '/dashboard/attendance/holidays' },
-            { id: 'att-logs', label: 'Attendance Logs', path: '/dashboard/attendance/logs' },
-            { id: 'att-biometric', label: 'Biometric Devices', path: '/dashboard/attendance/biometric', adminOnly: true },
+            { id: 'att-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/attendance' },
+            { id: 'att-my-attendance', label: 'My Attendance', translationKey: 'common.attendance', path: '/dashboard/attendance/my-attendance' },
+            { id: 'att-register', label: 'Attendance Register', translationKey: 'common.attendanceRegister', path: '/dashboard/attendance/register', permission: 'attendance.manage' },
+            { id: 'att-requests', label: 'Attendance Requests', translationKey: 'common.attendanceRequests', path: '/dashboard/attendance/requests', permission: 'attendance.approve' },
+            { id: 'att-work-hours', label: 'Work Hours (Hour Bank)', translationKey: 'common.workHours', path: '/dashboard/attendance/work-hours' },
+            { id: 'att-work-records', label: 'Work Records', translationKey: 'common.workRecords', path: '/dashboard/attendance/work-records' },
+            { id: 'att-late-early', label: 'Late & Early Rules', translationKey: 'common.lateEarlyRules', path: '/dashboard/attendance/late-early-rules' },
+            { id: 'att-holidays', label: 'Holiday Calendar', translationKey: 'common.holidayCalendar', path: '/dashboard/attendance/holidays' },
+            { id: 'att-logs', label: 'Attendance Logs', translationKey: 'common.attendanceLogs', path: '/dashboard/attendance/logs' },
+            { id: 'att-biometric', label: 'Biometric Devices', translationKey: 'common.biometricDevices', path: '/dashboard/attendance/biometric', adminOnly: true },
         ]
     },
     {
         id: 'leave',
         label: 'Leave Management',
+        translationKey: 'common.leaveManagement',
         module: 'HRMS',
         icon: Calendar,
         path: '/dashboard/leave',
         permission: ['leave.view', 'leave.view_leave'],
         children: [
-            { id: 'leave-dashboard', label: 'Dashboard', path: '/dashboard/leave' },
-            { id: 'leave-my-requests', label: 'My Leave Requests', path: '/dashboard/leave?tab=requests' },
-            { id: 'leave-requests-queue', label: 'Requests Queue', path: '/dashboard/leave?tab=all-requests', adminOnly: true },
-            { id: 'leave-approvals', label: 'Approvals', path: '/dashboard/leave/approvals', permission: 'leave.view' },
-            { id: 'leave-types', label: 'Leave Types', path: '/dashboard/leave/types', adminOnly: true },
-            { id: 'leave-holidays', label: 'Holiday Calendar', path: '/dashboard/leave/holidays' },
-            { id: 'leave-balance', label: 'Leave Balance', path: '/dashboard/leave/balance' },
-            { id: 'leave-reports-sub', label: 'Reports', path: '/dashboard/leave/reports', permission: 'reports.view_reports' },
-            { id: 'leave-settings', label: 'Settings', path: '/dashboard/leave/settings', adminOnly: true },
+            { id: 'leave-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/leave' },
+            { id: 'leave-my-requests', label: 'My Leave Requests', translationKey: 'common.myRequests', path: '/dashboard/leave?tab=requests' },
+            { id: 'leave-requests-queue', label: 'Requests Queue', translationKey: 'common.requestsQueue', path: '/dashboard/leave?tab=all-requests', adminOnly: true },
+            { id: 'leave-approvals', label: 'Approvals', translationKey: 'common.approvals', path: '/dashboard/leave/approvals', permission: 'leave.view' },
+            { id: 'leave-types', label: 'Leave Types', translationKey: 'common.leaveManagement', path: '/dashboard/leave/types', adminOnly: true },
+            { id: 'leave-holidays', label: 'Holiday Calendar', translationKey: 'common.holidayCalendar', path: '/dashboard/leave/holidays' },
+            { id: 'leave-balance', label: 'Leave Balance', translationKey: 'common.leaveBalance', path: '/dashboard/leave/balance' },
+            { id: 'leave-reports-sub', label: 'Reports', translationKey: 'common.reports', path: '/dashboard/leave/reports', permission: 'reports.view_reports' },
+            { id: 'leave-settings', label: 'Settings', translationKey: 'common.settings', path: '/dashboard/leave/settings', adminOnly: true },
         ]
     },
     {
         id: 'payroll',
         label: 'Payroll',
+        translationKey: 'common.payroll',
         module: 'Payroll',
         icon: Wallet,
         path: '/dashboard/payroll',
         permission: ['payroll.view', 'payroll.view_payslip', 'payroll.view_payslips'],
         children: [
-            { id: 'salary-components', label: 'Salary Components', path: '/dashboard/payroll/salarycomponents', permission: 'payroll.manage' },
-            { id: 'salary-structure', label: 'Salary Structure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
-            { id: 'employee-salary', label: 'Employee Salary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },
-            { id: 'payslips', label: 'Payslips', path: '/dashboard/payroll/payslips' },
-            { id: 'run-payroll', label: 'Run Payroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
+            { id: 'salary-components', label: 'Salary Components', translationKey: 'common.salaryComponents', path: '/dashboard/payroll/salarycomponents', permission: 'payroll.manage' },
+            { id: 'salary-structure', label: 'Salary Structure', translationKey: 'common.salaryStructure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
+            { id: 'employee-salary', label: 'Employee Salary', translationKey: 'common.employeeSalary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },
+            { id: 'payslips', label: 'Payslips', translationKey: 'common.payslips', path: '/dashboard/payroll/payslips' },
+            { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
         ]
+    },
+    {
+        id: 'bulk-upload',
+        label: 'Bulk Upload',
+        translationKey: 'common.bulkUpload',
+        icon: Upload,
+        path: '/dashboard/payroll/bulk-upload/dashboard',
+        adminOnly: true,
+        children: [
+            { id: 'bu-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll/bulk-upload/dashboard' },
+            { id: 'bu-employee', label: 'Employee Data', translationKey: 'common.employeeData', path: '/dashboard/payroll/bulk-upload/employee' },
+            { id: 'bu-salary', label: 'Salary Data', translationKey: 'common.salaryData', path: '/dashboard/payroll/bulk-upload/salary' },
+            { id: 'bu-attendance', label: 'Attendance Data', translationKey: 'common.attendanceData', path: '/dashboard/payroll/bulk-upload/attendance' },
+            { id: 'bu-history', label: 'Upload History', translationKey: 'common.uploadHistory', path: '/dashboard/payroll/bulk-upload/history' },
+            { id: 'bu-templates', label: 'Download Templates', translationKey: 'common.downloadTemplates', path: '/dashboard/payroll/bulk-upload/templates' },
+        ]
+    },
+    {
+        id: 'system-logs',
+        label: 'System Logs',
+        translationKey: 'common.systemLogs',
+        icon: Activity,
+        path: '/dashboard/logs',
+        adminOnly: true,
     },
     {
         id: 'reports',
         label: 'Reports',
+        translationKey: 'common.reports',
         icon: FileText,
         path: '/dashboard/reports',
         permission: ['reports.view', 'reports.view_reports'],
     },
     {
+        id: 'support',
+        label: 'Support',
+        translationKey: 'common.support',
+        icon: HelpCircle,
+        path: '/dashboard/support/help-center',
+        children: [
+            { id: 'help-center', label: 'Help Center', translationKey: 'common.helpCenter', path: '/dashboard/support/help-center' },
+            { id: 'support-tickets', label: 'My Tickets', translationKey: 'common.myTickets', path: '/dashboard/support/tickets' },
+        ]
+    },
+    {
         id: 'settings',
         label: 'Settings',
+        translationKey: 'common.settings',
         icon: Settings,
         path: '/dashboard/settings',
         adminOnly: true,
@@ -118,6 +162,7 @@ const menuItems = [
 export default function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const { t } = useLanguage();
     const { hasHRMS, hasPayroll, hasPermission, hasAnyPermission, isAdmin } = usePermissions();
 
     // Logout Flow States
@@ -127,6 +172,7 @@ export default function Sidebar() {
     const [submittingReport, setSubmittingReport] = useState(false);
     const [attendanceStatus, setAttendanceStatus] = useState(null); // { checkedIn: bool, checkedOut: bool }
     const [checkingAttendance, setCheckingAttendance] = useState(false);
+    const [ticketStats, setTicketStats] = useState(null);
 
     const [expandedItems, setExpandedItems] = useState(() => {
         const defaultExpanded = [];
@@ -150,7 +196,7 @@ export default function Sidebar() {
                 });
             }
             const handleScroll = () => {
-                sessionStorage.setItem('sidebar-scroll', sidebarNav.scrollTop);
+                sessionStorage.setItem('sidebar-scroll', sidebarNav.scrollTop.toString());
             };
             sidebarNav.addEventListener('scroll', handleScroll);
             return () => sidebarNav.removeEventListener('scroll', handleScroll);
@@ -171,11 +217,15 @@ export default function Sidebar() {
         if (changed) setExpandedItems(itemsToExpand);
     }, [pathname]);
 
+    useEffect(() => {
+        // Fetch ticket stats on component mount
+        fetchTicketStats();
+    }, []);
+
     const toggleExpand = (itemId) => {
-        setExpandedItems(prev => {
-            const isExpanded = prev.includes(itemId);
-            return isExpanded ? prev.filter(id => id !== itemId) : [...prev, itemId];
-        });
+        setExpandedItems(prev =>
+            prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
+        );
     };
 
     const isActive = (path) => pathname === path;
@@ -185,6 +235,21 @@ export default function Sidebar() {
             return item.children.some(child => pathname.startsWith(child.path));
         }
         return false;
+    };
+
+    const fetchTicketStats = async () => {
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/support/tickets/stats/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setTicketStats(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch ticket stats:', err);
+        }
     };
 
     const checkPermission = (item) => {
@@ -304,7 +369,7 @@ export default function Sidebar() {
             </div>
 
             {/* Main Menu */}
-            <div className="sidebar__menu-label">MAIN MENU</div>
+            <div className="sidebar__menu-label">{t('common.mainMenu')}</div>
 
             <nav className="sidebar__nav">
                 {filteredMenuItems.map(item => {
@@ -322,7 +387,7 @@ export default function Sidebar() {
                                         onClick={() => toggleExpand(item.id)}
                                     >
                                         <Icon className="sidebar__item-icon" size={20} />
-                                        <span className="sidebar__item-label">{item.label}</span>
+                                        <span className="sidebar__item-label">{t(item.translationKey) || item.label}</span>
                                         {isExpanded ? (
                                             <ChevronDown className="sidebar__item-arrow" size={16} />
                                         ) : (
@@ -339,7 +404,12 @@ export default function Sidebar() {
                                                     className={`sidebar__subitem ${isActive(child.path) ? 'sidebar__subitem--active' : ''}`}
                                                 >
                                                     <span className="sidebar__subitem-dot"></span>
-                                                    {child.label}
+                                                    {t(child.translationKey) || child.label}
+                                                    {item.id === 'support' && child.id === 'support-tickets' && ticketStats && (
+                                                        <span className="sidebar__badge">
+                                                            {ticketStats.open + ticketStats.in_progress}
+                                                        </span>
+                                                    )}
                                                 </Link>
                                             ))}
                                         </div>
@@ -351,7 +421,7 @@ export default function Sidebar() {
                                     className={`sidebar__item ${isActive(item.path) ? 'sidebar__item--active' : ''}`}
                                 >
                                     <Icon className="sidebar__item-icon" size={20} />
-                                    <span className="sidebar__item-label">{item.label}</span>
+                                    <span className="sidebar__item-label">{t(item.translationKey) || item.label}</span>
                                 </Link>
                             )}
                         </div>

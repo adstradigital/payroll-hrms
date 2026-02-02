@@ -3,7 +3,7 @@ import { X, Upload, AlertCircle, Loader2 } from 'lucide-react';
 import { applyLeave, getAllEmployees, getLeaveBalance } from '@/api/api_clientadmin';
 import './ApplyLeaveModal.css';
 
-export default function ApplyLeaveModal({ isOpen, onClose, currentUser, leaveTypes, onSuccess }) {
+export default function ApplyLeaveModal({ isOpen, onClose, currentUser, leaveTypes, onSuccess, isMyLeave = false }) {
     const [formData, setFormData] = useState({
         employee: currentUser?.id || '',
         // Ensure leave_type is string for consistent handling
@@ -27,10 +27,16 @@ export default function ApplyLeaveModal({ isOpen, onClose, currentUser, leaveTyp
     const isAdmin = currentUser?.is_staff || currentUser?.role === 'admin' || currentUser?.is_admin;
 
     useEffect(() => {
-        if (isOpen && isAdmin) {
+        if (currentUser?.id) {
+            setFormData(prev => ({ ...prev, employee: currentUser.id }));
+        }
+    }, [currentUser]);
+
+    useEffect(() => {
+        if (isOpen && isAdmin && !isMyLeave) {
             fetchEmployees();
         }
-    }, [isOpen, isAdmin]);
+    }, [isOpen, isAdmin, isMyLeave]);
 
     useEffect(() => {
         if (formData.leave_type && formData.employee) {
@@ -88,7 +94,7 @@ export default function ApplyLeaveModal({ isOpen, onClose, currentUser, leaveTyp
     const validateForm = () => {
         const errors = {};
 
-        if (isAdmin && !formData.employee) {
+        if (isAdmin && !isMyLeave && !formData.employee) {
             errors.employee = 'Please select an employee';
         }
 
@@ -241,8 +247,8 @@ export default function ApplyLeaveModal({ isOpen, onClose, currentUser, leaveTyp
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="apply-leave-form">
-                    {/* Employee Selection (Admin Only) */}
-                    {isAdmin && (
+                    {/* Employee Selection (Admin Only, and not on personal page) */}
+                    {isAdmin && !isMyLeave && (
                         <div className="form-group">
                             <label htmlFor="employee">
                                 Employee <span className="required">*</span>

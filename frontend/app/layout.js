@@ -3,6 +3,7 @@ import '@/styles/globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { PermissionProvider } from '@/context/PermissionContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,9 +18,11 @@ export default function RootLayout({ children }) {
             <body className={inter.className}>
                 <AuthProvider>
                     <PermissionProvider>
-                        <ThemeProvider>
-                            {children}
-                        </ThemeProvider>
+                        <LanguageProvider>
+                            <ThemeProvider>
+                                {children}
+                            </ThemeProvider>
+                        </LanguageProvider>
                     </PermissionProvider>
                 </AuthProvider>
             </body>

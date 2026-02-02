@@ -130,6 +130,10 @@ export const CLIENTADMIN_ENDPOINTS = {
     // HRMS
     ANNOUNCEMENTS: `${BASE_URL}/hrms/announcements/`,
     DOCUMENTS: `${BASE_URL}/hrms/documents/`,
+
+    // Audit/Logs
+    AUDIT_LOGS: `${BASE_URL}/audit/logs/`,
+    AUDIT_LOG_DETAIL: (id) => `${BASE_URL}/audit/logs/${id}/`,
 };
 
 export default BASE_URL;

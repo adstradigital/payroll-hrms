@@ -7,6 +7,7 @@ from .models import (
     InviteCode, NotificationPreference, Role, Module, Permission,
     DataScope, RolePermission, DesignationPermission
 )
+from apps.audit.utils import log_activity
 
 
 class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -34,6 +35,18 @@ class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
             'email': self.user.email,
             'is_superuser': self.user.is_superuser
         }
+        
+        # Log successful login
+        request = self.context.get('request')
+        ip = request.META.get('REMOTE_ADDR') if request else None
+        log_activity(
+            user=self.user,
+            action_type='LOGIN',
+            module='AUTH',
+            description=f"Super Admin '{self.user.username}' logged in successfully.",
+            ip_address=ip
+        )
+        
         return data
 
 
@@ -92,6 +105,18 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             sub = Subscription.objects.filter(organization=org.get_root_parent()).first()
             if sub:
                 data['user']['subscription_plan'] = 'both' if sub.package.package_type == 'free_trial' else 'enterprise'
+
+        # Log Login Activity
+        request = self.context.get('request')
+        ip_addr = request.META.get('REMOTE_ADDR') if request else None
+        
+        log_activity(
+            user=self.user,
+            action_type='LOGIN',
+            module='AUTH',
+            description=f"User {self.user.username} logged in successfully",
+            ip_address=ip_addr
+        )
             
         return data
 

@@ -5,7 +5,7 @@ import Settings from '@/components/ClientAdmin/Settings/Settings';
 
 export default function SettingsPage() {
     return (
-        <Dashboard breadcrumbs={['Home', 'Settings']}>
+        <Dashboard breadcrumbs={['Home', 'Settings']} showGreeting={false}>
             <Settings />
         </Dashboard>
     );

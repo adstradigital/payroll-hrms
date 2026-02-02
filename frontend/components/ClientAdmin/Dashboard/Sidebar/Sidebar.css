@@ -316,6 +316,36 @@
     box-shadow: 0 0 8px #f59e0b;
 }
 
+/* Badge for notification counts */
+.sidebar__badge {
+    margin-left: auto;
+    padding: 0.125rem 0.5rem;
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+    color: white;
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+    border-radius: var(--radius-full);
+    min-width: 20px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+}
+
+[data-theme="dark"] .sidebar__badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #000;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.sidebar__subitem--active .sidebar__badge {
+    background: white;
+    color: var(--brand-primary);
+}
+
+[data-theme="dark"] .sidebar__subitem--active .sidebar__badge {
+    background: #000;
+    color: #f59e0b;
+}
+
 /* ===============================
    FOOTER - User Section
    =============================== */
