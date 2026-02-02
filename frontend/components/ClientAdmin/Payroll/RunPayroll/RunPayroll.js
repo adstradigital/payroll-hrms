@@ -27,11 +27,16 @@ export default function RunPayroll() {
     const [startDate, setStartDate] = useState(Date.now());
     const [securityPin, setSecurityPin] = useState(['', '', '', '']);
     const [isPinVerified, setIsPinVerified] = useState(false);
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState('preview');
 
     const [bonusPool, setBonusPool] = useState(0); // Simulation state only for now
     const [activeEmployeeCount, setActiveEmployeeCount] = useState(0);
     const [salaryStats, setSalaryStats] = useState({ total_net_salary: 0 });
+
+    // Preview State
+    const [previewData, setPreviewData] = useState(null);
+    const [loadingPreview, setLoadingPreview] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (step === 2) {
@@ -146,6 +151,35 @@ export default function RunPayroll() {
         }
     };
 
+    const fetchPreview = async () => {
+        setLoadingPreview(true);
+        setError(null);
+        try {
+            const [year, month] = selectedMonth.split('-');
+            const res = await generateAdvancedPayroll({
+                month: parseInt(month),
+                year: parseInt(year),
+                action: 'generate',
+                preview: true // Use preview mode
+            });
+
+            if (res.data && res.data.preview) {
+                setPreviewData(res.data);
+            }
+        } catch (error) {
+            console.error("Preview failed", error);
+            setError(error.response?.data?.error || "Failed to load preview");
+        } finally {
+            setLoadingPreview(false);
+        }
+    };
+
+    const handleInitiate = () => {
+        setStep(2);
+        setActiveTab('preview');
+        fetchPreview();
+    };
+
     // Pin logic (Client side security simulation)
     const handlePinChange = (index, value) => {
         if (value.length > 1) return;
@@ -217,8 +251,10 @@ export default function RunPayroll() {
 
                 {/* Progress Steps */}
                 <div className="rp-steps">
-                    <div className="rp-step-line-bg"></div>
-                    <div className="rp-step-line-fill" style={{ width: `${(step - 1) * 50}%` }}></div>
+                    <div className="rp-progress-track">
+                        <div className="rp-step-line-bg"></div>
+                        <div className="rp-step-line-fill" style={{ width: `${(step - 1) * 50}%` }}></div>
+                    </div>
 
                     {[1, 2, 3].map((s) => (
                         <div key={s} className={`rp-step-item ${s <= step ? 'active' : ''} ${s === step ? 'current' : ''}`}>
@@ -256,19 +292,31 @@ export default function RunPayroll() {
                                         </div>
 
                                         <div className="rp-form-group">
-                                            <label>Month Selection</label>
-                                            <div className="rp-input-group">
+                                            <div className="rp-month-selector">
+                                                <button
+                                                    className="rp-month-btn"
+                                                    onClick={() => document.getElementById('month-picker').showPicker()}
+                                                >
+                                                    <div className="rp-month-info">
+                                                        <Calendar size={20} className="rp-month-icon" />
+                                                        <div className="rp-month-text">
+                                                            <span className="rp-label-sm">Billing Period</span>
+                                                            <span className="rp-value-lg">{getMonthName(selectedMonth)}</span>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronRight size={20} className="rp-month-arrow" />
+                                                </button>
                                                 <input
+                                                    id="month-picker"
                                                     type="month"
                                                     value={selectedMonth}
                                                     onChange={(e) => setSelectedMonth(e.target.value)}
-                                                    className="rp-input-lg"
+                                                    className="rp-hidden-input"
                                                 />
-                                                <div className="rp-input-icon"><ChevronRight size={16} /></div>
                                             </div>
                                         </div>
 
-                                        <button onClick={() => setStep(2)} className="rp-btn-primary rp-btn-block group">
+                                        <button onClick={handleInitiate} className="rp-btn-primary rp-btn-block group">
                                             <span className="rp-btn-content">
                                                 INITIATE ANALYSIS <ArrowRight size={18} />
                                             </span>
@@ -280,66 +328,113 @@ export default function RunPayroll() {
                             {/* STEP 2: REVIEW & PROCESS */}
                             {step === 2 && (
                                 <div className="rp-grid animate-slide-up">
-                                    {/* Left Panel */}
+                                    {/* Left Panel: Preview Data */}
                                     <div className="rp-col-main">
                                         <div className="rp-tabs">
                                             <button
-                                                className={`rp-tab ${activeTab === 'overview' ? 'active' : ''}`}
-                                                onClick={() => setActiveTab('overview')}
-                                            >Overview</button>
+                                                className={`rp-tab ${activeTab === 'preview' ? 'active' : ''}`}
+                                                onClick={() => setActiveTab('preview')}
+                                            >Payroll Preview</button>
                                             <button
                                                 className={`rp-tab ${activeTab === 'anomalies' ? 'active' : ''}`}
                                                 onClick={() => setActiveTab('anomalies')}
                                             >AI Insights <span className="rp-badge">2</span></button>
                                         </div>
 
-                                        {activeTab === 'overview' && (
+                                        {activeTab === 'preview' && (
                                             <div className="rp-tab-content animate-fade-in">
-                                                <div className="rp-stats-grid">
-                                                    <div className="rp-stat-box">
-                                                        <div className="rp-stat-header">
-                                                            <span>Total Est. Cost</span>
-                                                            <TrendingUp size={16} className="text-emerald" />
-                                                        </div>
-                                                        <div className="rp-stat-value">{formatCurrency(estimatedCost)}</div>
-                                                        <div className="rp-stat-meta">Based on current active employees</div>
+                                                {loadingPreview ? (
+                                                    <div className="p-10 text-center">
+                                                        <Loader2 className="animate-spin text-gold mx-auto mb-3" size={32} />
+                                                        <p className="text-secondary">Calculating payroll preview...</p>
                                                     </div>
-                                                    <div className="rp-stat-box">
-                                                        <div className="rp-stat-header">
-                                                            <span>Employees</span>
-                                                            <Users size={16} className="text-info" />
-                                                        </div>
-                                                        <div className="rp-stat-value">{activeEmployeeCount > 0 ? activeEmployeeCount : '--'}</div>
-                                                        <div className="rp-stat-meta">Will be calculated on run</div>
+                                                ) : error ? (
+                                                    <div className="p-6 text-center text-red-500 bg-red-900/10 rounded-lg border border-red-900/30">
+                                                        <AlertTriangle className="mx-auto mb-2" />
+                                                        {error}
+                                                        <button onClick={fetchPreview} className="mt-4 px-4 py-2 bg-red-900/20 rounded hover:bg-red-900/30 text-sm">Retry</button>
                                                     </div>
-                                                    <div className="rp-stat-box">
-                                                        <div className="rp-stat-header">
-                                                            <span>Compliance</span>
-                                                            <ShieldCheck size={16} className="text-brand" />
+                                                ) : (
+                                                    <>
+                                                        <div className="rp-stats-grid">
+                                                            <div className="rp-stat-box">
+                                                                <div className="rp-stat-header">
+                                                                    <span>Est. Net Disbursal</span>
+                                                                    <TrendingUp size={16} className="text-emerald" />
+                                                                </div>
+                                                                <div className="rp-stat-value">
+                                                                    {previewData ? formatCurrency(previewData.summary.total_net) : '--'}
+                                                                </div>
+                                                                <div className="rp-stat-meta">
+                                                                    {previewData ? previewData.summary.employee_count : 0} Employees
+                                                                </div>
+                                                            </div>
+                                                            <div className="rp-stat-box">
+                                                                <div className="rp-stat-header">
+                                                                    <span>Attendance Deductions</span>
+                                                                    <AlertTriangle size={16} className="text-red-400" />
+                                                                </div>
+                                                                <div className="rp-stat-value text-red-400">
+                                                                    {previewData ? formatCurrency(previewData.summary.total_lop) : '--'}
+                                                                </div>
+                                                                <div className="rp-stat-meta">Loss of Pay (LOP)</div>
+                                                            </div>
+                                                            <div className="rp-stat-box">
+                                                                <div className="rp-stat-header">
+                                                                    <span>Gross Earnings</span>
+                                                                    <DollarSign size={16} className="text-brand" />
+                                                                </div>
+                                                                <div className="rp-stat-value">
+                                                                    {previewData ? formatCurrency(previewData.summary.total_gross) : '--'}
+                                                                </div>
+                                                                <div className="rp-stat-meta">Before Deductions</div>
+                                                            </div>
                                                         </div>
-                                                        <div className="rp-stat-value">100%</div>
-                                                        <div className="rp-stat-meta">Tax Rules 2024</div>
-                                                    </div>
-                                                </div>
 
-                                                <div className="rp-control-panel">
-                                                    <div className="rp-control-header">
-                                                        <Sliders size={18} className="text-brand" />
-                                                        <h3>Adjustments Control (Simulation)</h3>
-                                                    </div>
-                                                    <div className="rp-slider-group">
-                                                        <div className="rp-slider-labels">
-                                                            <span>Bonus Pool Allocation</span>
-                                                            <span className="rp-mono-val">{bonusPool}%</span>
+                                                        {/* Employee Preview Table */}
+                                                        <div className="mt-6 border border-[#222] rounded-lg overflow-hidden bg-[#0a0a0a]">
+                                                            <div className="p-3 bg-[#111] border-b border-[#222] flex justify-between items-center">
+                                                                <h4 className="text-sm font-bold text-secondary uppercase tracking-wider">Employee Impact Preview</h4>
+                                                                <span className="text-xs text-muted">Review before execution</span>
+                                                            </div>
+                                                            <div className="overflow-x-auto max-h-[300px]">
+                                                                <table className="w-full text-sm text-left">
+                                                                    <thead className="text-xs text-muted uppercase bg-[#151515] sticky top-0">
+                                                                        <tr>
+                                                                            <th className="px-4 py-3">Employee</th>
+                                                                            <th className="px-4 py-3 text-right">Days Paid</th>
+                                                                            <th className="px-4 py-3 text-right">Gross Pay</th>
+                                                                            <th className="px-4 py-3 text-right text-red-400">LOP</th>
+                                                                            <th className="px-4 py-3 text-right">Net Salary</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-[#222]">
+                                                                        {previewData?.employees.map((emp, idx) => (
+                                                                            <tr key={idx} className="hover:bg-[#111]">
+                                                                                <td className="px-4 py-2 font-medium">
+                                                                                    <div className="text-white">{emp.name}</div>
+                                                                                    <div className="text-xs text-muted">{emp.designation}</div>
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-right font-mono text-muted">
+                                                                                    {emp.days_paid} <span className="text-[10px] opacity-50">/ {Number(emp.days_paid) + Number(emp.days_lop)}</span>
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-right font-mono text-brand">
+                                                                                    {formatCurrency(emp.gross_pay)}
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-right font-mono text-red-400">
+                                                                                    {emp.lop_deduction > 0 ? `-${Math.round(emp.lop_deduction)}` : '-'}
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-right font-mono font-bold text-white">
+                                                                                    {formatCurrency(emp.net_pay)}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
                                                         </div>
-                                                        <input
-                                                            type="range" min="0" max="20" step="1"
-                                                            value={bonusPool}
-                                                            onChange={(e) => setBonusPool(Number(e.target.value))}
-                                                            className="rp-slider"
-                                                        />
-                                                    </div>
-                                                </div>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
 

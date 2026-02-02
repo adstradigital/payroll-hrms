@@ -1,7 +1,74 @@
 /* Salary Structure Theme - Black & Gold */
 :root {
     --z-modal: 1000;
+    --structure-title-scale: 2.75rem;
 }
+
+/* --- Page Header (Cinematic) --- */
+.page-header-premium {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+}
+
+.title-block {
+    display: flex;
+    flex-direction: column;
+}
+
+.cinematic-title {
+    font-size: var(--structure-title-scale);
+    font-weight: 950;
+    letter-spacing: -2px;
+    margin: 0;
+    line-height: 1;
+    color: white;
+    text-transform: uppercase;
+}
+
+.title-accent {
+    color: var(--brand-primary);
+}
+
+.cinematic-subtitle {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: 700;
+    font-size: 0.65rem;
+    margin: 0.4rem 0 0 0;
+    opacity: 0.7;
+}
+
+.header-action-panel {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-gold-premium {
+    background: var(--brand-primary);
+    color: var(--text-inverse, #000);
+    border: none;
+    padding: 0.65rem var(--spacing-lg, 1.5rem);
+    border-radius: var(--radius-sm, 4px);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+}
+
+.btn-gold-premium:hover {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+}
+
+
 
 .structure-page {
     padding: 2rem;

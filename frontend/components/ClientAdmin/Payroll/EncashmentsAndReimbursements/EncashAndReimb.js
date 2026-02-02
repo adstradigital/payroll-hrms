@@ -48,7 +48,7 @@ const EncashAndReimb = () => {
             } else {
                 res = await getEncashmentRequests();
             }
-            setRequests(res.data);
+            setRequests(res.data.results || res.data);
         } catch (error) {
             console.error("Failed to fetch requests", error);
         } finally {
@@ -183,7 +183,7 @@ const EncashAndReimb = () => {
                     <tbody>
                         {requests.length === 0 ? (
                             <tr>
-                                <td colspan="6" className="text-center py-8 text-muted">No requests found</td>
+                                <td colSpan="6" className="text-center py-8 text-muted">No requests found</td>
                             </tr>
                         ) : (
                             requests.map(req => (

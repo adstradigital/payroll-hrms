@@ -1,14 +1,13 @@
 /* RunPayroll.css - Cinematic Interface */
 
 .rp-container {
-    --rp-bg: #050505;
-    --rp-card-bg: rgba(20, 20, 20, 0.6);
-    --rp-border: rgba(255, 255, 255, 0.1);
-    --rp-accent: #f59e0b;
-    /* Amber 500 */
-    --rp-accent-glow: rgba(245, 158, 11, 0.4);
-    --rp-text-main: #e5e5e5;
-    --rp-text-muted: #737373;
+    --rp-bg: var(--bg-primary);
+    --rp-card-bg: var(--card-bg);
+    --rp-border: var(--border-color);
+    --rp-accent: var(--brand-primary);
+    --rp-accent-glow: var(--brand-primary-light);
+    --rp-text-main: var(--text-primary);
+    --rp-text-muted: var(--text-muted);
 
     position: relative;
     min-height: 85vh;
@@ -17,6 +16,7 @@
     overflow: hidden;
     border-radius: var(--radius-lg);
     background: var(--rp-bg);
+    border: 1px solid var(--rp-border);
 }
 
 /* Theme Adaptation: If light mode, use dark aesthetic anyway for this "command center" feel, 
@@ -174,37 +174,51 @@
     position: relative;
     display: flex;
     justify-content: space-between;
-    max-width: 600px;
-    margin: 0 auto var(--spacing-lg);
+    max-width: 500px;
+    margin: 0 auto var(--spacing-xl);
+    padding: 0 var(--spacing-md);
+}
+
+.rp-progress-track {
+    position: absolute;
+    top: 24px;
+    left: calc(var(--spacing-md) + 24px);
+    right: calc(var(--spacing-md) + 24px);
+    height: 3px;
+    z-index: 0;
 }
 
 .rp-step-line-bg {
     position: absolute;
-    top: 50%;
+    top: 0;
     left: 0;
     width: 100%;
-    height: 2px;
-    background: #333;
-    z-index: -1;
-    transform: translateY(-50%);
+    height: 100%;
+    background: var(--border-color);
+    border-radius: 99px;
 }
 
 .rp-step-line-fill {
     position: absolute;
-    top: 50%;
+    top: 0;
     left: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--rp-accent), #fcd34d);
-    z-index: -1;
-    transform: translateY(-50%);
-    transition: width 0.5s ease;
+    height: 100%;
+    background: linear-gradient(90deg, var(--rp-accent), var(--rp-accent-glow));
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 10px var(--rp-accent-glow);
 }
 
+
+
 .rp-step-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    opacity: 0.4;
+    z-index: 2;
+    cursor: default;
+    opacity: 0.6;
     transition: all 0.3s ease;
 }
 
@@ -213,39 +227,50 @@
 }
 
 .rp-step-circle {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    background: #111;
-    border: 2px solid #333;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    color: #666;
-    transition: all 0.3s ease;
-    z-index: 2;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--rp-text-muted);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.rp-step-item.current .rp-step-circle {
-    border-color: var(--rp-accent);
-    color: var(--rp-accent);
-    background: black;
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
-}
-
+/* Completed Step */
 .rp-step-item.active:not(.current) .rp-step-circle {
     background: var(--rp-accent);
     border-color: var(--rp-accent);
-    color: black;
+    color: var(--text-inverse);
+    transform: scale(0.9);
+}
+
+/* Current Step */
+.rp-step-item.current .rp-step-circle {
+    border-color: var(--rp-accent);
+    color: var(--rp-accent);
+    background: var(--card-bg);
+    box-shadow: 0 0 0 4px var(--rp-accent-glow), 0 0 20px rgba(0, 0, 0, 0.1);
+    transform: scale(1.1);
 }
 
 .rp-step-text {
-    margin-top: var(--spacing-sm);
-    font-size: 10px;
+    margin-top: var(--spacing-md);
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 600;
+    letter-spacing: 0.15em;
+    font-weight: 700;
+    color: var(--rp-text-muted);
+    transition: all 0.3s ease;
+}
+
+.rp-step-item.current .rp-step-text {
+    color: var(--rp-accent);
+    transform: translateY(2px);
 }
 
 /* Loading */
@@ -298,7 +323,7 @@
 }
 
 .rp-card-glow:hover {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--border-color-focus);
 }
 
 .rp-card-header {
@@ -310,7 +335,7 @@
 
 .rp-icon-box {
     padding: var(--spacing-sm);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-active, rgba(125, 125, 125, 0.1));
     border-radius: var(--radius-md);
     color: var(--rp-accent);
     border: 1px solid var(--rp-border);
@@ -319,7 +344,7 @@
 .rp-card-header h2 {
     font-size: var(--font-size-xl);
     font-weight: 700;
-    color: white;
+    color: var(--rp-text-main);
     margin: 0;
 }
 
@@ -343,11 +368,11 @@
 
 .rp-input-lg {
     width: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid #333;
+    background: var(--bg-primary);
+    border: 1px solid var(--rp-border);
     border-radius: var(--radius-md);
     padding: var(--spacing-md) var(--spacing-lg);
-    color: white;
+    color: var(--rp-text-main);
     font-size: var(--font-size-lg);
     font-family: monospace;
     outline: none;
@@ -359,20 +384,85 @@
     box-shadow: 0 0 0 1px var(--rp-accent);
 }
 
-.rp-input-icon {
+/* Month Selector Button */
+.rp-month-selector {
+    position: relative;
+}
+
+.rp-hidden-input {
     position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #666;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    opacity: 0;
     pointer-events: none;
+}
+
+.rp-month-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-lg);
+    background: var(--bg-primary);
+    border: 1px solid var(--rp-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.rp-month-btn:hover {
+    border-color: var(--rp-accent);
+    background: var(--bg-secondary);
+}
+
+.rp-month-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.rp-month-icon {
+    color: var(--rp-accent);
+}
+
+.rp-month-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.rp-label-sm {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--rp-text-muted);
+    font-weight: 600;
+}
+
+.rp-value-lg {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--rp-text-main);
+    line-height: 1.2;
+}
+
+.rp-month-arrow {
+    color: var(--rp-text-muted);
+    transition: transform 0.2s;
+}
+
+.rp-month-btn:hover .rp-month-arrow {
+    color: var(--rp-accent);
+    transform: translateX(4px);
 }
 
 /* Buttons */
 .rp-btn-primary {
     position: relative;
     background: var(--rp-accent);
-    color: black;
+    color: var(--text-inverse);
     border: none;
     font-weight: 700;
     border-radius: var(--radius-md);
@@ -481,7 +571,7 @@
     font-size: 1.5rem;
     font-family: monospace;
     font-weight: 600;
-    color: white;
+    color: var(--rp-text-main);
 }
 
 .rp-stat-meta {
@@ -543,7 +633,7 @@
 .rp-control-header h3 {
     font-size: var(--font-size-md);
     font-weight: 700;
-    color: white;
+    color: var(--rp-text-main);
     margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -618,14 +708,14 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    color: white;
+    color: var(--rp-text-main);
     font-size: var(--font-size-lg);
     font-weight: 700;
     margin-bottom: var(--spacing-lg);
 }
 
 .rp-pin-pad {
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--bg-tertiary, rgba(0, 0, 0, 0.5));
     padding: var(--spacing-lg);
     border-radius: var(--radius-lg);
     border: 1px solid var(--rp-border);
@@ -650,9 +740,9 @@
     width: 40px;
     height: 50px;
     background: #111;
-    border: 1px solid #333;
+    border: 1px solid var(--rp-border);
     border-radius: var(--radius-sm);
-    color: white;
+    color: var(--rp-text-main);
     text-align: center;
     font-size: 1.25rem;
     outline: none;
@@ -813,7 +903,7 @@
 .rp-receipt-val {
     display: block;
     font-weight: 700;
-    color: white;
+    color: var(--rp-text-main);
     font-size: var(--font-size-sm);
 }
 

@@ -317,10 +317,21 @@ export default function SalaryStructure() {
     return (
         <div className="structure-page">
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-4xl font-serif mb-2" style={{ color: 'var(--text-primary)' }}>Salary <span className="text-gold-gradient">Structures</span></h1>
-                <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>Define compensation templates and component rules.</p>
-            </div>
+            {/* Header */}
+            <header className="page-header-premium">
+                <div className="title-block">
+                    <h1 className="cinematic-title">
+                        SALARY <span className="title-accent">STRUCTURES</span>
+                    </h1>
+                    <p className="cinematic-subtitle">Define compensation templates and component rules</p>
+                </div>
+                <div className="header-action-panel">
+                    <button onClick={() => { setSelectedStruct(null); setShowForm(true); }} className="btn-gold-premium">
+                        <Plus size={20} />
+                        <span>New Structure</span>
+                    </button>
+                </div>
+            </header>
 
             {/* Toolbar */}
             <div className="structure-toolbar">
@@ -333,9 +344,6 @@ export default function SalaryStructure() {
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button onClick={() => { setSelectedStruct(null); setShowForm(true); }} className="btn-gold">
-                    <Plus size={18} /> <span>New Structure</span>
-                </button>
             </div>
 
             {loading ? <div className="text-center p-10 text-gold">Loading structures...</div> :
