@@ -90,4 +90,9 @@ urlpatterns = [
     path('employees/reimbursement-requests/<uuid:pk>/', req_views.ReimbursementRequestDetail.as_view(), name='reimbursement_request_detail'),
     path('employees/encashment-requests/', req_views.EncashmentRequestListCreate.as_view(), name='encashment_request_list'),
     path('employees/encashment-requests/<uuid:pk>/', req_views.EncashmentRequestDetail.as_view(), name='encashment_request_detail'),
+    
+    # ==================== SECURITY & ACCESS ====================
+    path('security/profile/', views.security_profile_detail, name='security_profile_detail'),
+    path('security/pin/set/', views.set_security_pin, name='set_security_pin'),
+    path('security/pin/verify/', views.verify_security_pin, name='verify_security_pin'),
 ]

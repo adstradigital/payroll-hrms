@@ -9,8 +9,9 @@ import {
 } from 'lucide-react';
 import {
     getPayrollPeriods, generateAdvancedPayroll,
-    deletePayrollPeriod, // Import delete function
-    markPeriodAsPaid, getAllEmployees, getEmployeeSalaryStats
+    deletePayrollPeriod,
+    markPeriodAsPaid, getAllEmployees, getEmployeeSalaryStats,
+    getSecurityProfile, verifySecurityPin
 } from '@/api/api_clientadmin';
 import Link from 'next/link';
 import './RunPayroll.css';
@@ -27,6 +28,8 @@ export default function RunPayroll() {
     const [startDate, setStartDate] = useState(Date.now());
     const [securityPin, setSecurityPin] = useState(['', '', '', '']);
     const [isPinVerified, setIsPinVerified] = useState(false);
+    const [securityProfile, setSecurityProfile] = useState(null);
+    const [pinLoading, setPinLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('preview');
 
     const [bonusPool, setBonusPool] = useState(0); // Simulation state only for now
@@ -67,7 +70,24 @@ export default function RunPayroll() {
 
     useEffect(() => {
         setBootSequence(true);
+        fetchSecurityProfile();
     }, []);
+
+    const fetchSecurityProfile = async () => {
+        try {
+            const response = await getSecurityProfile();
+            if (response.data.success) {
+                setSecurityProfile(response.data.profile);
+                // If PIN is not enabled, we consider it verified for the UI 
+                // but we should check clearance separately
+                if (!response.data.profile.is_pin_enabled) {
+                    setIsPinVerified(true);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching security profile:', error);
+        }
+    };
 
     useEffect(() => {
         checkExistingPeriod();
@@ -145,7 +165,15 @@ export default function RunPayroll() {
         } catch (error) {
             console.error(error);
             const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.message || "Failed to generate payroll";
-            alert(errorMsg);
+
+            if (errorMsg.includes('force=true') && !force) {
+                if (window.confirm('Payroll already exists for this period. Do you want to overwrite and regenerate it?')) {
+                    handleGeneratePayroll(true);
+                    return;
+                }
+            } else {
+                alert(errorMsg);
+            }
         } finally {
             setProcessing(false);
         }
@@ -180,8 +208,8 @@ export default function RunPayroll() {
         fetchPreview();
     };
 
-    // Pin logic (Client side security simulation)
-    const handlePinChange = (index, value) => {
+    // Pin logic (Real backend verification)
+    const handlePinChange = async (index, value) => {
         if (value.length > 1) return;
         const newPin = [...securityPin];
         newPin[index] = value;
@@ -191,12 +219,21 @@ export default function RunPayroll() {
             document.getElementById(`pin-${index + 1}`)?.focus();
         }
 
-        if (newPin.join('').length === 4) {
-            // Demo Pin: 1234
-            if (newPin.join('') === '1234') {
-                setTimeout(() => setIsPinVerified(true), 300);
-            } else {
-                setTimeout(() => setSecurityPin(['', '', '', '']), 500);
+        const pinString = newPin.join('');
+        if (pinString.length === 4) {
+            try {
+                setPinLoading(true);
+                const response = await verifySecurityPin({ pin: pinString });
+                if (response.data.success) {
+                    setIsPinVerified(true);
+                }
+            } catch (error) {
+                console.error('PIN verification failed:', error);
+                setSecurityPin(['', '', '', '']);
+                document.getElementById('pin-0')?.focus();
+                alert(error.response?.data?.error || 'Incorrect PIN');
+            } finally {
+                setPinLoading(false);
             }
         }
     };
@@ -469,7 +506,7 @@ export default function RunPayroll() {
 
                                                 {!isPinVerified ? (
                                                     <div className="rp-pin-pad">
-                                                        <p className="rp-pin-label">ENTER SECURITY PIN (1234)</p>
+                                                        <p className="rp-pin-label">ENTER SECURITY PIN</p>
                                                         <div className="rp-pin-inputs">
                                                             {securityPin.map((digit, idx) => (
                                                                 <input
@@ -478,10 +515,21 @@ export default function RunPayroll() {
                                                                     type="password"
                                                                     maxLength={1}
                                                                     value={digit}
+                                                                    autoComplete="off"
+                                                                    disabled={pinLoading}
                                                                     onChange={(e) => handlePinChange(idx, e.target.value)}
                                                                     className="rp-pin-input"
                                                                 />
                                                             ))}
+                                                        </div>
+                                                        {pinLoading && <div className="text-[10px] text-center mt-2 animate-pulse text-brand">Verifying Clearance...</div>}
+                                                    </div>
+                                                ) : securityProfile?.clearance_level < 4 ? (
+                                                    <div className="rp-alert rp-alert-danger animate-zoom-in" style={{ marginTop: '1rem' }}>
+                                                        <div className="rp-alert-icon"><AlertTriangle size={20} /></div>
+                                                        <div>
+                                                            <h4>Access Denied</h4>
+                                                            <p>Level 4 (Critical) Clearance required to execute payroll. Your current level: {securityProfile?.clearance_level}</p>
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -499,8 +547,8 @@ export default function RunPayroll() {
                                             <div className="rp-security-actions">
                                                 <button
                                                     onClick={() => handleGeneratePayroll(false)}
-                                                    disabled={!isPinVerified || processing}
-                                                    className={`rp-btn-execute ${isPinVerified && !processing ? 'ready' : 'disabled'}`}
+                                                    disabled={!isPinVerified || processing || (securityProfile?.clearance_level < 4)}
+                                                    className={`rp-btn-execute ${isPinVerified && !processing && (securityProfile?.clearance_level >= 4) ? 'ready' : 'disabled'}`}
                                                 >
                                                     {processing ? (
                                                         <><Loader2 className="animate-spin" size={20} /> EXECUTING...</>

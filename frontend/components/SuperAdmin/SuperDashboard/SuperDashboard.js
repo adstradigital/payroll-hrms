@@ -67,8 +67,10 @@ const SuperDashboard = () => {
                     activeTab={activeTab}
                     setSidebarOpen={setSidebarOpen}
                 />
-                <div className="content-container">
-                    {renderContent()}
+                <div className="content-area">
+                    <div className="content-container">
+                        {renderContent()}
+                    </div>
                 </div>
 
                 {/* Movable Quick Action Widget */}

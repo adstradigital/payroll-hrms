@@ -19,7 +19,7 @@ from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
     InviteCode, NotificationPreference, Role, Module, Permission,
-    DataScope, RolePermission, DesignationPermission
+    DataScope, RolePermission, DesignationPermission, SecurityProfile
 )
 from apps.audit.utils import log_activity
 from apps.subscriptions.models import Package, Subscription, Payment, FeatureUsage
@@ -27,7 +27,8 @@ from .serializers import (
     MyTokenObtainPairSerializer, ModuleSerializer, PermissionSerializer,
     DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
     DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer,
-    DepartmentDetailSerializer, EmployeeListSerializer
+    DepartmentDetailSerializer, EmployeeListSerializer,
+    SecurityProfileSerializer, SetPinSerializer, VerifyPinSerializer
 )
 from .permissions import is_client_admin, require_admin, require_permission, PermissionChecker
 
@@ -1798,3 +1799,87 @@ def reject_registration(request, pk):
         logger.error(f"Rejection error: {str(e)}")
         return Response({'error': 'Failed to reject registration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+# ==================== SECURITY PIN & CLEARANCE ====================
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def security_profile_detail(request):
+    """Get or update user security profile"""
+    try:
+        profile, created = SecurityProfile.objects.get_or_create(user=request.user)
+        
+        if request.method == 'GET':
+            serializer = SecurityProfileSerializer(profile)
+            return Response({'success': True, 'profile': serializer.data})
+        
+        elif request.method == 'PATCH':
+            serializer = SecurityProfileSerializer(profile, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save(updated_by=request.user)
+                return Response({'success': True, 'message': 'Security profile updated', 'profile': serializer.data})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        logger.error(f"Error in security_profile_detail: {str(e)}")
+        return Response({'error': 'Failed to process security profile'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def set_security_pin(request):
+    """Set or change user 4-digit PIN"""
+    try:
+        profile, _ = SecurityProfile.objects.get_or_create(user=request.user)
+        serializer = SetPinSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            profile.set_pin(serializer.validated_data['pin'])
+            profile.is_pin_enabled = True
+            profile.save()
+            
+            log_activity(
+                user=request.user,
+                action_type='UPDATE',
+                module='SECURITY',
+                description="User updated their security PIN",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            
+            return Response({'success': True, 'message': 'Security PIN set successfully'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        logger.error(f"Error in set_security_pin: {str(e)}")
+        return Response({'error': 'Failed to set security PIN'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_security_pin(request):
+    """Verify user 4-digit PIN"""
+    try:
+        profile = SecurityProfile.objects.get(user=request.user)
+        if not profile.is_pin_enabled or not profile.pin_hash:
+            return Response({'error': 'Security PIN is not enabled'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        serializer = VerifyPinSerializer(data=request.data)
+        if serializer.is_valid():
+            is_correct = profile.check_pin(serializer.validated_data['pin'])
+            
+            if is_correct:
+                return Response({'success': True, 'message': 'PIN verified successfully'})
+            
+            error_msg = "Incorrect PIN"
+            if profile.locked_until:
+                error_msg = f"Account locked due to too many failed attempts. Try again after {profile.locked_until}"
+                
+            return Response({'success': False, 'error': error_msg}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    except SecurityProfile.DoesNotExist:
+        return Response({'error': 'Security profile not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in verify_security_pin: {str(e)}")
+        return Response({'error': 'Failed to verify security PIN'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

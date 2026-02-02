@@ -191,3 +191,9 @@ export const uploadDocument = (formData) => axiosInstance.post(CLIENTADMIN_ENDPO
 export const getEmployeeDocuments = (employeeId) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENTS(employeeId));
 export const uploadEmployeeDocument = (employeeId, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENTS(employeeId), data, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const deleteEmployeeDocument = (employeeId, docId) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENT_DETAIL(employeeId, docId));
+
+// Security
+export const getSecurityProfile = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SECURITY_PROFILE);
+export const updateSecurityProfile = (data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.SECURITY_PROFILE, data);
+export const setSecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SET_SECURITY_PIN, data);
+export const verifySecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.VERIFY_SECURITY_PIN, data);

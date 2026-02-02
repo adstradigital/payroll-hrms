@@ -99,6 +99,7 @@ const menuItems = [
         path: '/dashboard/payroll',
         permission: ['payroll.view', 'payroll.view_payslip', 'payroll.view_payslips'],
         children: [
+            { id: 'payroll-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll' },
             { id: 'salary-components', label: 'Salary Components', translationKey: 'common.salaryComponents', path: '/dashboard/payroll/salarycomponents', permission: 'payroll.manage' },
             { id: 'salary-structure', label: 'Salary Structure', translationKey: 'common.salaryStructure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
             { id: 'employee-salary', label: 'Employee Salary', translationKey: 'common.employeeSalary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },

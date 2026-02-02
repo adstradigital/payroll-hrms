@@ -89,8 +89,8 @@ export default function PayDashboard() {
                     </p>
                 </div>
                 <div className="pd-actions">
-                    <div className="pd-month-selector">
-                        <span className="pd-label">Select Month and Year:</span>
+                    <div className="pd-filter-label">Filter:</div>
+                    <div className="pd-month-selector-wrapper">
                         <input
                             type="month"
                             value={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`}
@@ -103,15 +103,15 @@ export default function PayDashboard() {
                         />
                     </div>
                     <button className="pd-btn pd-btn--export" onClick={handleExport}>
-                        <Download size={16} />
-                        Export
+                        <Download size={18} />
+                        <span>Export</span>
                     </button>
                     <button
                         className="pd-btn pd-btn--refresh"
                         onClick={fetchDashboardData}
                         disabled={loading}
                     >
-                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
@@ -186,7 +186,7 @@ export default function PayDashboard() {
 
                     <div className="pd-chart-legend">
                         <span className="pd-legend-item"><span className="pd-legend-dot draft"></span> Draft</span>
-                        <span className="pd-legend-item"><span className="pd-legend-dot review"></span> Review Ongoing</span>
+                        <span className="pd-legend-item"><span className="pd-legend-dot review_ongoing"></span> Review Ongoing</span>
                         <span className="pd-legend-item"><span className="pd-legend-dot confirmed"></span> Confirmed</span>
                         <span className="pd-legend-item"><span className="pd-legend-dot paid"></span> Paid</span>
                     </div>

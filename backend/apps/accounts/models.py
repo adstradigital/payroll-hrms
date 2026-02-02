@@ -1092,3 +1092,72 @@ class OrganizationRegistration(BaseModel):
     
     def __str__(self):
         return f"{self.organization_name} - {self.status}"
+
+class SecurityProfile(BaseModel):
+    """User security profile for PIN and clearance levels"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='security_profile'
+    )
+    
+    # Secure PIN (stored hashed for security)
+    # Using a string to store the hashed value
+    pin_hash = models.CharField(max_length=255, blank=True, null=True)
+    is_pin_enabled = models.BooleanField(default=False)
+    
+    # Clearance Level for sensitive tasks
+    # 1: Basic, 2: Standard, 3: High, 4: Critical
+    CLEARANCE_LEVELS = (
+        (1, 'Level 1 - Basic'),
+        (2, 'Level 2 - Standard'),
+        (3, 'Level 3 - High'),
+        (4, 'Level 4 - Critical'),
+    )
+    clearance_level = models.PositiveSmallIntegerField(
+        choices=CLEARANCE_LEVELS,
+        default=1
+    )
+    
+    last_pin_change = models.DateTimeField(null=True, blank=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        verbose_name = 'Security Profile'
+        verbose_name_plural = 'Security Profiles'
+        
+    def __str__(self):
+        return f"Security Profile for {self.user.username}"
+
+    def set_pin(self, raw_pin):
+        """Hashes the pin before saving (simple hashing for 4 digits)"""
+        from django.contrib.auth.hashers import make_password
+        self.pin_hash = make_password(raw_pin)
+        self.last_pin_change = timezone.now()
+        self.save()
+
+    def check_pin(self, raw_pin):
+        """Check if the provided PIN is correct"""
+        from django.contrib.auth.hashers import check_password
+        if not self.pin_hash:
+            return False
+        
+        # Check lock status
+        if self.locked_until and self.locked_until > timezone.now():
+            return False
+            
+        is_correct = check_password(raw_pin, self.pin_hash)
+        
+        if is_correct:
+            self.failed_attempts = 0
+            self.locked_until = None
+        else:
+            self.failed_attempts += 1
+            if self.failed_attempts >= 5:
+                # Lock for 15 minutes after 5 failures
+                self.locked_until = timezone.now() + timezone.timedelta(minutes=15)
+        
+        self.save()
+        return is_correct
