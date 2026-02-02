@@ -152,8 +152,8 @@ export const generateAdvancedPayroll = (data) => axiosInstance.post(CLIENTADMIN_
 export const getPayrollReportData = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_REPORTS, { params });
 
 // Reports
-export const getAttendanceReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_ATTENDANCE, { params });
-export const getPayrollReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL, { params });
+export const getAttendanceReports = ({ type, ...params }) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_ATTENDANCE}${type}/`, { params });
+export const getPayrollReports = ({ type, ...params }) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL}${type}/`, { params });
 export const getLeaveReports = ({ type, ...params }) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_LEAVE}${type}/`, { params });
 export const getEmployeeReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_EMPLOYEE, { params });
 
