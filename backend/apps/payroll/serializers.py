@@ -31,6 +31,9 @@ class SalaryComponentSerializer(serializers.ModelSerializer):
 class SalaryStructureComponentSerializer(serializers.ModelSerializer):
     component_name = serializers.CharField(source='component.name', read_only=True)
     component_type = serializers.CharField(source='component.component_type', read_only=True)
+    calculation_type = serializers.CharField(source='component.calculation_type', read_only=True)
+    default_amount = serializers.DecimalField(source='component.default_amount', max_digits=10, decimal_places=2, read_only=True)
+    default_percentage = serializers.DecimalField(source='component.default_percentage', max_digits=5, decimal_places=2, read_only=True)
     
     class Meta:
         model = SalaryStructureComponent
@@ -38,6 +41,7 @@ class SalaryStructureComponentSerializer(serializers.ModelSerializer):
 
 
 class SalaryStructureSerializer(serializers.ModelSerializer):
+    company = serializers.PrimaryKeyRelatedField(read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
     components = SalaryStructureComponentSerializer(many=True, read_only=True)
     
@@ -64,6 +68,7 @@ class EmployeeSalarySerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeSalary
         fields = '__all__'
+        read_only_fields = ['gross_salary', 'net_salary', 'net_salary', 'ctc']
 
 
 class PaySlipComponentSerializer(serializers.ModelSerializer):
@@ -87,6 +92,8 @@ class PayrollPeriodSerializer(serializers.ModelSerializer):
 class PaySlipSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     employee_id_display = serializers.CharField(source='employee.employee_id', read_only=True)
+    designation_name = serializers.CharField(source='employee.designation.name', read_only=True)
+    company_name = serializers.CharField(source='employee.company.name', read_only=True)
     period_name = serializers.CharField(source='payroll_period.name', read_only=True)
     
     class Meta:
@@ -96,7 +103,9 @@ class PaySlipSerializer(serializers.ModelSerializer):
 
 class PaySlipDetailSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
-    employee_id_display = serializers.CharField(source='employee.employee_id', read_only=True)
+    employee_id = serializers.CharField(source='employee.employee_id', read_only=True)
+    designation_name = serializers.CharField(source='employee.designation.name', read_only=True)
+    company_name = serializers.CharField(source='employee.company.name', read_only=True)
     period_name = serializers.CharField(source='payroll_period.name', read_only=True)
     components = PaySlipComponentSerializer(many=True, read_only=True)
     

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-    Search, Plus, Edit2, Trash2, X, DollarSign,
+    Search, Plus, Edit2, Trash2, X, IndianRupee,
     Percent, Calculator, FileText, CheckCircle2,
     AlertCircle, Info, ArrowUpDown, Copy,
     TrendingUp, ShieldCheck, Zap, Layers,
@@ -242,7 +242,7 @@ const ComponentForm = ({ component, allComponents, onClose, onSave }) => {
                     {(formData.calculation_type === 'fixed' || formData.calculation_type === 'attendance_prorated' || formData.calculation_type === 'per_day') && (
                         <div className="vault-input-group animate-fade-in">
                             <label className="vault-label">
-                                {formData.calculation_type === 'per_day' ? 'Daily Rate' : 'Base Value ($)'}
+                                {formData.calculation_type === 'per_day' ? 'Daily Rate' : 'Base Value (₹)'}
                             </label>
                             <input
                                 type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
@@ -259,7 +259,7 @@ const ComponentForm = ({ component, allComponents, onClose, onSave }) => {
                         <div className="vault-title-group">
                             <span className="vault-label">Impact Projection</span>
                             <span className={`vault-stat-value ${formData.component_type === 'earning' ? 'text-green-400' : 'text-red-400'}`}>
-                                {formData.component_type === 'earning' ? '+' : '-'} ${simulationResult.toLocaleString()}
+                                {formData.component_type === 'earning' ? '+' : '-'} ₹{simulationResult.toLocaleString()}
                             </span>
                         </div>
                         <div className="vault-controls">
@@ -446,11 +446,11 @@ export default function SalaryComponents() {
                         <div className="vault-stats-group">
                             <div>
                                 <p className="vault-stat-item-label">Total Earnings</p>
-                                <p className="vault-stat-value">${totals.earnings.toLocaleString()}</p>
+                                <p className="vault-stat-value">₹{totals.earnings.toLocaleString()}</p>
                             </div>
                             <div>
                                 <p className="vault-stat-item-label">Total Deductions</p>
-                                <p className="vault-stat-value danger">${totals.deductions.toLocaleString()}</p>
+                                <p className="vault-stat-value danger">₹{totals.deductions.toLocaleString()}</p>
                             </div>
                         </div>
                         <div className="text-right">
@@ -562,7 +562,7 @@ export default function SalaryComponents() {
                                         <div className="vault-detail-box">
                                             <p className="vault-detail-label">Vault Impact</p>
                                             <p className={`vault-detail-value ${comp.component_type}`}>
-                                                {comp.component_type === 'earning' ? '+' : '-'} {comp.calculation_type === 'fixed' ? `$${comp.amount}` : `${comp.percentage_value}%`}
+                                                {comp.component_type === 'earning' ? '+' : '-'} {comp.calculation_type === 'fixed' ? `₹${comp.amount}` : `${comp.percentage_value}%`}
                                             </p>
                                         </div>
                                     </div>
@@ -608,7 +608,7 @@ export default function SalaryComponents() {
                                             </td>
                                             <td className="vault-td text-right" style={{ paddingRight: '40px' }}>
                                                 <p className={`vault-impact-text ${comp.component_type === 'earning' ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {comp.component_type === 'earning' ? '+' : '-'} {comp.calculation_type === 'fixed' || comp.calculation_type === 'per_day' || comp.calculation_type === 'attendance_prorated' ? `$${comp.amount}` : `${comp.percentage_value}%`}
+                                                    {comp.component_type === 'earning' ? '+' : '-'} {comp.calculation_type === 'fixed' || comp.calculation_type === 'per_day' || comp.calculation_type === 'attendance_prorated' ? `₹${comp.amount}` : `${comp.percentage_value}%`}
                                                 </p>
                                             </td>
                                             <td className="vault-td text-right">

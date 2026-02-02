@@ -14,6 +14,7 @@ import IdCard from './IdCardGenerate/IdCard';
 import RequestManager from './Requests/RequestManager';
 import ProfileDocuments from './Documents/ProfileDocuments';
 import ProfilePayroll from './Payroll/ProfilePayroll';
+import BasicAttendance from './BasicAttendance';
 import './EmployeeProfile.css';
 
 export default function EmployeeProfile({ employeeId, onBack }) {
@@ -253,8 +254,14 @@ export default function EmployeeProfile({ employeeId, onBack }) {
                         </div>
                     )}
 
+                    {activeTab === 'attendance' && (
+                        <div className="tab-content animate-fade-in">
+                            <BasicAttendance employeeId={employeeId || employee.id} />
+                        </div>
+                    )}
+
                     {/* Placeholder Logic for Other Tabs */}
-                    {['work_type', 'attendance', 'leave', 'allowance', 'penalty', 'assets', 'performance', 'bonus', 'interview', 'resignation'].includes(activeTab) && (
+                    {['work_type', 'leave', 'allowance', 'penalty', 'assets', 'performance', 'bonus', 'interview', 'resignation'].includes(activeTab) && (
                         <div className="placeholder-state animate-fade-in">
                             <Briefcase size={48} className="placeholder-icon" />
                             <h3>{tabs.find(t => t.id === activeTab)?.label}</h3>

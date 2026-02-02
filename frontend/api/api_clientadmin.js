@@ -3,6 +3,7 @@
  */
 
 import axiosInstance from './axiosInstance';
+export { axiosInstance as apiClient };
 import { CLIENTADMIN_ENDPOINTS } from './config';
 
 console.log('--- api_clientadmin.js v2 loaded ---');
@@ -108,7 +109,9 @@ export const getAllPayroll = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS
 export const runPayroll = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAYROLL_RUN, data);
 export const getAllPayslips = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIPS, { params });
 export const getPayslipById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DETAIL(id));
-export const downloadPayslip = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DETAIL(id), { responseType: 'blob' });
+export const downloadPayslip = (id) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYSLIPS}${id}/download/`, {
+    responseType: 'blob'
+});
 export const getPayslipDashboardStats = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DASHBOARD_STATS, { params });
 export const getMyPayslips = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_MY_PAYSLIPS);
 
@@ -127,6 +130,7 @@ export const createSalaryStructure = (data) => axiosInstance.post(CLIENTADMIN_EN
 export const updateSalaryStructure = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id), data);
 export const deleteSalaryStructure = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id));
 export const addComponentToStructure = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id)}add-component/`, data);
+export const updateSalaryStructureComponents = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.SALARY_STRUCTURE_DETAIL(id)}update_components/`, data);
 
 // Employee Salaries
 export const getEmployeeSalaries = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARIES, { params });
@@ -135,6 +139,7 @@ export const createEmployeeSalary = (data) => axiosInstance.post(CLIENTADMIN_END
 export const updateEmployeeSalary = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_DETAIL(id), data);
 export const deleteEmployeeSalary = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_DETAIL(id));
 export const getCurrentEmployeeSalary = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_CURRENT, { params });
+export const getEmployeeSalaryStats = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_STATS, { params });
 
 // Payroll Periods
 export const getPayrollPeriods = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS, { params });
@@ -164,6 +169,16 @@ export const createShiftRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPO
 
 export const getWorkTypeRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, { params });
 export const createWorkTypeRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, data);
+
+export const getReimbursementRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REIMBURSEMENT_REQUESTS, { params });
+export const createReimbursementRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REIMBURSEMENT_REQUESTS, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const updateReimbursementRequest = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.REIMBURSEMENT_REQUEST_DETAIL(id), data);
+export const deleteReimbursementRequest = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.REIMBURSEMENT_REQUEST_DETAIL(id));
+
+export const getEncashmentRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUESTS, { params });
+export const createEncashmentRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUESTS, data);
+export const updateEncashmentRequest = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUEST_DETAIL(id), data);
+export const deleteEncashmentRequest = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUEST_DETAIL(id));
 
 // HRMS
 export const getAllAnnouncements = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ANNOUNCEMENTS);

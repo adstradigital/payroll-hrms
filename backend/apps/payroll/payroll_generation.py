@@ -155,6 +155,29 @@ class GeneratePayrollView(views.APIView):
             
             # Calculate LOP
             lop_days = max(0, absent_days - approved_leaves)
+
+            # Calculate Overtime
+            overtime_hours = attendances.aggregate(total=Sum('overtime_hours'))['total'] or Decimal(0)
+            overtime_amount = Decimal(0)
+
+            if overtime_hours > 0:
+                policy = employee.company.attendance_policies.filter(is_active=True).first()
+                multiplier = policy.overtime_rate_multiplier if policy else Decimal('1.5')
+                daily_hours = policy.full_day_hours if policy else Decimal('8.0')
+                
+                if working_days > 0 and daily_hours > 0:
+                     per_day_salary = basic_salary / Decimal(working_days) # Using Basic here as per original code context, or should I use Gross?
+                     # Wait, original code uses 'basic_salary' for 'prorated_basic'.
+                     # But 'EmployeeSalary' (Line 128) fetches 'basic_amount'.
+                     # Models show EmployeeSalary has 'gross_salary'.
+                     # For consistency with views.py, I should use 'emp_salary.gross_salary' if available.
+                     # Let's check if 'employee_salary' object is available (Line 128). Yes.
+                     # But basic_salary is used in line 161.
+                     
+                     gross_salary_val = employee_salary.gross_salary if 'employee_salary' in locals() else basic_salary
+                     per_day_salary = gross_salary_val / Decimal(working_days)
+                     per_hour_salary = per_day_salary / daily_hours
+                     overtime_amount = per_hour_salary * overtime_hours * multiplier
             
             # Calculate prorated basic salary
             attendance_factor = (present_days + half_days + leave_days) / Decimal(working_days) if working_days > 0 else Decimal(1)
@@ -200,11 +223,12 @@ class GeneratePayrollView(views.APIView):
             except Exception:
                 pass
             
-            # Calculate LOP deduction
+            # Calculate LOP deduction (existing logic)
             lop_deduction = Decimal(0)
             if lop_days > 0:
                 per_day_salary = basic_salary / Decimal(working_days)
-                lop_deduction = per_day_salary * Decimal(lop_days)
+                top_deduction_val = per_day_salary * Decimal(lop_days) # Rename to avoid conflict if needed, or reuse
+                lop_deduction = top_deduction_val 
                 deductions.append({
                     'name': 'Loss of Pay',
                     'code': 'LOP',
@@ -212,6 +236,16 @@ class GeneratePayrollView(views.APIView):
                 })
                 total_deductions += lop_deduction
             
+            # Add Overtime to Earnings
+            if overtime_amount > 0:
+                earnings.append({
+                    'name': 'Overtime Pay',
+                    'code': 'OT',
+                    'amount': float(overtime_amount),
+                    'calc_type': 'attendance_based'
+                })
+                total_earnings += overtime_amount
+
             gross_salary = total_earnings
             net_salary = gross_salary - total_deductions
             

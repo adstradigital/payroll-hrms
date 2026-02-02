@@ -241,7 +241,7 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
             'employee_count', 'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
         read_only_fields = [
-            'id', 'company_name', 'parent_name', 'head_name', 'children',
+            'id', 'company', 'company_name', 'parent_name', 'head_name', 'children',
             'employee_count', 'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
     

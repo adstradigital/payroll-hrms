@@ -14,11 +14,13 @@ salary_component_detail = SalaryComponentViewSet.as_view({'get': 'retrieve', 'pu
 salary_structure_list = SalaryStructureViewSet.as_view({'get': 'list', 'post': 'create'})
 salary_structure_detail = SalaryStructureViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})
 salary_structure_add_component = SalaryStructureViewSet.as_view({'post': 'add_component'})
+salary_structure_update_components = SalaryStructureViewSet.as_view({'post': 'update_components'})
 
 # Employee Salary URLs
 employee_salary_list = EmployeeSalaryViewSet.as_view({'get': 'list', 'post': 'create'})
 employee_salary_detail = EmployeeSalaryViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})
 employee_salary_current = EmployeeSalaryViewSet.as_view({'get': 'current'})
+employee_salary_stats = EmployeeSalaryViewSet.as_view({'get': 'stats'})
 
 # Payroll Period URLs
 payroll_period_list = PayrollPeriodViewSet.as_view({'get': 'list', 'post': 'create'})
@@ -31,6 +33,7 @@ payslip_list = PaySlipViewSet.as_view({'get': 'list', 'post': 'create'})
 payslip_detail = PaySlipViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})
 payslip_my_payslips = PaySlipViewSet.as_view({'get': 'my_payslips'})
 payslip_dashboard_stats = PaySlipViewSet.as_view({'get': 'dashboard_stats'})
+payslip_download = PaySlipViewSet.as_view({'get': 'download'})
 
 urlpatterns = [
     # Salary Components
@@ -41,11 +44,13 @@ urlpatterns = [
     path('structures/', salary_structure_list, name='salary-structure-list'),
     path('structures/<uuid:pk>/', salary_structure_detail, name='salary-structure-detail'),
     path('structures/<uuid:pk>/add-component/', salary_structure_add_component, name='salary-structure-add-component'),
+    path('structures/<uuid:pk>/update_components/', salary_structure_update_components, name='salary-structure-update-components'),
     
     # Employee Salaries
     path('employee-salaries/', employee_salary_list, name='employee-salary-list'),
     path('employee-salaries/<uuid:pk>/', employee_salary_detail, name='employee-salary-detail'),
     path('employee-salaries/current/', employee_salary_current, name='employee-salary-current'),
+    path('employee-salaries/stats/', employee_salary_stats, name='employee-salary-stats'),
     
     # Payroll Periods
     path('periods/', payroll_period_list, name='payroll-period-list'),
@@ -58,6 +63,7 @@ urlpatterns = [
     path('payslips/<uuid:pk>/', payslip_detail, name='payslip-detail'),
     path('payslips/my-payslips/', payslip_my_payslips, name='payslip-my-payslips'),
     path('payslips/dashboard-stats/', payslip_dashboard_stats, name='payslip-dashboard-stats'),
+    path('payslips/<uuid:pk>/download/', payslip_download, name='payslip-download'),
     
     # Payroll generation and reports
     path('generate/', GeneratePayrollView.as_view(), name='generate-payroll'),

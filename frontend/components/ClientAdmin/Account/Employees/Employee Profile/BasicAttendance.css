@@ -1,0 +1,270 @@
+.basic-attendance {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+}
+
+.basic-attendance-loading,
+.basic-attendance-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    color: var(--text-secondary);
+    gap: 1rem;
+}
+
+/* Stats Grid */
+.ba-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.ba-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.ba-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.ba-stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+}
+
+.ba-stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.ba-stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.ba-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ba-stat-card.success .ba-stat-icon {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.ba-stat-card.danger .ba-stat-icon {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.ba-stat-card.warning .ba-stat-icon {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.ba-stat-card.primary .ba-stat-icon {
+    background: var(--brand-primary-light);
+    color: var(--brand-primary);
+}
+
+/* Log Card */
+.ba-log-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.ba-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ba-log-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.ba-month-selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg-secondary);
+    padding: 0.25rem;
+    border-radius: 8px;
+}
+
+.ba-month-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.ba-month-btn:hover {
+    background: var(--brand-primary);
+    color: white;
+}
+
+.ba-current-month {
+    font-size: 0.9rem;
+    font-weight: 600;
+    min-width: 120px;
+    text-align: center;
+}
+
+/* Table Styles */
+.ba-table-container {
+    overflow-x: auto;
+}
+
+.ba-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.ba-table th {
+    text-align: left;
+    padding: 1rem 1.25rem;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+}
+
+.ba-table td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.ba-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ba-hours {
+    font-weight: 600;
+    color: var(--brand-primary);
+}
+
+.ba-badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.ba-badge-present {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.ba-badge-absent {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.ba-badge-late {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.ba-badge-leave {
+    background: var(--brand-primary-light);
+    color: var(--brand-primary);
+}
+
+.ba-no-data {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 3rem !important;
+}
+
+/* Pagination */
+.ba-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.25rem;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.ba-page-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ba-page-btn:hover:not(:disabled) {
+    background: var(--brand-primary);
+    color: white;
+    border-color: var(--brand-primary);
+}
+
+.ba-page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-tertiary);
+}
+
+.ba-page-info {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.ba-page-info span {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .ba-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

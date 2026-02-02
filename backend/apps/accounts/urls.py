@@ -86,4 +86,8 @@ urlpatterns = [
     path('employees/document-requests/<uuid:pk>/reject/', req_views.reject_document_request, name='reject_document_request'),
     path('employees/shift-requests/', req_views.ShiftRequestListCreate.as_view(), name='shift_request_list'),
     path('employees/work-type-requests/', req_views.WorkTypeRequestListCreate.as_view(), name='work_type_request_list'),
+    path('employees/reimbursement-requests/', req_views.ReimbursementRequestListCreate.as_view(), name='reimbursement_request_list'),
+    path('employees/reimbursement-requests/<uuid:pk>/', req_views.ReimbursementRequestDetail.as_view(), name='reimbursement_request_detail'),
+    path('employees/encashment-requests/', req_views.EncashmentRequestListCreate.as_view(), name='encashment_request_list'),
+    path('employees/encashment-requests/<uuid:pk>/', req_views.EncashmentRequestDetail.as_view(), name='encashment_request_detail'),
 ]

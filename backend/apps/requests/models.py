@@ -58,3 +58,21 @@ class WorkTypeRequest(BaseRequest):
     
     def __str__(self):
         return f"{self.employee} - {self.requested_type}"
+
+class ReimbursementRequest(BaseRequest):
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    request_date = models.DateField()
+    description = models.TextField()
+    attachment = models.FileField(upload_to='reimbursements/', null=True, blank=True)
+    
+    def __str__(self):
+        return f"{self.employee} - Reimbursement - {self.amount}"
+
+class EncashmentRequest(BaseRequest):
+    from apps.leave.models import LeaveType
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE)
+    encashment_days = models.DecimalField(max_digits=5, decimal_places=2)
+    reason = models.TextField()
+    
+    def __str__(self):
+        return f"{self.employee} - Encashment - {self.leave_type.name}"

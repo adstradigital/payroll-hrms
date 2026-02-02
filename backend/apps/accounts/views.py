@@ -26,7 +26,8 @@ from apps.subscriptions.models import Package, Subscription, Payment, FeatureUsa
 from .serializers import (
     MyTokenObtainPairSerializer, ModuleSerializer, PermissionSerializer,
     DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
-    DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer
+    DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer,
+    DepartmentDetailSerializer, EmployeeListSerializer
 )
 from .permissions import is_client_admin, require_admin, require_permission, PermissionChecker
 
@@ -668,15 +669,11 @@ def department_list_create(request):
                 return Response({'error': 'Company identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Use serializer for validation and save
-            # We need to inject company into data or context, or handle in perform_create equivalent
-            # But here we can just update the data before passing to serializer or save manually with serializer validation
+            # Company is read-only in serializer, so we pass it directly to save()
             
-            data = request.data.copy()
-            data['company'] = company_id
-            
-            serializer = DepartmentDetailSerializer(data=data) # Use Detail serializer for creation to accept all fields
+            serializer = DepartmentDetailSerializer(data=request.data) # Use Detail serializer for creation to accept all fields
             if serializer.is_valid():
-                dept = serializer.save(created_by=request.user)
+                dept = serializer.save(created_by=request.user, company_id=company_id)
                 # Return serialized data matches frontend expectation
                 return Response({'success': True, 'id': str(dept.id), **DepartmentListSerializer(dept).data}, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1131,10 +1128,8 @@ def employee_list_create(request):
             paginator = StandardResultsSetPagination()
             paginated = paginator.paginate_queryset(queryset, request)
             
-            data = [{'id': str(e.id), 'employee_id': e.employee_id, 'full_name': e.full_name,
-                    'email': e.email, 'department': e.department.name if e.department else None,
-                    'designation': e.designation.name if e.designation else None, 'status': e.status} for e in paginated]
-            return paginator.get_paginated_response(data)
+            serializer = EmployeeListSerializer(paginated, many=True)
+            return paginator.get_paginated_response(serializer.data)
         
         elif request.method == 'POST':
             # Handle empty strings for foreign keys
