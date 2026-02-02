@@ -5,8 +5,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count, Avg, F, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
-from datetime import date
+from datetime import date, timedelta, datetime
+import calendar
+from django.db import transaction
 from calendar import monthrange
 import logging
 from decimal import Decimal
@@ -342,7 +345,9 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
     ordering_fields = ['year', 'month']
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().annotate(
+            total_lop_annotated=Coalesce(Sum('payslips__lop_deduction'), Decimal('0'))
+        )
         user = self.request.user
         if hasattr(user, 'employee_profile') and user.employee_profile:
             return queryset.filter(company=user.employee_profile.company)
@@ -353,31 +358,33 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def generate(self, request):
         """Generate payroll for all employees for a month"""
-        serializer = GeneratePayrollSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
-        
-        company_id = serializer.validated_data.get('company')
-        
-        # If company not provided, infer from user
-        if not company_id:
-            user = request.user
-            if hasattr(user, 'employee_profile') and user.employee_profile:
-                company_id = user.employee_profile.company_id
-            elif hasattr(user, 'organization') and user.organization:
-                company_id = user.organization.id
+        with transaction.atomic():
+            serializer = GeneratePayrollSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=400)
             
+            company_id = serializer.validated_data.get('company')
+            month = serializer.validated_data['month']
+            year = serializer.validated_data['year']
+            force = serializer.validated_data.get('force', False)
+            
+            # If company not provided, infer from user
             if not company_id:
-                return Response({'error': 'Could not determine organization context. Please contact support.'}, status=400)
-
-        month = serializer.validated_data['month']
-        year = serializer.validated_data['year']
-        force = request.data.get('force', False)
-        
-        # Create or get payroll period
-        start_date = date(year, month, 1)
-        end_date = date(year, month, monthrange(year, month)[1])
-        
+                user = request.user
+                if hasattr(user, 'employee_profile') and user.employee_profile:
+                    company_id = user.employee_profile.company_id
+                elif hasattr(user, 'organization') and user.organization:
+                    company_id = user.organization.id
+                else:
+                    return Response({'error': 'Company not specified and cannot be inferred from user'}, status=400)
+            
+            start_date = date(year, month, 1)
+            # Calculate end_date (last day of month)
+            if month == 12:
+                end_date = date(year + 1, 1, 1) - timedelta(days=1)
+            else:
+                end_date = date(year, month + 1, 1) - timedelta(days=1)
+            
         period, created = PayrollPeriod.objects.get_or_create(
             company_id=company_id,
             month=month,
@@ -389,6 +396,9 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                 'status': 'processing'
             }
         )
+        
+        print(f"[DEBUG] Generate Payroll: Month={month}, Year={year}, Force={force}")
+        print(f"[DEBUG] Period: {period.id}, Status={period.status}, Created={created}")
         
         if not created and period.status != 'draft':
             if force:

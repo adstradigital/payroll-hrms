@@ -146,6 +146,7 @@ export const getPayrollPeriods = (params) => axiosInstance.get(CLIENTADMIN_ENDPO
 export const getPayrollPeriodById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id));
 export const createPayrollPeriod = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS, data);
 export const updatePayrollPeriod = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id), data);
+export const deletePayrollPeriod = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id)); // Added delete function
 export const generatePayrollForPeriod = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS}generate/`, data);
 export const markPeriodAsPaid = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id)}mark-paid/`);
 export const generateAdvancedPayroll = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAYROLL_GENERATE, data);

@@ -5,10 +5,11 @@ import {
     Play, Calendar, Users, DollarSign, AlertCircle,
     CheckCircle, FileText, Loader2, ArrowRight, ShieldCheck,
     Activity, Lock, ChevronRight, Zap, AlertTriangle,
-    TrendingUp, Sliders, X
+    TrendingUp, Sliders, X, Trash2
 } from 'lucide-react';
 import {
     getPayrollPeriods, generateAdvancedPayroll,
+    deletePayrollPeriod, // Import delete function
     markPeriodAsPaid, getAllEmployees, getEmployeeSalaryStats
 } from '@/api/api_clientadmin';
 import Link from 'next/link';
@@ -94,6 +95,24 @@ export default function RunPayroll() {
         }
     };
 
+    const handleReset = async () => {
+        if (!existingPeriod) return;
+        if (!confirm('Are you sure you want to delete this payroll data and restart? This cannot be undone.')) return;
+
+        setProcessing(true);
+        try {
+            await deletePayrollPeriod(existingPeriod.id);
+            setExistingPeriod(null);
+            setStep(1); // Go back to Period Selection
+        } catch (error) {
+            console.error(error);
+            const errorMsg = error.response?.data?.error || error.message || 'Failed to generate payroll';
+            alert(errorMsg);
+        } finally {
+            setProcessing(false);
+        }
+    };
+
     const handleGeneratePayroll = async (force = false) => {
         if (!isPinVerified && step === 2 && !force) return;
 
@@ -119,7 +138,9 @@ export default function RunPayroll() {
             });
             setStep(3);
         } catch (error) {
-            alert(error.response?.data?.detail || "Failed to generate payroll");
+            console.error(error);
+            const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.message || "Failed to generate payroll";
+            alert(errorMsg);
         } finally {
             setProcessing(false);
         }
@@ -382,7 +403,7 @@ export default function RunPayroll() {
 
                                             <div className="rp-security-actions">
                                                 <button
-                                                    onClick={handleGeneratePayroll}
+                                                    onClick={() => handleGeneratePayroll(false)}
                                                     disabled={!isPinVerified || processing}
                                                     className={`rp-btn-execute ${isPinVerified && !processing ? 'ready' : 'disabled'}`}
                                                 >
@@ -455,6 +476,15 @@ export default function RunPayroll() {
                                                 >
                                                     {processing ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
                                                     Re-Run (Bypass)
+                                                </button>
+                                                <button
+                                                    onClick={handleReset}
+                                                    className="rp-btn-outline"
+                                                    disabled={processing}
+                                                    style={{ border: '1px solid #ef4444', color: '#ef4444' }}
+                                                >
+                                                    {processing ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
+                                                    Reset Data
                                                 </button>
                                                 <Link href="/dashboard/payroll/payslips" className="rp-btn-outline">
                                                     <FileText size={18} /> Payslips
