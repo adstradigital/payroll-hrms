@@ -75,7 +75,35 @@ class AttendancePolicy(models.Model):
         max_digits=4, 
         decimal_places=2, 
         default=1.5,
-        help_text='Multiplier for overtime pay (e.g., 1.5 for time-and-a-half)'
+        help_text='Multiplier for regular overtime pay (e.g., 1.5 for time-and-a-half)'
+    )
+    weekend_overtime_multiplier = models.DecimalField(
+        max_digits=4, 
+        decimal_places=2, 
+        default=2.0,
+        help_text='Multiplier for weekend overtime pay'
+    )
+    holiday_overtime_multiplier = models.DecimalField(
+        max_digits=4, 
+        decimal_places=2, 
+        default=2.5,
+        help_text='Multiplier for holiday overtime pay'
+    )
+    max_overtime_per_day = models.PositiveIntegerField(
+        default=4,
+        help_text='Maximum overtime hours allowed per day'
+    )
+    max_overtime_per_week = models.PositiveIntegerField(
+        default=20,
+        help_text='Maximum overtime hours allowed per week'
+    )
+    require_overtime_pre_approval = models.BooleanField(
+        default=False,
+        help_text='Require manager approval before working overtime'
+    )
+    min_overtime_minutes = models.PositiveIntegerField(
+        default=30,
+        help_text='Minimum overtime minutes to qualify for pay'
     )
     
     # Late arrival and early departure

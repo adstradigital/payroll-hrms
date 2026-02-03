@@ -134,6 +134,11 @@ export const CLIENTADMIN_ENDPOINTS = {
     // Audit/Logs
     AUDIT_LOGS: `${BASE_URL}/audit/logs/`,
     AUDIT_LOG_DETAIL: (id) => `${BASE_URL}/audit/logs/${id}/`,
+
+    // Security
+    SECURITY_PROFILE: `${BASE_URL}/account/security/profile/`,
+    SET_SECURITY_PIN: `${BASE_URL}/account/security/pin/set/`,
+    VERIFY_SECURITY_PIN: `${BASE_URL}/account/security/pin/verify/`,
 };
 
 export default BASE_URL;

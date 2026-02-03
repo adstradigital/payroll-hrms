@@ -59,7 +59,9 @@ export const translations = {
             holidayCalendar: "Holiday Calendar",
             attendanceLogs: "Attendance Logs",
             biometricDevices: "Biometric Devices",
-            mainMenu: "MAIN MENU"
+            mainMenu: "MAIN MENU",
+            encashments: "Encashments & Reimbursements",
+            tax: "Tax Management"
         },
         auth: {
             login: "Login",
@@ -163,7 +165,9 @@ export const translations = {
             holidayCalendar: "അവധി കലണ്ടർ",
             attendanceLogs: "ഹാജർ ലോഗുകൾ",
             biometricDevices: "ബയോമെട്രിക് ഉപകരണങ്ങൾ",
-            mainMenu: "പ്രധാന മെനു"
+            mainMenu: "പ്രധാന മെനു",
+            encashments: "എൻകാഷ്‌മെന്റും റീഇംബേഴ്സ്‌മെന്റും",
+            tax: "ടാക്സ് മാനേജ്മെന്റ്"
         },
         auth: {
             login: "ലോഗിൻ",
@@ -267,7 +271,9 @@ export const translations = {
             holidayCalendar: "تقويم العطلات",
             attendanceLogs: "سجلات الحضور",
             biometricDevices: "أجهزة البصمة",
-            mainMenu: "القائمة الرئيسية"
+            mainMenu: "القائمة الرئيسية",
+            encashments: "صرف الإجازات والتعويضات",
+            tax: "إدارة الضرائب"
         },
         auth: {
             login: "تسجيل الدخول",

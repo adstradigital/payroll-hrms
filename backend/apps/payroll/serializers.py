@@ -83,10 +83,15 @@ class PaySlipComponentSerializer(serializers.ModelSerializer):
 class PayrollPeriodSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     processed_by_name = serializers.CharField(source='processed_by.full_name', read_only=True)
+    total_lop = serializers.SerializerMethodField()
     
     class Meta:
         model = PayrollPeriod
         fields = '__all__'
+
+    def get_total_lop(self, obj):
+        # Use getattr to safely access the annotated field, defaulting to 0
+        return getattr(obj, 'total_lop_annotated', 0)
 
 
 class PaySlipSerializer(serializers.ModelSerializer):
@@ -118,4 +123,6 @@ class GeneratePayrollSerializer(serializers.Serializer):
     """For generating payroll for a period"""
     company = serializers.UUIDField(required=False)
     month = serializers.IntegerField(min_value=1, max_value=12)
-    year = serializers.IntegerField(min_value=2020)
+    year = serializers.IntegerField(min_value=2020, max_value=2100)
+    force = serializers.BooleanField(default=False, required=False)
+    preview = serializers.BooleanField(default=False, required=False)

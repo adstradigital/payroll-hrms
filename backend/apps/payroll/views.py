@@ -5,8 +5,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count, Avg, F, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
-from datetime import date
+from datetime import date, timedelta, datetime
+import calendar
+from django.db import transaction
 from calendar import monthrange
 import logging
 from decimal import Decimal
@@ -343,7 +346,9 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
     ordering_fields = ['year', 'month']
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().annotate(
+            total_lop_annotated=Coalesce(Sum('payslips__lop_deduction'), Decimal('0'))
+        )
         user = self.request.user
         if hasattr(user, 'employee_profile') and user.employee_profile:
             return queryset.filter(company=user.employee_profile.company)
@@ -354,161 +359,241 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def generate(self, request):
         """Generate payroll for all employees for a month"""
-        serializer = GeneratePayrollSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
-        
-        company_id = serializer.validated_data.get('company')
-        
-        # If company not provided, infer from user
-        if not company_id:
-            user = request.user
-            if hasattr(user, 'employee_profile') and user.employee_profile:
-                company_id = user.employee_profile.company_id
-            elif hasattr(user, 'organization') and user.organization:
-                company_id = user.organization.id
+        with transaction.atomic():
+            serializer = GeneratePayrollSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=400)
+            
+            company_id = serializer.validated_data.get('company')
+            print(f"[DEBUG] Generate Payroll - Initial company_id from serializer: {company_id}")
             
             if not company_id:
-                return Response({'error': 'Could not determine organization context. Please contact support.'}, status=400)
+                user = request.user
+                print(f"[DEBUG] Generate Payroll - User: {user.username}, is_superuser: {user.is_superuser}")
+                if hasattr(user, 'employee_profile') and user.employee_profile:
+                    company_id = user.employee_profile.company_id
+                    print(f"[DEBUG] Generate Payroll - Found company_id in employee_profile: {company_id}")
+                elif hasattr(user, 'organization') and user.organization:
+                    company_id = user.organization.id
+                    print(f"[DEBUG] Generate Payroll - Found company_id in user.organization: {company_id}")
+                else:
+                    # Try to find any organization this user might belong to via UserRole
+                    from apps.accounts.models import UserRole
+                    user_role = UserRole.objects.filter(user=user, is_active=True).first()
+                    if user_role and user_role.organization:
+                        company_id = user_role.organization.id
+                        print(f"[DEBUG] Generate Payroll - Found company_id in UserRole: {company_id}")
 
-        month = serializer.validated_data['month']
-        year = serializer.validated_data['year']
-        
-        # Create or get payroll period
-        start_date = date(year, month, 1)
-        end_date = date(year, month, monthrange(year, month)[1])
-        
-        period, created = PayrollPeriod.objects.get_or_create(
-            company_id=company_id,
-            month=month,
-            year=year,
-            defaults={
-                'name': start_date.strftime('%B %Y'),
-                'start_date': start_date,
-                'end_date': end_date,
-                'status': 'processing'
-            }
-        )
-        
-        if not created and period.status != 'draft':
-            return Response({'error': 'Payroll already processed for this period'}, status=400)
-        
-        period.status = 'processing'
-        period.save()
-        
-        # Get all active employees with current salary
-        employees = Employee.objects.filter(
-            company_id=company_id,
-            status='active'
-        ).select_related('department', 'designation')
-        
-        payslips_created = 0
-        total_gross = Decimal(0)
-        total_deductions = Decimal(0)
-        total_net = Decimal(0)
-        
-        for employee in employees:
-            # Get current salary
+            if not company_id:
+                print(f"[DEBUG] Generate Payroll - FAILED to determine company_id")
+                return Response({'error': 'Company ID is required'}, status=400)
+
+            month = serializer.validated_data['month']
+            year = serializer.validated_data['year']
+            force = serializer.validated_data.get('force', False)
+            preview = serializer.validated_data.get('preview', False)
+            
+            # Additional check for existing period if not force and not preview
+            if not force and not preview:
+                existing = PayrollPeriod.objects.filter(
+                    company_id=company_id,
+                    month=month,
+                    year=year
+                ).exists()
+                if existing:
+                    return Response({
+                        'error': 'Payroll already exists for this period. Use force=true to regenerate.'
+                    }, status=400)
+            
+            # Start date is 1st of month
+            start_date = date(year, month, 1)
+            # End date is last day of month
+            if month == 12:
+                end_date = date(year + 1, 1, 1) - timedelta(days=1)
+            else:
+                end_date = date(year, month + 1, 1) - timedelta(days=1)
+
+            # Create list to hold preview data
+            preview_data = []
+
+        try:
+            # We use a nested atomic block for preview to allow rollback while catching exception
+            sid = transaction.savepoint()
+            
             try:
-                emp_salary = EmployeeSalary.objects.get(employee=employee, is_current=True)
-            except EmployeeSalary.DoesNotExist:
-                continue
+                period, created = PayrollPeriod.objects.get_or_create(
+                    company_id=company_id,
+                    month=month,
+                    year=year,
+                    defaults={
+                        'name': start_date.strftime('%B %Y'),
+                        'start_date': start_date,
+                        'end_date': end_date,
+                        'status': 'processing' if not preview else 'draft'
+                    }
+                )
+            except Exception as e:
+                print(f"[DEBUG] Generate Payroll - EXCEPTION in get_or_create: {str(e)}")
+                raise e
             
-            # Get or Generate Attendance Summary
-            # We ensure it exists and is up to date
-            summary, _ = AttendanceSummary.objects.get_or_create(
-                employee=employee,
-                month=month,
-                year=year
-            )
-            # Recalculate to ensure it captures latest attendance changes
-            summary.calculate_summary()
+            print(f"[DEBUG] Generate Payroll: Month={month}, Year={year}, Force={force}, Preview={preview}")
             
-            # Step 1: Determine Days (User Formula)
-            working_days = Decimal(summary.total_working_days)
+            if not created and period.status != 'draft' and not preview:
+                if force:
+                    # Bypass: Delete existing payslips
+                    PaySlip.objects.filter(payroll_period=period).delete()
+                    # Reset totals
+                    period.total_employees = 0
+                    period.total_gross = 0
+                    period.total_net = 0
+                    period.total_deductions = 0
+                    period.status = 'processing'
+                    period.save()
+                else:
+                    return Response({'error': 'Payroll already processed for this period'}, status=400)
             
-            # paid_days calculation
-            # Note: summary.present_days is usually integer count of rows with status='present'.
-            # summary.half_days is count of 'half_day'.
-            effective_present = Decimal(summary.present_days) + (Decimal(summary.half_days) * Decimal(0.5))
-            paid_days = effective_present + Decimal(summary.leave_days) # + Holidays/WeekOffs? 
-            # WAIT: User formula said: "paid_days = summary.present_days + (summary.half_days * 0.5) + summary.leave_days"
-            # User formula for LOP: "lop_days = working_days - paid_days"
+            # For preview, we always want to recalculate, so if period exists we shouldn't fail, 
+            # but we also don't want to actually delete if we are just previewing? 
+            # Actually, since we rollback, we CAN delete and re-create in the transaction!
+            if preview and not created:
+                 PaySlip.objects.filter(payroll_period=period).delete()
             
-            # IMPORTANT: If 'working_days' excludes Holidays/WeekOffs (which it does in AttendanceSummary logic),
-            # then 'paid_days' being just present+leave is correct for "Working Days Only".
-            # BUT, standard payroll 'Working Days' often implies 'Billable Days' which 'total_working_days' might be.
-            # Let's strictly follow User Formula.
+            period.status = 'processing'
+            period.save()
             
-            lop_days = max(Decimal(0), working_days - paid_days)
+            # Get all active employees with current salary
+            employees = Employee.objects.filter(
+                company_id=company_id,
+                status='active'
+            ).select_related('department', 'designation')
             
-            # Overtime from Summary
-            overtime_hours = Decimal(summary.overtime_hours)
-            overtime_amount = Decimal(0)
-
-            if overtime_hours > 0:
-                policy = employee.company.attendance_policies.filter(is_active=True).first()
-                multiplier = policy.overtime_rate_multiplier if policy else Decimal('1.5')
-                daily_hours = policy.full_day_hours if policy else Decimal('8.0')
+            payslips_created = 0
+            total_gross = Decimal(0)
+            total_deductions = Decimal(0)
+            total_net = Decimal(0)
+            total_lop = Decimal(0)
+            
+            for employee in employees:
+                # Get current salary
+                try:
+                    emp_salary = EmployeeSalary.objects.filter(employee=employee, is_current=True).first()
+                    if not emp_salary:
+                         continue
+                except EmployeeSalary.DoesNotExist:
+                    continue
                 
-                if working_days > 0 and daily_hours > 0:
-                     per_day_salary = emp_salary.gross_salary / working_days
-                     per_hour_salary = per_day_salary / daily_hours
-                     overtime_amount = per_hour_salary * overtime_hours * multiplier
+                # Get or Generate Attendance Summary
+                summary, _ = AttendanceSummary.objects.get_or_create(
+                    employee=employee,
+                    month=month,
+                    year=year
+                )
+                summary.calculate_summary()
+                
+                # Step 1: Determine Days
+                working_days = Decimal(summary.total_working_days)
+                effective_present = Decimal(summary.present_days) + (Decimal(summary.half_days) * Decimal(0.5))
+                paid_days = effective_present + Decimal(summary.leave_days)
+                lop_days = max(Decimal(0), working_days - paid_days)
+                
+                # Overtime
+                overtime_hours = Decimal(summary.overtime_hours)
+                overtime_amount = Decimal(0)
 
-            # Create payslip
-            # We map summary fields to payslip fields
-            # Note: PaySlip.present_days is Decimal, AttendanceSummary.present_days is Int.
-            payslip, _ = PaySlip.objects.update_or_create(
-                employee=employee,
-                payroll_period=period,
-                defaults={
-                    'employee_salary': emp_salary,
-                    'working_days': working_days,
-                    'present_days': effective_present, # Store effective present days
-                    'leave_days': summary.leave_days,
-                    'absent_days': summary.absent_days,
-                    'lop_days': lop_days,
-                    'overtime_hours': overtime_hours,
-                    'overtime_amount': overtime_amount,
-                }
+                if overtime_hours > 0:
+                    policy = employee.company.attendance_policies.filter(is_active=True).first()
+                    multiplier = policy.overtime_rate_multiplier if policy else Decimal('1.5')
+                    daily_hours = policy.full_day_hours if policy else Decimal('8.0')
+                    
+                    if working_days > 0 and daily_hours > 0:
+                         per_day_salary = emp_salary.gross_salary / working_days
+                         per_hour_salary = per_day_salary / daily_hours
+                         overtime_amount = per_hour_salary * overtime_hours * multiplier
+
+                # Create payslip
+                payslip, _ = PaySlip.objects.update_or_create(
+                    employee=employee,
+                    payroll_period=period,
+                    defaults={
+                        'employee_salary': emp_salary,
+                        'working_days': working_days,
+                        'present_days': effective_present,
+                        'leave_days': summary.leave_days,
+                        'absent_days': summary.absent_days,
+                        'lop_days': lop_days,
+                        'overtime_hours': overtime_hours,
+                        'overtime_amount': overtime_amount,
+                    }
+                )
+                
+                payslip.calculate_salary()
+                payslip.save()
+                
+                payslips_created += 1
+                total_gross += payslip.gross_earnings
+                total_deductions += payslip.total_deductions
+                total_net += payslip.net_salary
+                total_lop += payslip.lop_deduction
+
+                if preview:
+                    preview_data.append({
+                        'employee_id': employee.employee_id,
+                        'name': employee.full_name,
+                        'designation': employee.designation.name if employee.designation else '-',
+                        'days_paid': float(working_days - lop_days),
+                        'days_lop': float(lop_days),
+                        'basic_salary': float(emp_salary.basic_salary), 
+                        'gross_pay': float(payslip.gross_earnings),
+                        'deductions': float(payslip.total_deductions),
+                        'net_pay': float(payslip.net_salary),
+                        'lop_deduction': float(payslip.lop_deduction)
+                    })
+            
+            # Update period totals
+            period.total_employees = payslips_created
+            period.total_gross = total_gross
+            period.total_deductions = total_deductions
+            period.total_net = total_net
+            period.status = 'completed'
+            period.processed_at = timezone.now()
+            period.save()
+            
+            if preview:
+                transaction.savepoint_rollback(sid)
+                return Response({
+                    'preview': True,
+                    'employees': preview_data,
+                    'summary': {
+                        'total_gross': str(total_gross),
+                        'total_net': str(total_net),
+                        'total_deductions': str(total_deductions),
+                        'total_lop': str(total_lop),
+                        'employee_count': payslips_created
+                    }
+                })
+
+            # Log activity
+            log_activity(
+                user=request.user,
+                action_type='PROCESS',
+                module='PAYROLL',
+                description=f"Generated payroll for {payslips_created} employees for period {period.name}",
+                reference_id=str(period.id),
+                new_value={'total_net': str(total_net), 'total_employees': payslips_created},
+                ip_address=request.META.get('REMOTE_ADDR')
             )
             
-            # Calculate salary (Generates components and totals)
-            payslip.calculate_salary()
-            payslip.save()
-            
-            payslips_created += 1
-            total_gross += payslip.gross_earnings
-            total_deductions += payslip.total_deductions
-            total_net += payslip.net_salary
-        
-        # Update period totals
-        period.total_employees = payslips_created
-        period.total_gross = total_gross
-        period.total_deductions = total_deductions
-        period.total_net = total_net
-        period.status = 'completed'
-        period.processed_at = timezone.now()
-        period.save()
-        
-        # Log activity
-        log_activity(
-            user=request.user,
-            action_type='PROCESS',
-            module='PAYROLL',
-            description=f"Generated payroll for {payslips_created} employees for period {period.name}",
-            reference_id=str(period.id),
-            new_value={'total_net': str(total_net), 'total_employees': payslips_created},
-            ip_address=request.META.get('REMOTE_ADDR')
-        )
-        
-        return Response({
-            'message': f'Payroll generated for {payslips_created} employees',
-            'period_id': period.id,
-            'total_net': str(total_net),
-            'total_employees': payslips_created
-        })
+            return Response({
+                'message': f'Payroll generated for {payslips_created} employees',
+                'period_id': period.id,
+                'total_net': str(total_net),
+                'total_gross': str(total_gross),
+                'total_lop': str(total_lop),
+                'total_employees': payslips_created
+            })
+        except Exception as e:
+            logger.error(f"Error generating payroll: {str(e)}")
+            return Response({'error': str(e)}, status=500)
     
     @action(detail=True, methods=['post'])
     def mark_paid(self, request, pk=None):
@@ -616,6 +701,8 @@ class PaySlipViewSet(viewsets.ModelViewSet):
             totals = payslips.aggregate(
                 payslips_generated=Count('id'),
                 total_gross=Sum('gross_earnings') or 0,
+                total_deductions=Sum('total_deductions') or 0,
+                total_lop=Sum('lop_deduction') or 0,
                 total_net=Sum('net_salary') or 0
             )
             
@@ -631,6 +718,8 @@ class PaySlipViewSet(viewsets.ModelViewSet):
             ).annotate(
                 employee_count=Count('id'),
                 total_gross=Sum('gross_earnings'),
+                total_deductions=Sum('total_deductions'),
+                total_lop=Sum('lop_deduction'),
                 total_net=Sum('net_salary')
             ).order_by('name')
             

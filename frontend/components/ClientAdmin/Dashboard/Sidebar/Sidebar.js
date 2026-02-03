@@ -100,10 +100,13 @@ const menuItems = [
         path: '/dashboard/payroll',
         permission: ['payroll.view', 'payroll.view_payslip', 'payroll.view_payslips'],
         children: [
+            { id: 'payroll-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll' },
             { id: 'salary-components', label: 'Salary Components', translationKey: 'common.salaryComponents', path: '/dashboard/payroll/salarycomponents', permission: 'payroll.manage' },
             { id: 'salary-structure', label: 'Salary Structure', translationKey: 'common.salaryStructure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
             { id: 'employee-salary', label: 'Employee Salary', translationKey: 'common.employeeSalary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },
             { id: 'payslips', label: 'Payslips', translationKey: 'common.payslips', path: '/dashboard/payroll/payslips' },
+            { id: 'encashments', label: 'Encashments & Reimbursements', translationKey: 'common.encashments', path: '/dashboard/payroll/encashments-reimbursements', permission: 'payroll.manage' },
+            { id: 'tax', label: 'Tax Management', translationKey: 'common.tax', path: '/dashboard/payroll/tax', permission: 'payroll.manage' },
             { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
             {
                 id: 'assets',

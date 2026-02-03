@@ -6,12 +6,19 @@
     display: flex;
     flex-direction: column;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 30;
+    z-index: 50;
     position: relative;
+    flex-shrink: 0;
 }
 
 .super-sidebar.collapsed {
     width: 80px;
+}
+
+.super-sidebar.collapsed .sidebar-header,
+.super-sidebar.collapsed .sidebar-content,
+.super-sidebar.collapsed .sidebar-footer {
+    padding: 20px 14px;
 }
 
 .sidebar-overlay {
@@ -44,9 +51,8 @@
     height: 64px;
     display: flex;
     align-items: center;
-    padding: 0 24px;
+    padding: 0 20px;
     border-bottom: 1px solid #18181b;
-    align-items: center;
 }
 
 .logo-container {
@@ -91,7 +97,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 24px 16px;
+    padding: 20px;
     gap: 32px;
     overflow-y: auto;
 }
@@ -109,7 +115,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 0 12px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
 .menu-items {
@@ -251,10 +257,12 @@
 
 /* Footer & Health Widget */
 .sidebar-footer {
+    padding: 20px;
     margin-top: auto;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
+    border-top: 1px solid #18181b;
 }
 
 .health-widget {
@@ -312,9 +320,8 @@
 .logout-button {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px;
+    gap: 12px;
+    padding: 10px 12px;
     border-radius: 12px;
     border: 1px solid #27272a;
     background: none;
@@ -322,6 +329,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     font-weight: 500;
+    width: 100%;
 }
 
 .logout-button:hover {

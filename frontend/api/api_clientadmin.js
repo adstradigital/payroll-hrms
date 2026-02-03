@@ -146,6 +146,7 @@ export const getPayrollPeriods = (params) => axiosInstance.get(CLIENTADMIN_ENDPO
 export const getPayrollPeriodById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id));
 export const createPayrollPeriod = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS, data);
 export const updatePayrollPeriod = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id), data);
+export const deletePayrollPeriod = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id)); // Added delete function
 export const generatePayrollForPeriod = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS}generate/`, data);
 export const markPeriodAsPaid = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL_PERIOD_DETAIL(id)}mark-paid/`);
 export const generateAdvancedPayroll = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAYROLL_GENERATE, data);
@@ -190,3 +191,9 @@ export const uploadDocument = (formData) => axiosInstance.post(CLIENTADMIN_ENDPO
 export const getEmployeeDocuments = (employeeId) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENTS(employeeId));
 export const uploadEmployeeDocument = (employeeId, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENTS(employeeId), data, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const deleteEmployeeDocument = (employeeId, docId) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENT_DETAIL(employeeId, docId));
+
+// Security
+export const getSecurityProfile = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SECURITY_PROFILE);
+export const updateSecurityProfile = (data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.SECURITY_PROFILE, data);
+export const setSecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SET_SECURITY_PIN, data);
+export const verifySecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.VERIFY_SECURITY_PIN, data);

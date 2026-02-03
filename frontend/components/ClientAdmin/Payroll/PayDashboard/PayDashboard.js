@@ -89,8 +89,8 @@ export default function PayDashboard() {
                     </p>
                 </div>
                 <div className="pd-actions">
-                    <div className="pd-month-selector">
-                        <span className="pd-label">Select Month and Year:</span>
+                    <div className="pd-filter-label">Filter:</div>
+                    <div className="pd-month-selector-wrapper">
                         <input
                             type="month"
                             value={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`}
@@ -103,15 +103,15 @@ export default function PayDashboard() {
                         />
                     </div>
                     <button className="pd-btn pd-btn--export" onClick={handleExport}>
-                        <Download size={16} />
-                        Export
+                        <Download size={18} />
+                        <span>Export</span>
                     </button>
                     <button
                         className="pd-btn pd-btn--refresh"
                         onClick={fetchDashboardData}
                         disabled={loading}
                     >
-                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
@@ -186,7 +186,7 @@ export default function PayDashboard() {
 
                     <div className="pd-chart-legend">
                         <span className="pd-legend-item"><span className="pd-legend-dot draft"></span> Draft</span>
-                        <span className="pd-legend-item"><span className="pd-legend-dot review"></span> Review Ongoing</span>
+                        <span className="pd-legend-item"><span className="pd-legend-dot review_ongoing"></span> Review Ongoing</span>
                         <span className="pd-legend-item"><span className="pd-legend-dot confirmed"></span> Confirmed</span>
                         <span className="pd-legend-item"><span className="pd-legend-dot paid"></span> Paid</span>
                     </div>
@@ -224,11 +224,23 @@ export default function PayDashboard() {
                 <div className="pd-summary-section">
                     <div className="pd-totals-card">
                         <div className="pd-total-row">
-                            <span className="pd-total-label">Total Payslips Generated:</span>
+                            <span className="pd-total-label">Total Payslips:</span>
                             <span className="pd-total-value">{dashboardData?.totals?.payslips_generated || 0}</span>
                         </div>
+                        <div className="pd-total-row">
+                            <span className="pd-total-label">Gross Amount:</span>
+                            <span className="pd-total-value">{formatCurrency(dashboardData?.totals?.total_gross)}</span>
+                        </div>
+                        <div className="pd-total-row text-red-400">
+                            <span className="pd-total-label">Fixed Deductions:</span>
+                            <span className="pd-total-value">{formatCurrency(dashboardData?.totals?.total_deductions)}</span>
+                        </div>
+                        <div className="pd-total-row text-red-500">
+                            <span className="pd-total-label">Attendance LOP:</span>
+                            <span className="pd-total-value">{formatCurrency(dashboardData?.totals?.total_lop)}</span>
+                        </div>
                         <div className="pd-total-row pd-total-row--highlight">
-                            <span className="pd-total-label">Total Amount:</span>
+                            <span className="pd-total-label">Net Disbursal:</span>
                             <span className="pd-total-value">{formatCurrency(dashboardData?.totals?.total_net)}</span>
                         </div>
                     </div>
@@ -243,6 +255,7 @@ export default function PayDashboard() {
                                         <th>Department</th>
                                         <th>Employees</th>
                                         <th>Gross</th>
+                                        <th className="text-red-400">Deductions</th>
                                         <th>Net</th>
                                     </tr>
                                 </thead>
@@ -252,6 +265,9 @@ export default function PayDashboard() {
                                             <td className="pd-dept-name">{dept.name}</td>
                                             <td className="pd-dept-count">{dept.employee_count}</td>
                                             <td className="pd-dept-gross">{formatCurrency(dept.total_gross)}</td>
+                                            <td className="pd-dept-deductions text-red-400">
+                                                {formatCurrency((dept.total_deductions || 0) + (dept.total_lop || 0))}
+                                            </td>
                                             <td className="pd-dept-net">{formatCurrency(dept.total_net)}</td>
                                         </tr>
                                     ))}
@@ -261,6 +277,9 @@ export default function PayDashboard() {
                                         <td><strong>Total</strong></td>
                                         <td><strong>{dashboardData?.totals?.payslips_generated || 0}</strong></td>
                                         <td><strong>{formatCurrency(dashboardData?.totals?.total_gross)}</strong></td>
+                                        <td className="text-red-400">
+                                            <strong>{formatCurrency((dashboardData?.totals?.total_deductions || 0) + (dashboardData?.totals?.total_lop || 0))}</strong>
+                                        </td>
                                         <td><strong>{formatCurrency(dashboardData?.totals?.total_net)}</strong></td>
                                     </tr>
                                 </tfoot>

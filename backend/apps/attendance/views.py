@@ -246,6 +246,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 'half_day': attendances.filter(status='half_day').count(),
                 'on_leave': attendances.filter(status='on_leave').count(),
                 'late': attendances.filter(is_late=True).count(),
+                'early_going': attendances.filter(is_early_departure=True).count(),
                 'total_hours': attendances.aggregate(Sum('total_hours'))['total_hours__sum'] or 0
             }
             
@@ -264,7 +265,17 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 'check_out': today_att.check_out_time if today_att else None,
                 'status': today_att.status if today_att else 'Not Marked',
                 'working_hours': today_att.total_hours if today_att else 0,
-                'is_on_break': is_on_break
+                'break_hours': today_att.break_hours if today_att else 0,
+                'is_on_break': is_on_break,
+                'is_late': today_att.is_late if today_att else False,
+                'is_early_departure': today_att.is_early_departure if today_att else False,
+                'shift': {
+                    'name': today_att.shift.name,
+                    'start_time': today_att.shift.start_time.strftime('%H:%M'),
+                    'end_time': today_att.shift.end_time.strftime('%H:%M'),
+                    'grace_period': today_att.shift.grace_period_minutes,
+                    'early_departure_grace': today_att.shift.early_departure_grace_minutes
+                } if today_att and today_att.shift else None
             }
             
             # 3. Monthly Activity (Filtered by month/year)

@@ -5,7 +5,7 @@ from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
     InviteCode, NotificationPreference, Role, Module, Permission,
-    DataScope, RolePermission, DesignationPermission
+    DataScope, RolePermission, DesignationPermission, SecurityProfile
 )
 from apps.audit.utils import log_activity
 
@@ -636,3 +636,42 @@ class OrganizationRegistrationApproveSerializer(serializers.Serializer):
 class OrganizationRegistrationRejectSerializer(serializers.Serializer):
     """Serializer for rejecting an organization registration"""
     rejection_reason = serializers.CharField(required=False, allow_blank=True)
+
+class SecurityProfileSerializer(serializers.ModelSerializer):
+    """Serializer for User Security Profile"""
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    has_pin = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SecurityProfile
+        fields = [
+            'id', 'user_email', 'is_pin_enabled', 'clearance_level', 
+            'last_pin_change', 'has_pin', 'failed_attempts', 'locked_until'
+        ]
+        read_only_fields = [
+            'id', 'user_email', 'last_pin_change', 'failed_attempts', 'locked_until'
+        ]
+
+    def get_has_pin(self, obj):
+        return bool(obj.pin_hash)
+
+
+class SetPinSerializer(serializers.Serializer):
+    """Serializer to set or change 4-digit PIN"""
+    pin = serializers.CharField(max_length=4, min_length=4)
+    confirm_pin = serializers.CharField(max_length=4, min_length=4)
+
+    def validate_pin(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("PIN must be a 4-digit number")
+        return value
+
+    def validate(self, data):
+        if data['pin'] != data['confirm_pin']:
+            raise serializers.ValidationError("PINs do not match")
+        return data
+
+
+class VerifyPinSerializer(serializers.Serializer):
+    """Serializer to verify 4-digit PIN"""
+    pin = serializers.CharField(max_length=4, min_length=4)
