@@ -1,0 +1,242 @@
+.asset-history {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Toolbar */
+.ah-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 0.5rem;
+}
+
+.ah-search-box {
+    flex: 1;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0 1rem;
+}
+
+.ah-search-box input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0.75rem 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+}
+
+.ah-search-box input:focus {
+    outline: none;
+}
+
+.ah-search-box svg {
+    color: var(--text-muted);
+}
+
+.ah-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.5rem 1rem;
+}
+
+.ah-filter-group select {
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* Timeline */
+.ah-timeline-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 2.5rem;
+}
+
+.ah-timeline {
+    display: flex;
+    flex-direction: column;
+}
+
+.ah-timeline-item {
+    display: flex;
+    gap: 2rem;
+}
+
+.ah-timeline-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ah-marker-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--border-color);
+    z-index: 1;
+    margin-top: 5px;
+}
+
+.marker--assignment {
+    background: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.marker--status {
+    background: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+.marker--approval {
+    background: #22c55e;
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+}
+
+.marker--maintenance {
+    background: #f97316;
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15);
+}
+
+.marker--check-in {
+    background: #8b5cf6;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+}
+
+.marker--addition {
+    background: var(--brand-primary);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+}
+
+.ah-marker-line {
+    width: 2px;
+    flex: 1;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
+.ah-timeline-content {
+    flex: 1;
+    padding-bottom: 2.5rem;
+}
+
+.ah-event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.ah-event-date {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.ah-event-action {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.ah-event-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.625rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+}
+
+.tag--assignment {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.tag--status {
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+}
+
+.tag--approval {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+
+.tag--maintenance {
+    background: rgba(249, 115, 22, 0.1);
+    color: #f97316;
+}
+
+.tag--check-in {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
+}
+
+.tag--addition {
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--brand-primary);
+}
+
+.ah-event-body {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.ah-asset-pill,
+.ah-user-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-tertiary);
+    padding: 0.375rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.ah-arrow {
+    color: var(--text-muted);
+}
+
+.ah-event-details {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+@media (max-width: 600px) {
+    .ah-timeline-container {
+        padding: 1.5rem;
+    }
+
+    .ah-event-header {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .ah-event-body {
+        flex-wrap: wrap;
+    }
+}

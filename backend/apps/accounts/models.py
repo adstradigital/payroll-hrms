@@ -304,6 +304,7 @@ class Employee(BaseModel):
 
     # Basic Information
     employee_id = models.CharField(max_length=50, unique=True, db_index=True)
+    biometric_id = models.CharField(max_length=50, blank=True, null=True, unique=True, db_index=True, help_text="ID as registered in Biometric Device")
     first_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)

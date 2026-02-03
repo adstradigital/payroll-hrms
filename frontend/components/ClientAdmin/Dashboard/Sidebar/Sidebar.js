@@ -7,7 +7,8 @@ import {
     LayoutDashboard, Users, Calendar, Clock,
     Wallet, FileText, Settings, ChevronDown,
     ChevronRight, LogOut, Bell, User, CheckCircle2,
-    X, Loader, AlertCircle, HelpCircle, Upload, Activity
+    X, Loader, AlertCircle, HelpCircle, Upload, Activity,
+    Box
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -104,6 +105,21 @@ const menuItems = [
             { id: 'employee-salary', label: 'Employee Salary', translationKey: 'common.employeeSalary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },
             { id: 'payslips', label: 'Payslips', translationKey: 'common.payslips', path: '/dashboard/payroll/payslips' },
             { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
+            {
+                id: 'assets',
+                label: 'Assets',
+                translationKey: 'common.assets',
+                icon: Box,
+                path: '/dashboard/payroll/assets',
+                permission: 'payroll.manage',
+                children: [
+                    { id: 'assets-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll/assets' },
+                    { id: 'assets-manage', label: 'Manage Assets', translationKey: 'common.manageAssets', path: '/dashboard/payroll/assets/manage' },
+                    { id: 'assets-batches', label: 'Asset Batches', translationKey: 'common.assetBatches', path: '/dashboard/payroll/assets/batches' },
+                    { id: 'assets-requests', label: 'Requests & Approvals', translationKey: 'common.requests', path: '/dashboard/payroll/assets/requests' },
+                    { id: 'assets-history', label: 'Asset History', translationKey: 'common.history', path: '/dashboard/payroll/assets/history' },
+                ]
+            },
         ]
     },
     {

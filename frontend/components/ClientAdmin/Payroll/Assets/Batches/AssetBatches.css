@@ -1,0 +1,223 @@
+.asset-batches {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Stats */
+.ab-header-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+}
+
+.ab-stat-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.ab-stat-label {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.ab-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Toolbar */
+.ab-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.ab-search-box {
+    flex: 1;
+    min-width: 300px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0 1rem;
+}
+
+.ab-search-box input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0.75rem 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+}
+
+.ab-search-box input:focus {
+    outline: none;
+}
+
+.ab-search-box svg {
+    color: var(--text-muted);
+}
+
+.ab-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ab-view-toggle {
+    display: flex;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 2px;
+}
+
+.ab-view-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ab-view-btn.active {
+    background: var(--bg-secondary);
+    color: var(--brand-primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ab-btn--primary {
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+    color: white;
+    border: none;
+    padding: 0.625rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* Table */
+.ab-table-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow-x: auto;
+}
+
+.ab-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ab-table th {
+    padding: 1.25rem;
+    text-align: left;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--bg-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ab-table td {
+    padding: 1.125rem 1.25rem;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ab-table tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.ab-td-id {
+    font-family: monospace;
+    font-weight: 600;
+    color: var(--brand-primary);
+}
+
+.ab-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+
+.ab-pkg-icon {
+    color: var(--brand-primary);
+}
+
+.ab-type-tag {
+    padding: 0.125rem 0.625rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.ab-status-label {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.ab-status-label--completed {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+
+.ab-status-label--in-progress {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.ab-status-label--pending {
+    background: rgba(249, 115, 22, 0.1);
+    color: #f97316;
+}
+
+.ab-status-label--planned {
+    background: rgba(100, 116, 139, 0.1);
+    color: #64748b;
+}
+
+.ab-action-icon {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.ab-action-icon:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}

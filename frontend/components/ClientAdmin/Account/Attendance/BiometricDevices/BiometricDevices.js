@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, Plus, MoreVertical, X, Wifi, WifiOff, Clock, CheckCircle2, Circle, Hand, ClipboardList } from 'lucide-react';
+import { Search, Filter, Plus, MoreVertical, X, Wifi, WifiOff, Clock, CheckCircle2, Circle, Hand, ClipboardList, RefreshCw, AlertCircle } from 'lucide-react';
 import './BiometricDevices.css';
+import biometricApi from '@/api/biometric_api';
 
 export default function BiometricDevices() {
     const [devices, setDevices] = useState([]);
     const [filteredDevices, setFilteredDevices] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     // Modal States
     const [isAddDeviceModalOpen, setIsAddDeviceModalOpen] = useState(false);
@@ -16,10 +19,15 @@ export default function BiometricDevices() {
     const [newDevice, setNewDevice] = useState({
         name: '',
         device_type: '',
-        device_direction: 'System Direction(In/Out) Device',
-        company: 'Adstradigital', // Default changed
+        device_model: '',
+        serial_number: '',
+        connection_method: 'ip',
         ip_address: '',
-        port: '',
+        port: '4370',
+        api_url: '',
+        sync_mode: 'manual',
+        device_direction: 'both',
+        company: 'Adstradigital',
         activate_live_capture: false
     });
 
@@ -31,79 +39,88 @@ export default function BiometricDevices() {
         remarks: ''
     });
 
-    // Mock data
+    // Fetch devices from backend
     useEffect(() => {
-        const mockDevices = [
-            {
-                id: 1,
-                name: 'Reception In', // Renamed from In Device
-                company: 'ZKTeco / eSSL Biometric',
-                device_direction: 'In Device',
-                ip_address: '192.168.1.10',
-                port: '4370',
-                activate_live_capture: true,
-                status: 'live',
-                lastSync: '2 mins ago',
-                activeUsers: 45
-            },
-            {
-                id: 2,
-                name: 'Main Entrance', // Renamed from Eng Renad
-                company: 'e-Time Office',
-                device_direction: 'System Direction(In/Out) Device',
-                ip_address: 'https://api.etimeoffice.com/api/',
-                port: '',
-                activate_live_capture: false,
-                status: 'scheduled',
-                lastSync: '15 mins ago',
-                activeUsers: 23
-            },
-            {
-                id: 3,
-                name: 'Back Office', // Renamed from Zkteco 400
-                company: 'ZKTeco / eSSL Biometric',
-                device_direction: 'System Direction(In/Out) Device',
-                ip_address: '192.168.1.50',
-                port: '1',
-                activate_live_capture: false,
-                status: 'offline',
-                lastSync: '2 hours ago',
-                activeUsers: 0
-            }
-        ];
-        setDevices(mockDevices);
-        setFilteredDevices(mockDevices);
+        fetchDevices();
     }, []);
+
+    const fetchDevices = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await biometricApi.getDevices();
+            // Handle paginated or non-paginated response gracefully
+            const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
+            setDevices(data);
+            setFilteredDevices(data);
+        } catch (err) {
+            console.error('Error fetching biometric devices:', err);
+            setError('Failed to load biometric devices. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Search functionality
     useEffect(() => {
+        if (!Array.isArray(devices)) return;
         const filtered = devices.filter(device =>
-            device.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            device.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            device.ip_address.toLowerCase().includes(searchTerm.toLowerCase())
+            device.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            device.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            device.ip_address?.toLowerCase().includes(searchTerm.toLowerCase())
         );
         setFilteredDevices(filtered);
     }, [searchTerm, devices]);
 
-    const handleAddDevice = () => {
-        const deviceToAdd = {
-            ...newDevice,
-            id: devices.length + 1,
-            status: 'offline',
-            lastSync: 'Never',
-            activeUsers: 0
-        };
-        setDevices([...devices, deviceToAdd]);
-        setIsAddDeviceModalOpen(false);
-        setNewDevice({
-            name: '',
-            device_type: '',
-            device_direction: 'System Direction(In/Out) Device',
-            company: 'Adstradigital',
-            ip_address: '',
-            port: '',
-            activate_live_capture: false
-        });
+    const handleAddDevice = async () => {
+        try {
+            setIsLoading(true);
+            const response = await biometricApi.addDevice(newDevice);
+            setDevices([...devices, response.data]);
+            setIsAddDeviceModalOpen(false);
+            setNewDevice({
+                name: '',
+                device_type: '',
+                device_model: '',
+                serial_number: '',
+                connection_method: 'ip',
+                ip_address: '',
+                port: '4370',
+                api_url: '',
+                sync_mode: 'manual',
+                device_direction: 'both',
+                company: 'Adstradigital',
+                activate_live_capture: false
+            });
+            alert('Device added successfully!');
+        } catch (err) {
+            console.error('Error adding device:', err);
+            alert('Failed to add device. Please check the details and try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleTestConnection = async (deviceId) => {
+        try {
+            const response = await biometricApi.testConnection(deviceId);
+            alert(response.data.message);
+            fetchDevices(); // Refresh to show updated status
+        } catch (err) {
+            console.error('Error testing connection:', err);
+            alert('Failed to test connection correctly. Please check device IP and network.');
+        }
+    };
+
+    const handleSyncLogs = async (deviceId) => {
+        try {
+            const response = await biometricApi.syncLogs(deviceId);
+            alert(response.data.message);
+            fetchDevices(); // Refresh to update last sync time and stats
+        } catch (err) {
+            console.error('Error syncing logs:', err);
+            alert('Failed to sync logs from device.');
+        }
     };
 
     const handleManualEntrySubmit = (e) => {
@@ -123,10 +140,12 @@ export default function BiometricDevices() {
     const getStatusIcon = (status) => {
         switch (status) {
             case 'live':
+            case 'online':
                 return <Wifi className="status-icon status-icon--live" size={16} />;
             case 'scheduled':
                 return <Clock className="status-icon status-icon--scheduled" size={16} />;
             case 'offline':
+            case 'maintenance':
                 return <WifiOff className="status-icon status-icon--offline" size={16} />;
             default:
                 return <Circle size={16} />;
@@ -136,11 +155,14 @@ export default function BiometricDevices() {
     const getStatusBadge = (status) => {
         switch (status) {
             case 'live':
-                return <span className="status-badge status-badge--live">● Live Capture</span>;
+            case 'online':
+                return <span className="status-badge status-badge--live">● Online</span>;
             case 'scheduled':
                 return <span className="status-badge status-badge--scheduled">● Scheduled</span>;
+            case 'maintenance':
+                return <span className="status-badge status-badge--scheduled">● Maintenance</span>;
             case 'offline':
-                return <span className="status-badge status-badge--offline">● Not Connected</span>;
+                return <span className="status-badge status-badge--offline">● Offline</span>;
             default:
                 return null;
         }
@@ -192,9 +214,9 @@ export default function BiometricDevices() {
                     </div>
                     <div className="biodevice-stat-content">
                         <h3 className="biodevice-stat-value">
-                            {devices.filter(d => d.status === 'live').length}
+                            {Array.isArray(devices) ? devices.filter(d => d.status === 'live' || d.status === 'online').length : 0}
                         </h3>
-                        <p className="biodevice-stat-label">Live Capture</p>
+                        <p className="biodevice-stat-label">Online Devices</p>
                     </div>
                 </div>
 
@@ -204,9 +226,9 @@ export default function BiometricDevices() {
                     </div>
                     <div className="biodevice-stat-content">
                         <h3 className="biodevice-stat-value">
-                            {devices.filter(d => d.status === 'scheduled').length}
+                            {Array.isArray(devices) ? devices.length : 0}
                         </h3>
-                        <p className="biodevice-stat-label">Scheduled</p>
+                        <p className="biodevice-stat-label">Total Logs</p>
                     </div>
                 </div>
 
@@ -216,12 +238,27 @@ export default function BiometricDevices() {
                     </div>
                     <div className="biodevice-stat-content">
                         <h3 className="biodevice-stat-value">
-                            {devices.filter(d => d.status === 'offline').length}
+                            {Array.isArray(devices) ? devices.filter(d => d.status === 'offline').length : 0}
                         </h3>
                         <p className="biodevice-stat-label">Offline</p>
                     </div>
                 </div>
             </div>
+
+            {isLoading && (
+                <div className="biodevice-loading">
+                    <RefreshCw className="animate-spin" size={24} />
+                    <span>Loading devices...</span>
+                </div>
+            )}
+
+            {error && (
+                <div className="biodevice-error">
+                    <AlertCircle size={20} />
+                    <span>{error}</span>
+                    <button onClick={fetchDevices}>Retry</button>
+                </div>
+            )}
 
             {/* Device Cards Grid */}
             <div className="biodevice-cards-grid">
@@ -250,7 +287,23 @@ export default function BiometricDevices() {
                             <div className="biodevice-info-row">
                                 <span className="biodevice-info-label">Direction</span>
                                 <span className="biodevice-info-value biodevice-info-value--small">
-                                    {device.device_direction}
+                                    {device.device_direction === 'in' ? 'In Device' :
+                                        device.device_direction === 'out' ? 'Out Device' :
+                                            'System Direction (In/Out)'}
+                                </span>
+                            </div>
+                            <div className="biodevice-info-row">
+                                <span className="biodevice-info-label">Method</span>
+                                <span className="biodevice-info-value">
+                                    {device.connection_method === 'api' ? 'Cloud API' :
+                                        device.connection_method === 'ip' ? 'Local IP' :
+                                            device.connection_method === 'excel' ? 'Excel' : 'Manual'}
+                                </span>
+                            </div>
+                            <div className="biodevice-info-row">
+                                <span className="biodevice-info-label">Sync</span>
+                                <span className="biodevice-info-value">
+                                    {device.sync_mode === 'auto' ? 'Automatic' : 'Manual only'}
                                 </span>
                             </div>
                             <div className="biodevice-info-row">
@@ -273,11 +326,11 @@ export default function BiometricDevices() {
                         <div className="biodevice-live-stats">
                             <div className="biodevice-live-stat-item">
                                 <CheckCircle2 size={14} className="biodevice-live-stat-icon" />
-                                <span>{device.activeUsers} Active</span>
+                                <span>{device.total_logs_fetched || 0} Logs</span>
                             </div>
                             <div className="biodevice-live-stat-item">
                                 <Clock size={14} className="biodevice-live-stat-icon" />
-                                <span>{device.lastSync}</span>
+                                <span>{device.last_sync_at ? new Date(device.last_sync_at).toLocaleString() : 'Never'}</span>
                             </div>
                         </div>
 
@@ -296,16 +349,22 @@ export default function BiometricDevices() {
 
                         {/* Action Buttons */}
                         <div className="biodevice-card-actions">
-                            <button className="biodevice-action-btn biodevice-action-btn--test">
+                            <button
+                                className="biodevice-action-btn biodevice-action-btn--test"
+                                onClick={() => handleTestConnection(device.id)}
+                            >
                                 <CheckCircle2 size={16} />
                                 Test
                             </button>
-                            <button className="biodevice-action-btn biodevice-action-btn--schedule">
-                                <Clock size={16} />
-                                Schedule
+                            <button
+                                className="biodevice-action-btn biodevice-action-btn--schedule"
+                                onClick={() => handleSyncLogs(device.id)}
+                            >
+                                <RefreshCw size={16} />
+                                Sync
                             </button>
                             <button className="biodevice-action-btn biodevice-action-btn--employee">
-                                Employee
+                                Details
                             </button>
                         </div>
                     </div>
@@ -363,6 +422,82 @@ export default function BiometricDevices() {
                             </div>
 
                             <div className="biodevice-form-group">
+                                <label className="biodevice-form-label">Serial Number / Machine ID</label>
+                                <input
+                                    type="text"
+                                    placeholder="Enter unique device ID"
+                                    className="biodevice-form-input"
+                                    value={newDevice.serial_number}
+                                    onChange={(e) => setNewDevice({ ...newDevice, serial_number: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="biodevice-form-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="biodevice-form-group">
+                                    <label className="biodevice-form-label">Connection Method</label>
+                                    <select
+                                        className="biodevice-form-select"
+                                        value={newDevice.connection_method}
+                                        onChange={(e) => setNewDevice({ ...newDevice, connection_method: e.target.value })}
+                                    >
+                                        <option value="ip">Local Network (IP)</option>
+                                        <option value="api">Cloud API</option>
+                                        <option value="excel">Excel Upload</option>
+                                        <option value="manual">Manual Entry</option>
+                                    </select>
+                                </div>
+                                <div className="biodevice-form-group">
+                                    <label className="biodevice-form-label">Sync Mode</label>
+                                    <select
+                                        className="biodevice-form-select"
+                                        value={newDevice.sync_mode}
+                                        onChange={(e) => setNewDevice({ ...newDevice, sync_mode: e.target.value })}
+                                    >
+                                        <option value="manual">Manual Sync Only</option>
+                                        <option value="auto">Auto Sync (Daily)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {newDevice.connection_method === 'ip' && (
+                                <div className="biodevice-form-group-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                                    <div className="biodevice-form-group">
+                                        <label className="biodevice-form-label">IP Address</label>
+                                        <input
+                                            type="text"
+                                            placeholder="192.168.1.100"
+                                            className="biodevice-form-input"
+                                            value={newDevice.ip_address}
+                                            onChange={(e) => setNewDevice({ ...newDevice, ip_address: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="biodevice-form-group">
+                                        <label className="biodevice-form-label">Port</label>
+                                        <input
+                                            type="number"
+                                            placeholder="4370"
+                                            className="biodevice-form-input"
+                                            value={newDevice.port}
+                                            onChange={(e) => setNewDevice({ ...newDevice, port: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {newDevice.connection_method === 'api' && (
+                                <div className="biodevice-form-group">
+                                    <label className="biodevice-form-label">API Endpoint URL</label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://api.devicecloud.com/v1/"
+                                        className="biodevice-form-input"
+                                        value={newDevice.api_url}
+                                        onChange={(e) => setNewDevice({ ...newDevice, api_url: e.target.value })}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="biodevice-form-group">
                                 <label className="biodevice-form-label">Company</label>
                                 <select
                                     className="biodevice-form-select"
@@ -371,6 +506,19 @@ export default function BiometricDevices() {
                                 >
                                     <option value="Adstradigital">Adstradigital</option>
                                     <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div className="biodevice-form-group">
+                                <label className="biodevice-form-label">Device Direction</label>
+                                <select
+                                    className="biodevice-form-select"
+                                    value={newDevice.device_direction}
+                                    onChange={(e) => setNewDevice({ ...newDevice, device_direction: e.target.value })}
+                                >
+                                    <option value="both">System Direction (In/Out)</option>
+                                    <option value="in">In Device</option>
+                                    <option value="out">Out Device</option>
                                 </select>
                             </div>
                         </div>
