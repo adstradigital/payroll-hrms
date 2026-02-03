@@ -22,7 +22,11 @@ class AttendancePolicyListSerializer(serializers.ModelSerializer):
             'name', 'policy_type', 'working_days', 'work_start_time',
             'work_end_time', 'working_hours', 'is_active', 'effective_from',
             'enable_shift_system', 'track_break_time', 'allow_flexible_hours',
-            'grace_period_minutes', 'overtime_after_minutes'
+            'grace_period_minutes', 'overtime_after_minutes',
+            'overtime_applicable', 'overtime_rate_multiplier',
+            'weekend_overtime_multiplier', 'holiday_overtime_multiplier',
+            'max_overtime_per_day', 'max_overtime_per_week',
+            'require_overtime_pre_approval', 'min_overtime_minutes'
         ]
         read_only_fields = ['id']
 

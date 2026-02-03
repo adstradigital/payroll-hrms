@@ -342,6 +342,19 @@ export default function ClockAttendanceWidget() {
                                 <span className={`work-timer-value ${isOnBreak ? 'text-warning' : ''}`}>
                                     {isOnBreak ? 'ON BREAK' : formatWorkTime(elapsedWorkTime)}
                                 </span>
+                                {dashboardData?.today?.shift && (
+                                    <div className="shift-info-tiny" style={{
+                                        fontSize: '0.75rem',
+                                        color: 'var(--text-secondary)',
+                                        background: 'var(--bg-tertiary)',
+                                        padding: '0.2rem 0.5rem',
+                                        borderRadius: '4px',
+                                        marginTop: '0.5rem',
+                                        display: 'inline-block'
+                                    }}>
+                                        {dashboardData.today.shift.name} ({dashboardData.today.shift.start_time} - {dashboardData.today.shift.end_time})
+                                    </div>
+                                )}
 
                                 {showConfirmOut ? (
                                     <div className="confirm-out-box">

@@ -5,6 +5,7 @@ import {
     Clock, AlertTriangle, CheckCircle, Settings, Save,
     Calendar, UserCheck, FileText, Bell, Shield, Timer
 } from 'lucide-react';
+import OverTimeSettings from '../OverTimeRule/OverTimeSettings';
 import './AttendanceSettings.css';
 
 export default function AttendanceSettings() {
@@ -53,17 +54,7 @@ export default function AttendanceSettings() {
         notifyOnApproval: true
     });
 
-    // Overtime Settings
-    const [overtimeSettings, setOvertimeSettings] = useState({
-        enableOvertime: true,
-        minOvertimeMinutes: 30,
-        requirePreApproval: false,
-        maxOvertimePerDay: 4,
-        maxOvertimePerWeek: 20,
-        overtimeMultiplier: 1.5,
-        weekendMultiplier: 2.0,
-        holidayMultiplier: 2.5
-    });
+    // Overtime Settings is now managed by the OverTimeSettings component
 
     const [notification, setNotification] = useState(null);
     const [activeSection, setActiveSection] = useState('late');
@@ -539,124 +530,8 @@ export default function AttendanceSettings() {
 
             {/* Overtime Section */}
             {activeSection === 'overtime' && (
-                <div className="att-card">
-                    <div className="att-card-header">
-                        <Calendar size={18} />
-                        <h3>Overtime Configuration</h3>
-                    </div>
-                    <div className="att-card-body">
-                        <div className="att-toggle-row">
-                            <div className="att-toggle-item wide">
-                                <div className="toggle-info">
-                                    <span className="toggle-label">Enable Overtime Tracking</span>
-                                    <span className="toggle-desc">Track and calculate overtime hours</span>
-                                </div>
-                                <label className="toggle-switch">
-                                    <input
-                                        type="checkbox"
-                                        checked={overtimeSettings.enableOvertime}
-                                        onChange={(e) => setOvertimeSettings({ ...overtimeSettings, enableOvertime: e.target.checked })}
-                                    />
-                                    <span className="toggle-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-
-                        {overtimeSettings.enableOvertime && (
-                            <>
-                                <div className="att-field-row">
-                                    <div className="att-field">
-                                        <label>Min Overtime (minutes)</label>
-                                        <input
-                                            type="number"
-                                            value={overtimeSettings.minOvertimeMinutes}
-                                            onChange={(e) => setOvertimeSettings({ ...overtimeSettings, minOvertimeMinutes: parseInt(e.target.value) })}
-                                            className="att-input"
-                                            min="0"
-                                        />
-                                        <span className="field-hint">Minimum to count as OT</span>
-                                    </div>
-                                    <div className="att-field">
-                                        <label>Max OT Per Day (hours)</label>
-                                        <input
-                                            type="number"
-                                            value={overtimeSettings.maxOvertimePerDay}
-                                            onChange={(e) => setOvertimeSettings({ ...overtimeSettings, maxOvertimePerDay: parseInt(e.target.value) })}
-                                            className="att-input"
-                                            min="0"
-                                        />
-                                    </div>
-                                    <div className="att-field">
-                                        <label>Max OT Per Week (hours)</label>
-                                        <input
-                                            type="number"
-                                            value={overtimeSettings.maxOvertimePerWeek}
-                                            onChange={(e) => setOvertimeSettings({ ...overtimeSettings, maxOvertimePerWeek: parseInt(e.target.value) })}
-                                            className="att-input"
-                                            min="0"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="att-field-row">
-                                    <div className="att-field">
-                                        <label>Regular OT Multiplier</label>
-                                        <input
-                                            type="number"
-                                            value={overtimeSettings.overtimeMultiplier}
-                                            onChange={(e) => setOvertimeSettings({ ...overtimeSettings, overtimeMultiplier: parseFloat(e.target.value) })}
-                                            className="att-input"
-                                            step="0.1"
-                                            min="1"
-                                        />
-                                        <span className="field-hint">e.g., 1.5x regular rate</span>
-                                    </div>
-                                    <div className="att-field">
-                                        <label>Weekend Multiplier</label>
-                                        <input
-                                            type="number"
-                                            value={overtimeSettings.weekendMultiplier}
-                                            onChange={(e) => setOvertimeSettings({ ...overtimeSettings, weekendMultiplier: parseFloat(e.target.value) })}
-                                            className="att-input"
-                                            step="0.1"
-                                            min="1"
-                                        />
-                                    </div>
-                                    <div className="att-field">
-                                        <label>Holiday Multiplier</label>
-                                        <input
-                                            type="number"
-                                            value={overtimeSettings.holidayMultiplier}
-                                            onChange={(e) => setOvertimeSettings({ ...overtimeSettings, holidayMultiplier: parseFloat(e.target.value) })}
-                                            className="att-input"
-                                            step="0.1"
-                                            min="1"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="att-toggle-row">
-                                    <div className="att-toggle-item">
-                                        <span>Require Pre-Approval</span>
-                                        <label className="toggle-switch">
-                                            <input
-                                                type="checkbox"
-                                                checked={overtimeSettings.requirePreApproval}
-                                                onChange={(e) => setOvertimeSettings({ ...overtimeSettings, requirePreApproval: e.target.checked })}
-                                            />
-                                            <span className="toggle-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                    <div className="att-card-footer">
-                        <button className="att-btn-primary" onClick={() => handleSave('Overtime')}>
-                            <Save size={16} />
-                            Save Changes
-                        </button>
-                    </div>
+                <div className="animate-fade-in">
+                    <OverTimeSettings standalone={false} />
                 </div>
             )}
         </div>

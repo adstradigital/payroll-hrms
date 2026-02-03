@@ -15,6 +15,8 @@ import LeaveSettings from './LeaveSettings/LeaveSettings';
 import WorkShiftSettings from './WorkShiftSettings/WorkShiftSettings';
 import AttendanceSettings from './AttendanceSettings/AttendanceSettings';
 import HolidaySettings from './HolidaySettings/HolidaySettings';
+import WorkSchedulesSettings from './WorkSchedulesSettings/WorkSchedulesSettings';
+import OverTimeSettings from './OverTimeRule/OverTimeSettings';
 
 import './Settings.css';
 
@@ -145,6 +147,10 @@ export default function Settings() {
                 return <WorkShiftSettings />;
             case 'attendance-settings':
                 return <AttendanceSettings />;
+            case 'work-schedules':
+                return <WorkSchedulesSettings />;
+            case 'overtime-rules':
+                return <OverTimeSettings />;
             case 'holidays':
                 return <HolidaySettings />;
             default:

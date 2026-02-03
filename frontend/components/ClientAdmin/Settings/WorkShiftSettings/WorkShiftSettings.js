@@ -54,7 +54,16 @@ export default function WorkShiftSettings() {
                     graceMinutes: activePolicy.grace_period_minutes || 15,
                     overtimeAfterMinutes: activePolicy.overtime_after_minutes || 480,
                     autoAssignShift: true,
-                    trackBreakTime: activePolicy.track_break_time !== undefined ? activePolicy.track_break_time : true
+                    trackBreakTime: activePolicy.track_break_time !== undefined ? activePolicy.track_break_time : true,
+                    workingDays: {
+                        'Mon': activePolicy.monday,
+                        'Tue': activePolicy.tuesday,
+                        'Wed': activePolicy.wednesday,
+                        'Thu': activePolicy.thursday,
+                        'Fri': activePolicy.friday,
+                        'Sat': activePolicy.saturday,
+                        'Sun': activePolicy.sunday
+                    }
                 });
             }
         } catch (error) {
@@ -314,13 +323,29 @@ export default function WorkShiftSettings() {
                     <h2>Work Shift Settings</h2>
                     <p>Configure work hours and shift schedules for your organization</p>
                 </div>
-                {(!settings.enableShiftSystem && shifts.length === 0) || settings.enableShiftSystem ? (
+                {settings.enableShiftSystem && (
                     <button className="shift-btn-primary" onClick={handleAddShift}>
                         <Plus size={18} />
                         Add New Shift
                     </button>
-                ) : null}
+                )}
             </div>
+
+            {/* Shift System Status Alert */}
+            {!settings.enableShiftSystem && (
+                <div className="shift-card" style={{ borderLeft: '4px solid var(--brand-primary)', background: 'var(--brand-primary-light)' }}>
+                    <div className="shift-card-body" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <Info size={24} color="var(--brand-primary)" />
+                        <div>
+                            <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--brand-primary)' }}>Multi-Shift System is Disabled</h4>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                The organization-wide policy currently allows only one default work shift.
+                                To enable multiple shifts, visit <strong style={{ color: 'var(--brand-primary)' }}>Work Schedules</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* General Configuration */}
             <div className="shift-card">
@@ -473,13 +498,15 @@ export default function WorkShiftSettings() {
                                         >
                                             <Edit2 size={14} />
                                         </button>
-                                        <button
-                                            className="shift-action-btn delete"
-                                            onClick={() => handleDeleteShift(shift.id)}
-                                            title="Delete Shift"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        {settings.enableShiftSystem && !shift.isDefault && (
+                                            <button
+                                                className="shift-action-btn delete"
+                                                onClick={() => handleDeleteShift(shift.id)}
+                                                title="Delete Shift"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -493,6 +520,7 @@ export default function WorkShiftSettings() {
                 showModal && (
                     <ShiftModal
                         shift={editingShift}
+                        policy={settings} // Pass policy settings
                         onSave={handleSaveShift}
                         onClose={() => setShowModal(false)}
                         saving={saving}
@@ -504,7 +532,7 @@ export default function WorkShiftSettings() {
 }
 
 // Shift Modal Component
-function ShiftModal({ shift, onSave, onClose, saving }) {
+function ShiftModal({ shift, policy, onSave, onClose, saving }) {
     const [formData, setFormData] = useState({
         name: shift?.name || '',
         code: shift?.code || '',
@@ -611,7 +639,11 @@ function ShiftModal({ shift, onSave, onClose, saving }) {
                                     className="shift-input"
                                     min="0"
                                     max="60"
+                                    placeholder={`Company: ${policy.graceMinutes}m`}
                                 />
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                    Default: {policy.graceMinutes}m (leave empty to use company default)
+                                </span>
                             </div>
                             <div className="shift-field">
                                 <label>Early Going Grace (min)</label>
@@ -678,17 +710,28 @@ function ShiftModal({ shift, onSave, onClose, saving }) {
                         <div className="shift-field">
                             <label>Working Days</label>
                             <div className="days-selector">
-                                {daysOfWeek.map(day => (
-                                    <button
-                                        key={day}
-                                        type="button"
-                                        className={`day-btn ${formData.workingDays.includes(day) ? 'active' : ''}`}
-                                        onClick={() => toggleDay(day)}
-                                    >
-                                        {day}
-                                    </button>
-                                ))}
+                                {daysOfWeek.map(day => {
+                                    const isPolicyOff = policy.workingDays && policy.workingDays[day] === false;
+                                    return (
+                                        <button
+                                            key={day}
+                                            type="button"
+                                            className={`day-btn ${formData.workingDays.includes(day) ? 'active' : ''} ${isPolicyOff ? 'policy-off' : ''}`}
+                                            onClick={() => !isPolicyOff && toggleDay(day)}
+                                            title={isPolicyOff ? `${day} is marked as OFF in company schedule` : ''}
+                                            disabled={isPolicyOff}
+                                            style={isPolicyOff ? { opacity: 0.5, cursor: 'not-allowed', textDecoration: 'line-through' } : {}}
+                                        >
+                                            {day}
+                                        </button>
+                                    );
+                                })}
                             </div>
+                            {Object.values(policy.workingDays || {}).includes(false) && (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                                    Note: You cannot enable days that are disabled in the global <strong>Work Schedule</strong>.
+                                </span>
+                            )}
                         </div>
 
                         <div className="shift-field-row">

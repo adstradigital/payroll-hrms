@@ -83,12 +83,17 @@ export default function MyAttendance() {
                         check_in: dashboardData.today?.check_in ? new Date(dashboardData.today.check_in) : null,
                         check_out: dashboardData.today?.check_out ? new Date(dashboardData.today.check_out) : null,
                         status: dashboardData.today?.status, // 'PRESENT', 'LATE', etc.
-                        is_on_break: dashboardData.today?.is_on_break || false
+                        is_on_break: dashboardData.today?.is_on_break || false,
+                        break_hours: dashboardData.today?.break_hours || 0,
+                        is_late: dashboardData.today?.is_late || false,
+                        is_early_departure: dashboardData.today?.is_early_departure || false,
+                        shift: dashboardData.today?.shift || null
                     },
                     stats: {
                         present: dashboardData.stats?.present || 0,
                         absent: dashboardData.stats?.absent || 0,
                         late: dashboardData.stats?.late || 0,
+                        early_going: dashboardData.stats?.early_going || 0,
                         leaves: dashboardData.stats?.on_leave || 0,
                         half_day: dashboardData.stats?.half_day || 0,
                         total_hours: dashboardData.stats?.total_hours || 0,
@@ -142,12 +147,13 @@ export default function MyAttendance() {
         if (totalDays === 0) return 100; // No data yet, assume perfect
 
         // Calculate effective present days
-        // Full present = 1 point, Half day = 0.5 points, Late reduces by 0.1 each
+        // Full present = 1 point, Half day = 0.5 points, Late/Early reduces by 0.1 each
         const presentDays = stats.present || 0;
         const halfDays = (stats.half_day || 0) * 0.5;
-        const latePenalty = (stats.late || 0) * 0.1; // 10% penalty per late
+        const latePenalty = (stats.late || 0) * 0.1;
+        const earlyGoingPenalty = (stats.early_going || 0) * 0.1;
 
-        const effectivePresent = presentDays + halfDays - latePenalty;
+        const effectivePresent = presentDays + halfDays - latePenalty - earlyGoingPenalty;
         const score = Math.round((effectivePresent / totalDays) * 100);
 
         return Math.max(0, Math.min(100, score));
@@ -409,6 +415,21 @@ export default function MyAttendance() {
                                     <div className="clock-huge">
                                         {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </div>
+                                    {data.today.shift && (
+                                        <div className="shift-badge" style={{
+                                            background: 'rgba(255,255,255,0.1)',
+                                            padding: '0.4rem 0.8rem',
+                                            borderRadius: '6px',
+                                            fontSize: '0.8rem',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            marginTop: '0.5rem'
+                                        }}>
+                                            <Clock size={14} />
+                                            <span>Shift: {data.today.shift.name} ({data.today.shift.start_time} - {data.today.shift.end_time})</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {!data.today.check_in ? (
@@ -416,7 +437,7 @@ export default function MyAttendance() {
                                         <LogIn size={18} /> Clock In Now
                                     </button>
                                 ) : !data.today.check_out ? (
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         <button className="btn btn-outline-white" onClick={handleClockOutClick}>
                                             <LogOut size={18} /> Clock Out
                                         </button>
@@ -430,6 +451,11 @@ export default function MyAttendance() {
                                                     <CheckCircle2 size={18} /> End Break
                                                 </button>
                                             )
+                                        )}
+                                        {data.today.shift && !data.today.check_out && (
+                                            <div style={{ fontSize: '0.75rem', opacity: 0.8, width: '100%', marginTop: '0.25rem' }}>
+                                                Target: {data.today.shift.end_time}
+                                            </div>
                                         )}
                                     </div>
                                 ) : (
@@ -484,9 +510,12 @@ export default function MyAttendance() {
                                 <div className="stat-icon" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>
                                     <Clock size={20} />
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{data.stats.late}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Late</div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{data.stats.late}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{data.stats.early_going || 0} EG</div>
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Late / Early</div>
                                 </div>
                             </div>
                             {/* Leaves Taken - Using real data */}
@@ -504,9 +533,12 @@ export default function MyAttendance() {
                                 <div className="stat-icon" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                                     <History size={20} />
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{Number(data.stats.total_hours).toFixed(1)}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Hours</div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{Number(data.stats.total_hours).toFixed(1)}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{data.today.break_hours?.toFixed(1) || 0}h Break</div>
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total / Break Hours</div>
                                 </div>
                             </div>
                         </div>
