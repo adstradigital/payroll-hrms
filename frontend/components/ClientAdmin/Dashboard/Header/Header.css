@@ -7,6 +7,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 32px;
+    gap: 24px;
+    /* Added gap to prevent sections from touching */
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -23,25 +25,27 @@
 }
 
 /* Three Main Sections */
-.header__left,
-.header__right {
-    flex: 0 0 auto;
-    width: 300px;
-    /* Force consistent widths to help center the middle section */
+.header__left {
+    flex: 1;
+    min-width: 0;
 }
 
 .header__center {
-    flex: 1;
+    flex: 1.5;
     display: flex;
     justify-content: center;
     align-items: center;
+    padding-right: 80px;
+    /* Shift search bar slightly left of center */
 }
 
 .header__right {
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
+    min-width: 0;
 }
 
 /* Header Left: Brand/Stack */
@@ -87,7 +91,9 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
     padding: 0 16px;
-    width: 250px;
+    width: 100%;
+    max-width: 280px;
+    /* Use max-width for responsiveness */
     height: 34px;
     transition: all 0.2s ease;
 }
@@ -98,7 +104,7 @@
 }
 
 .header__search:focus-within {
-    width: 300px;
+    max-width: 320px;
     background: rgba(255, 255, 255, 0.08);
     border-color: var(--brand-primary);
 }
@@ -250,9 +256,9 @@
 }
 
 .header__company-name {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    max-width: 100px;
+    max-width: 150px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

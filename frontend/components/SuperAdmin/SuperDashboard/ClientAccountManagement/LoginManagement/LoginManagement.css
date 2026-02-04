@@ -233,15 +233,65 @@
     color: #71717a;
 }
 
+.user-sub-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.user-id-tag {
+    font-size: 0.7rem;
+    color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.1);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.avatar-superuser {
+    background-color: #f59e0b !important;
+    border-color: #fbbf24 !important;
+    color: black !important;
+}
+
 /* Org & Role */
+.org-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
 .org-name-text {
     font-size: 0.875rem;
+    font-weight: 500;
     color: #d4d4d8;
 }
 
-.user-role-text {
-    font-size: 0.75rem;
-    color: #52525b;
+.user-role-badge {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.role-superuser {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.role-admin {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.role-employee {
+    background-color: rgba(39, 39, 42, 0.5);
+    color: #a1a1aa;
+    border: 1px solid #27272a;
 }
 
 /* Details & Info */

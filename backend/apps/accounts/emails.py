@@ -41,28 +41,38 @@ The Nexus HRMS Team
     <!DOCTYPE html>
     <html>
     <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }}
-            .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
-            .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center; }}
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 10px; }}
+            .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+            .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px 20px; text-align: center; }}
             .header h1 {{ color: #f59e0b; margin: 0; font-size: 24px; }}
-            .content {{ padding: 30px; color: #333; }}
+            .content {{ padding: 30px 20px; color: #333; }}
             .content h2 {{ color: #1a1a2e; margin-top: 0; }}
             .status-badge {{ display: inline-block; background: #fef3c7; color: #92400e; padding: 8px 16px; border-radius: 20px; font-weight: 600; margin: 15px 0; }}
             .steps {{ background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; }}
             .step {{ display: flex; align-items: center; margin: 10px 0; }}
-            .step-number {{ background: #f59e0b; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-weight: bold; }}
+            .step-number {{ background: #f59e0b; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-weight: bold; flex-shrink: 0; }}
             .footer {{ background: #f8fafc; padding: 20px; text-align: center; color: #666; font-size: 12px; }}
+            
+            @media screen and (max-width: 480px) {{
+                .header {{ padding: 20px 15px; }}
+                .content {{ padding: 20px 15px; }}
+                .header h1 {{ font-size: 20px; }}
+                .content h2 {{ font-size: 18px; }}
+                .step {{ display: block; text-align: left; }}
+                .step-number {{ margin-bottom: 8px; }}
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>🏢 Nexus HRMS</h1>
+                <h1>🏢 HRMS PAYROLL</h1>
             </div>
             <div class="content">
                 <h2>Welcome, {admin_name}!</h2>
-                <p>Thank you for registering <strong>{organization_name}</strong> with Nexus HRMS!</p>
+                <p>Thank you for registering <strong>{organization_name}</strong> with HRMS PAYROLL!</p>
                 
                 <div class="status-badge">⏳ Pending Approval</div>
                 
@@ -149,23 +159,35 @@ The Nexus HRMS Team
     <!DOCTYPE html>
     <html>
     <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }}
-            .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
-            .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center; }}
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 10px; }}
+            .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+            .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px 20px; text-align: center; }}
             .header h1 {{ color: #f59e0b; margin: 0; font-size: 24px; }}
-            .content {{ padding: 30px; color: #333; }}
+            .content {{ padding: 30px 20px; color: #333; }}
             .content h2 {{ color: #1a1a2e; margin-top: 0; }}
             .approved-badge {{ display: inline-block; background: #d1fae5; color: #065f46; padding: 8px 16px; border-radius: 20px; font-weight: 600; margin: 15px 0; }}
-            .credentials-box {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 25px; border-radius: 12px; margin: 20px 0; color: white; }}
+            .credentials-box {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 25px 20px; border-radius: 12px; margin: 20px 0; color: white; }}
             .credentials-box h3 {{ color: #f59e0b; margin-top: 0; }}
             .credential-row {{ display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }}
             .credential-row:last-child {{ border-bottom: none; }}
-            .credential-label {{ color: #94a3b8; }}
-            .credential-value {{ font-family: monospace; font-size: 16px; color: #f59e0b; font-weight: bold; }}
+            .credential-label {{ color: #94a3b8; margin-right: 10px; }}
+            .credential-value {{ font-family: monospace; font-size: 15px; color: #f59e0b; font-weight: bold; word-break: break-all; }}
             .login-btn {{ display: inline-block; background: #f59e0b; color: #1a1a2e; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 20px 0; }}
             .warning-box {{ background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; }}
             .footer {{ background: #f8fafc; padding: 20px; text-align: center; color: #666; font-size: 12px; }}
+
+            @media screen and (max-width: 480px) {{
+                .header {{ padding: 20px 15px; }}
+                .content {{ padding: 20px 15px; }}
+                .header h1 {{ font-size: 20px; }}
+                .content h2 {{ font-size: 18px; }}
+                .credential-row {{ display: block; padding: 8px 0; }}
+                .credential-label {{ display: block; margin-bottom: 4px; font-size: 12px; }}
+                .credential-value {{ font-size: 14px; }}
+                .login-btn {{ width: 100%; box-sizing: border-box; text-align: center; padding: 14px 10px; }}
+            }}
         </style>
     </head>
     <body>
@@ -258,15 +280,22 @@ The Nexus HRMS Team
     <!DOCTYPE html>
     <html>
     <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }}
-            .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
-            .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center; }}
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 10px; }}
+            .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+            .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px 20px; text-align: center; }}
             .header h1 {{ color: #f59e0b; margin: 0; font-size: 24px; }}
-            .content {{ padding: 30px; color: #333; }}
+            .content {{ padding: 30px 20px; color: #333; }}
             .rejected-badge {{ display: inline-block; background: #fee2e2; color: #991b1b; padding: 8px 16px; border-radius: 20px; font-weight: 600; margin: 15px 0; }}
             .reason-box {{ background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; }}
             .footer {{ background: #f8fafc; padding: 20px; text-align: center; color: #666; font-size: 12px; }}
+
+            @media screen and (max-width: 480px) {{
+                .header {{ padding: 20px 15px; }}
+                .content {{ padding: 20px 15px; }}
+                .header h1 {{ font-size: 20px; }}
+            }}
         </style>
     </head>
     <body>

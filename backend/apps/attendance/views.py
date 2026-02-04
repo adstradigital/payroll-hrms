@@ -51,6 +51,7 @@ from .serializers import (
     AttendancePunchSerializer
 )
 from apps.accounts.models import Employee
+from django.apps import apps
 
 
 # ================== ATTENDANCE POLICY ==================
@@ -1554,6 +1555,72 @@ def generate_monthly_summary(request):
                 m = int(avg_check_in % 60)
                 avg_in_str = f"{h:02d}:{m:02d}"
 
+            # 5. Leave Balances
+            LeaveBalance = apps.get_model('leave', 'LeaveBalance')
+            leave_balances = LeaveBalance.objects.filter(
+                employee=employee,
+                year=year
+            ).select_related('leave_type')
+            
+            balances_data = []
+            for lb in leave_balances:
+                balances_data.append({
+                    'type': lb.leave_type.name,
+                    'total': lb.total_leaves,
+                    'used': lb.leaves_taken,
+                    'available': lb.available()
+                })
+
+            # 6. Payroll Estimate (Simplified for dashboard)
+            EmployeeSalary = apps.get_model('payroll', 'EmployeeSalary')
+            current_salary = EmployeeSalary.objects.filter(
+                employee=employee,
+                is_current=True
+            ).prefetch_related('components', 'components__component').first()
+            
+            payroll_estimate = {
+                'gross': 0,
+                'deductions': 0,
+                'net': 0,
+                'lop_deduction': 0
+            }
+            
+            if current_salary:
+                from decimal import Decimal
+                # Calculate working days in month
+                _, days_in_m = monthrange(year, month)
+                
+                # Simple LOP calculation: absents + half_days*0.5
+                lop_days = Decimal(stats['absent']) + (Decimal(stats['half_day']) * Decimal('0.5'))
+                working_days = Decimal(days_in_m) # Usually calendar days or business days? Let's use 30 as default if policy not found
+                
+                # Get Gross Potential
+                gross_potential = current_salary.basic_salary
+                fixed_deductions = Decimal(0)
+                
+                for comp in current_salary.components.all():
+                    if comp.component.component_type == 'earning':
+                        gross_potential += comp.amount
+                    else:
+                        # Fixed deductions (PF, etc.) - simplified
+                        fixed_deductions += comp.amount
+                
+                # Calculate proration
+                if working_days > 0:
+                    lop_deduction = (gross_potential / working_days) * lop_days
+                else:
+                    lop_deduction = Decimal(0)
+                
+                estimated_gross = gross_potential - lop_deduction
+                estimated_net = estimated_gross - fixed_deductions
+                
+                payroll_estimate = {
+                    'gross': float(estimated_gross.quantize(Decimal('0.01'))),
+                    'deductions': float((fixed_deductions + lop_deduction).quantize(Decimal('0.01'))),
+                    'net': float(estimated_net.quantize(Decimal('0.01'))),
+                    'lop_deduction': float(lop_deduction.quantize(Decimal('0.01')))
+                }
+
             return Response({
                 'employee': {
                     'id': str(employee.id),
@@ -1563,7 +1630,9 @@ def generate_monthly_summary(request):
                 'stats': stats,
                 'today': today_status,
                 'recent_logs': logs_serializer.data,
-                'averages': {'check_in': avg_in_str}
+                'averages': {'check_in': avg_in_str},
+                'balances': balances_data,
+                'payroll': payroll_estimate
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
