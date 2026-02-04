@@ -138,19 +138,19 @@ export default function Designations() {
     // --- Filter & Sort ---
     const filteredData = useMemo(() => {
         let data = designations.filter(d =>
-            d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            d.code.toLowerCase().includes(searchTerm.toLowerCase())
+            (d?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (d?.code || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
         return data.sort((a, b) => {
-            if (sortBy === 'level') return a.level - b.level; // Ascending (1 is top)
-            return a.name.localeCompare(b.name);
+            if (sortBy === 'level') return (a?.level || 5) - (b?.level || 5);
+            return (a?.name || '').localeCompare(b?.name || '');
         });
     }, [designations, searchTerm, sortBy]);
 
     // --- Actions ---
     const handleExport = () => {
         const header = "ID,Title,Code,Level,Staff Count,Description\n";
-        const rows = filteredData.map(d => `${d.id},"${d.name}","${d.code}",${d.level},${d.employee_count},"${d.description}"`).join("\n");
+        const rows = filteredData.map(d => `${d?.id},"${d?.name || ''}","${d?.code || ''}",${d?.level || 5},${d?.employee_count || 0},"${d?.description || ''}"`).join("\n");
         const blob = new Blob([header + rows], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');

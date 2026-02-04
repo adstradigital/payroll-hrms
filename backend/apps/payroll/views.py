@@ -1,8 +1,10 @@
 from django.db import models
 from django.http import HttpResponse
 from rest_framework import viewsets, filters, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count, Avg, F, Value
 from django.db.models.functions import Coalesce
@@ -32,79 +34,192 @@ from .serializers import (
 )
 
 
-class SalaryComponentViewSet(viewsets.ModelViewSet):
-    queryset = SalaryComponent.objects.select_related('company', 'percentage_of').all()
-    serializer_class = SalaryComponentSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['company', 'component_type', 'is_statutory', 'is_active']
-    search_fields = ['name', 'code']
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-        if hasattr(user, 'employee_profile') and user.employee_profile:
-            return queryset.filter(company=user.employee_profile.company)
-        elif hasattr(user, 'organization') and user.organization:
-            return queryset.filter(company=user.organization)
-        return queryset.none()
-
-    def perform_create(self, serializer):
-        user = self.request.user
-        company = None
-        if hasattr(user, 'employee_profile') and user.employee_profile:
-            company = user.employee_profile.company
-        elif hasattr(user, 'organization') and user.organization:
-            company = user.organization
-            
-        # Handle percentage_of mapping if code is provided instead of ID
-        percentage_of_data = self.request.data.get('percentage_of')
-        percentage_of_obj = None
-        if percentage_of_data and str(percentage_of_data) != 'BASIC' and not str(percentage_of_data).isdigit():
-            try:
-                percentage_of_obj = SalaryComponent.objects.filter(company=company, code=percentage_of_data).first()
-            except:
-                pass
-        
-        serializer.save(company=company, percentage_of=percentage_of_obj)
-
-
-
-class SalaryStructureViewSet(viewsets.ModelViewSet):
-    queryset = SalaryStructure.objects.select_related('company').prefetch_related('components__component').all()
-    serializer_class = SalaryStructureSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['company', 'is_active']
-    search_fields = ['name', 'code']
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-        if hasattr(user, 'employee_profile') and user.employee_profile:
-            return queryset.filter(company=user.employee_profile.company)
-        elif hasattr(user, 'organization') and user.organization:
-            return queryset.filter(company=user.organization)
-        return queryset.none()
-    
-    def perform_create(self, serializer):
-        from django.db import IntegrityError
-        from rest_framework.exceptions import ValidationError
-
-        user = self.request.user
-        company = None
-        if hasattr(user, 'employee_profile') and user.employee_profile:
-            company = user.employee_profile.company
-        elif hasattr(user, 'organization') and user.organization:
-            company = user.organization
-            
+def safe_api(fn):
+    def wrapper(*args, **kwargs):
         try:
-            serializer.save(company=company)
-        except IntegrityError:
-            raise ValidationError({"name": ["A salary structure with this name already exists."]})
+            return fn(*args, **kwargs)
+        except Exception as e:
+            logger.exception(e)
+            if hasattr(e, 'detail'):
+                return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    return wrapper
 
-    @action(detail=True, methods=['post'])
-    def add_component(self, request, pk=None):
-        """Add a component to a salary structure"""
-        structure = self.get_object()
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def salary_component_list(request):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        if request.method == 'GET':
+            queryset = SalaryComponent.objects.filter(company=company).select_related('company', 'percentage_of')
+            
+            # Filtering
+            component_type = request.query_params.get('component_type')
+            if component_type:
+                queryset = queryset.filter(component_type=component_type)
+            
+            is_statutory = request.query_params.get('is_statutory')
+            if is_statutory is not None:
+                queryset = queryset.filter(is_statutory=is_statutory.lower() == 'true')
+                
+            is_active = request.query_params.get('is_active')
+            if is_active is not None:
+                queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
+            # Search
+            search = request.query_params.get('search')
+            if search:
+                queryset = queryset.filter(models.Q(name__icontains=search) | models.Q(code__icontains=search))
+
+            serializer = SalaryComponentSerializer(queryset, many=True)
+            return Response(serializer.data)
+
+        elif request.method == 'POST':
+            serializer = SalaryComponentSerializer(data=request.data)
+            if serializer.is_valid():
+                # Handle percentage_of mapping if code is provided instead of ID
+                percentage_of_data = request.data.get('percentage_of')
+                percentage_of_obj = None
+                if percentage_of_data and str(percentage_of_data) != 'BASIC' and not str(percentage_of_data).isdigit():
+                    percentage_of_obj = SalaryComponent.objects.filter(company=company, code=percentage_of_data).first()
+                
+                serializer.save(company=company, percentage_of=percentage_of_obj)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return logic()
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def salary_component_detail(request, pk):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        instance = get_object_or_404(SalaryComponent, pk=pk, company=company)
+
+        if request.method == 'GET':
+            serializer = SalaryComponentSerializer(instance)
+            return Response(serializer.data)
+
+        elif request.method in ['PUT', 'PATCH']:
+            partial = request.method == 'PATCH'
+            serializer = SalaryComponentSerializer(instance, data=request.data, partial=partial)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'DELETE':
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    return logic()
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def salary_structure_list(request):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        if request.method == 'GET':
+            queryset = SalaryStructure.objects.filter(company=company).prefetch_related('components__component')
+            
+            is_active = request.query_params.get('is_active')
+            if is_active is not None:
+                queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
+            search = request.query_params.get('search')
+            if search:
+                queryset = queryset.filter(models.Q(name__icontains=search) | models.Q(code__icontains=search))
+
+            serializer = SalaryStructureSerializer(queryset, many=True)
+            return Response(serializer.data)
+
+        elif request.method == 'POST':
+            serializer = SalaryStructureSerializer(data=request.data)
+            if serializer.is_valid():
+                try:
+                    serializer.save(company=company)
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                except Exception as e:
+                    return Response({"name": ["A salary structure with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return logic()
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def salary_structure_detail(request, pk):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        instance = get_object_or_404(SalaryStructure, pk=pk, company=company)
+
+        if request.method == 'GET':
+            serializer = SalaryStructureSerializer(instance)
+            return Response(serializer.data)
+
+        elif request.method in ['PUT', 'PATCH']:
+            partial = request.method == 'PATCH'
+            serializer = SalaryStructureSerializer(instance, data=request.data, partial=partial)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'DELETE':
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    return logic()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def salary_structure_add_component(request, pk):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        structure = get_object_or_404(SalaryStructure, pk=pk, company=company)
         component_id = request.data.get('component')
         amount = request.data.get('amount')
         percentage = request.data.get('percentage')
@@ -123,32 +238,31 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
         serializer = SalaryStructureComponentSerializer(ssc)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
-    def update_components(self, request, pk=None):
-        """Bulk update components for a salary structure"""
-        structure = self.get_object()
+    return logic()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def salary_structure_update_components(request, pk):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        structure = get_object_or_404(SalaryStructure, pk=pk, company=company)
         components_data = request.data.get('components', [])
-        
-        # Keep track of kept component IDs to delete others later if needed
-        # Or simple approach: Delete all and recreate? 
-        # Delete all is safer to ensure sync, but IDs change. 
-        # Better: Update existing, Create new, Delete missing.
         
         incoming_component_ids = []
         
         for data in components_data:
             component_id = data.get('component_id') or data.get('id')
-            # Handle cases where just ID is passed or object
             if not component_id: 
                 continue
                 
-            amount = data.get('amount', 0)
-            # Check for 'value' from frontend logic which maps to amount or percentage depending on type
-            # But the backend model distinguishes amount vs percentage.
-            # We need to rely on the frontend sending correct keys or infer it.
-            # Let's assume frontend sends 'amount' and 'percentage' explicit keys, 
-            # OR 'value' and 'calculation_type'.
-            
             calc_type = data.get('calculation_type')
             value = data.get('value', 0)
             
@@ -160,11 +274,10 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
             else:
                 fixed_amount = value
                 
-            # If explicit keys provided, override
             if 'amount' in data: fixed_amount = data['amount']
             if 'percentage' in data: percentage = data['percentage']
 
-            ssc, created = SalaryStructureComponent.objects.update_or_create(
+            SalaryStructureComponent.objects.update_or_create(
                 salary_structure=structure,
                 component_id=component_id,
                 defaults={
@@ -174,150 +287,198 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
             )
             incoming_component_ids.append(component_id)
             
-        # Delete components not in incoming list
         SalaryStructureComponent.objects.filter(salary_structure=structure).exclude(component_id__in=incoming_component_ids).delete()
         
         return Response({'status': 'success', 'message': 'Components updated successfully'})
 
+    return logic()
 
-class EmployeeSalaryViewSet(viewsets.ModelViewSet):
-    queryset = EmployeeSalary.objects.select_related(
-        'employee', 'salary_structure'
-    ).prefetch_related('components__component').all()
-    serializer_class = EmployeeSalarySerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['employee', 'is_current']
-    search_fields = ['employee__employee_id', 'employee__first_name']
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-        if hasattr(user, 'employee_profile') and user.employee_profile:
-            return queryset.filter(employee__company=user.employee_profile.company)
-        elif hasattr(user, 'organization') and user.organization:
-            return queryset.filter(employee__company=user.organization)
-        return queryset.none()
-    
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    def perform_create(self, serializer):
-        salary = serializer.save(gross_salary=0, net_salary=0, ctc=0)
-        self._process_components(salary, self.request.data.get('components', []))
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
-    def perform_update(self, serializer):
-        salary = serializer.save()
-        if 'components' in self.request.data:
-            self._process_components(salary, self.request.data.get('components', []))
-
-    def _process_components(self, salary, components_data):
-        """Helper to create/update components"""
-        # If components provided explicitly
-        if components_data and len(components_data) > 0:
-            # Remove old
-            salary.components.all().delete()
+def _process_salary_components(salary, components_data):
+    """Helper to create/update components"""
+    if components_data and len(components_data) > 0:
+        salary.components.all().delete()
+        
+        total_earnings = Decimal(0)
+        total_deductions = Decimal(0)
+        
+        for comp_data in components_data:
+            component_id = comp_data.get('component_id') or comp_data.get('component')
+            amount = Decimal(str(comp_data.get('amount', 0)))
             
-            total_earnings = Decimal(0)
-            total_deductions = Decimal(0)
-            
-            for comp_data in components_data:
-                component_id = comp_data.get('component_id') or comp_data.get('component')
-                amount = Decimal(str(comp_data.get('amount', 0)))
-                
-                if component_id:
-                    # DEBUG LOGGING
-                    logger.info(f"Processing component_id: {component_id} type: {type(component_id)}")
-                    try:
-                        comp_obj = SalaryComponent.objects.get(id=component_id)
-                    except SalaryComponent.DoesNotExist:
-                        logger.error(f"FAILED TO FIND COMPONENT ID: {component_id}")
-                        raise
-                    
-                    EmployeeSalaryComponent.objects.create(
-                        employee_salary=salary,
-                        component_id=component_id,
-                        amount=amount
-                    )
-                    
-                    if comp_obj.component_type == 'earning':
-                        total_earnings += amount
-                    else:
-                        total_deductions += amount
-            
-            # Recalculate totals
-            salary.gross_salary = salary.basic_salary + total_earnings
-            salary.net_salary = salary.gross_salary - total_deductions
-            salary.save()
-            
-        # Else if structure provided, auto-generate defaults
-        elif salary.salary_structure:
-            salary.components.all().delete()
-            structure = salary.salary_structure
-            
-            total_earnings = Decimal(0)
-            total_deductions = Decimal(0)
-            
-            for struct_comp in structure.components.all():
-                amount = Decimal(0)
-                
-                # Logic to calculate amount based on type
-                if struct_comp.amount > 0:
-                    amount = struct_comp.amount
-                elif struct_comp.percentage > 0:
-                    amount = (salary.basic_salary * struct_comp.percentage) / 100
-                elif struct_comp.component.calculation_type == 'percentage' and struct_comp.component.default_percentage:
-                     amount = (salary.basic_salary * struct_comp.component.default_percentage) / 100
-                else:
-                    amount = struct_comp.component.default_amount
+            if component_id:
+                try:
+                    comp_obj = SalaryComponent.objects.get(id=component_id)
+                except SalaryComponent.DoesNotExist:
+                    logger.error(f"FAILED TO FIND COMPONENT ID: {component_id}")
+                    continue
                 
                 EmployeeSalaryComponent.objects.create(
                     employee_salary=salary,
-                    component=struct_comp.component,
+                    component_id=component_id,
                     amount=amount
                 )
                 
-                if struct_comp.component.component_type == 'earning':
+                if comp_obj.component_type == 'earning':
                     total_earnings += amount
                 else:
                     total_deductions += amount
+        
+        salary.gross_salary = salary.basic_salary + total_earnings
+        salary.net_salary = salary.gross_salary - total_deductions
+        salary.save()
+        
+    elif salary.salary_structure:
+        salary.components.all().delete()
+        structure = salary.salary_structure
+        
+        total_earnings = Decimal(0)
+        total_deductions = Decimal(0)
+        
+        for struct_comp in structure.components.all():
+            amount = Decimal(0)
+            if struct_comp.amount > 0:
+                amount = struct_comp.amount
+            elif struct_comp.percentage > 0:
+                amount = (salary.basic_salary * struct_comp.percentage) / 100
+            elif struct_comp.component.calculation_type == 'percentage' and struct_comp.component.default_percentage:
+                 amount = (salary.basic_salary * struct_comp.component.default_percentage) / 100
+            else:
+                amount = struct_comp.component.default_amount
             
-            # Update totals
-            salary.gross_salary = salary.basic_salary + total_earnings
-            salary.net_salary = salary.gross_salary - total_deductions
-            salary.save()
+            EmployeeSalaryComponent.objects.create(
+                employee_salary=salary,
+                component=struct_comp.component,
+                amount=amount
+            )
             
-    @action(detail=False, methods=['get'])
-    def current(self, request):
-        """Get current salary for an employee"""
+            if struct_comp.component.component_type == 'earning':
+                total_earnings += amount
+            else:
+                total_deductions += amount
+        
+        salary.gross_salary = salary.basic_salary + total_earnings
+        salary.net_salary = salary.gross_salary - total_deductions
+        salary.save()
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def employee_salary_list(request):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        if request.method == 'GET':
+            queryset = EmployeeSalary.objects.filter(employee__company=company).select_related(
+                'employee', 'salary_structure'
+            ).prefetch_related('components__component')
+            
+            employee_id = request.query_params.get('employee')
+            if employee_id:
+                queryset = queryset.filter(employee_id=employee_id)
+                
+            is_current = request.query_params.get('is_current')
+            if is_current is not None:
+                queryset = queryset.filter(is_current=is_current.lower() == 'true')
+            
+            search = request.query_params.get('search')
+            if search:
+                queryset = queryset.filter(models.Q(employee__employee_id__icontains=search) | models.Q(employee__first_name__icontains=search))
+
+            serializer = EmployeeSalarySerializer(queryset, many=True)
+            return Response(serializer.data)
+
+        elif request.method == 'POST':
+            serializer = EmployeeSalarySerializer(data=request.data)
+            if serializer.is_valid():
+                salary = serializer.save(gross_salary=0, net_salary=0, ctc=0)
+                _process_salary_components(salary, request.data.get('components', []))
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return logic()
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def employee_salary_detail(request, pk):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        instance = get_object_or_404(EmployeeSalary, pk=pk, employee__company=company)
+
+        if request.method == 'GET':
+            serializer = EmployeeSalarySerializer(instance)
+            return Response(serializer.data)
+
+        elif request.method in ['PUT', 'PATCH']:
+            partial = request.method == 'PATCH'
+            serializer = EmployeeSalarySerializer(instance, data=request.data, partial=partial)
+            if serializer.is_valid():
+                salary = serializer.save()
+                if 'components' in request.data:
+                    _process_salary_components(salary, request.data.get('components', []))
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'DELETE':
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    return logic()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_current_salary(request):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
         employee_id = request.query_params.get('employee')
         if not employee_id:
             return Response({'error': 'employee parameter required'}, status=400)
         
-        try:
-            salary = self.queryset.filter(employee_id=employee_id, is_current=True).first()
-            if not salary:
-                 return Response({'error': 'No current salary found'}, status=404)
-            serializer = self.get_serializer(salary)
-            return Response(serializer.data)
-        except Exception:
-            return Response({'error': 'No current salary found'}, status=404)
+        salary = EmployeeSalary.objects.filter(employee_id=employee_id, employee__company=company, is_current=True).first()
+        if not salary:
+             return Response({'error': 'No current salary found'}, status=404)
+        serializer = EmployeeSalarySerializer(salary)
+        return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
-    def stats(self, request):
-        """Get summary stats for all current salaries of active employees"""
-        queryset = self.get_queryset().filter(is_current=True, employee__status='active')
+    return logic()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_salary_stats(request):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        queryset = EmployeeSalary.objects.filter(employee__company=company, is_current=True, employee__status='active')
         
         stats = queryset.aggregate(
             total_net=Sum('net_salary'),
@@ -327,8 +488,6 @@ class EmployeeSalaryViewSet(viewsets.ModelViewSet):
             employee_count=Count('id')
         )
         
-        # Ensure Decimals are converted to strings/floats for JSON compatibility if needed, 
-        # though DRF Response usually handles Decimal
         return Response({
             'total_net_salary': stats['total_net'] or 0,
             'total_gross_salary': stats['total_gross'] or 0,
@@ -337,55 +496,112 @@ class EmployeeSalaryViewSet(viewsets.ModelViewSet):
             'employee_count': stats['employee_count'] or 0
         })
 
+    return logic()
 
-class PayrollPeriodViewSet(viewsets.ModelViewSet):
-    queryset = PayrollPeriod.objects.select_related('company', 'processed_by').all()
-    serializer_class = PayrollPeriodSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['company', 'status', 'month', 'year']
-    ordering_fields = ['year', 'month']
 
-    def get_queryset(self):
-        queryset = super().get_queryset().annotate(
-            total_lop_annotated=Coalesce(Sum('payslips__lop_deduction'), Decimal('0'))
-        )
-        user = self.request.user
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def payroll_period_list(request):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
         if hasattr(user, 'employee_profile') and user.employee_profile:
-            return queryset.filter(company=user.employee_profile.company)
+            company = user.employee_profile.company
         elif hasattr(user, 'organization') and user.organization:
-            return queryset.filter(company=user.organization)
-        return queryset.none()
-    
-    @action(detail=False, methods=['post'])
-    def generate(self, request):
-        """Generate payroll for all employees for a month"""
+            company = user.organization
+
+        if request.method == 'GET':
+            queryset = PayrollPeriod.objects.filter(company=company).annotate(
+                total_lop_annotated=Coalesce(Sum('payslips__lop_deduction'), Decimal('0'))
+            ).select_related('company', 'processed_by')
+            
+            status_filter = request.query_params.get('status')
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+                
+            month = request.query_params.get('month')
+            if month:
+                queryset = queryset.filter(month=month)
+                
+            year = request.query_params.get('year')
+            if year:
+                queryset = queryset.filter(year=year)
+
+            queryset = queryset.order_by('-year', '-month')
+            serializer = PayrollPeriodSerializer(queryset, many=True)
+            return Response(serializer.data)
+
+        elif request.method == 'POST':
+            serializer = PayrollPeriodSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(company=company)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return logic()
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def payroll_period_detail(request, pk):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        instance = get_object_or_404(PayrollPeriod, pk=pk, company=company)
+
+        if request.method == 'GET':
+            serializer = PayrollPeriodSerializer(instance)
+            return Response(serializer.data)
+
+        elif request.method in ['PUT', 'PATCH']:
+            partial = request.method == 'PATCH'
+            serializer = PayrollPeriodSerializer(instance, data=request.data, partial=partial)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'DELETE':
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    return logic()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_payroll(request):
+    """Generate payroll for all employees for a month"""
+    @safe_api
+    def logic():
         with transaction.atomic():
             serializer = GeneratePayrollSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response(serializer.errors, status=400)
             
             company_id = serializer.validated_data.get('company')
-            print(f"[DEBUG] Generate Payroll - Initial company_id from serializer: {company_id}")
             
             if not company_id:
                 user = request.user
-                print(f"[DEBUG] Generate Payroll - User: {user.username}, is_superuser: {user.is_superuser}")
                 if hasattr(user, 'employee_profile') and user.employee_profile:
                     company_id = user.employee_profile.company_id
-                    print(f"[DEBUG] Generate Payroll - Found company_id in employee_profile: {company_id}")
                 elif hasattr(user, 'organization') and user.organization:
                     company_id = user.organization.id
-                    print(f"[DEBUG] Generate Payroll - Found company_id in user.organization: {company_id}")
                 else:
-                    # Try to find any organization this user might belong to via UserRole
                     from apps.accounts.models import UserRole
                     user_role = UserRole.objects.filter(user=user, is_active=True).first()
                     if user_role and user_role.organization:
                         company_id = user_role.organization.id
-                        print(f"[DEBUG] Generate Payroll - Found company_id in UserRole: {company_id}")
 
             if not company_id:
-                print(f"[DEBUG] Generate Payroll - FAILED to determine company_id")
                 return Response({'error': 'Company ID is required'}, status=400)
 
             month = serializer.validated_data['month']
@@ -393,7 +609,6 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
             force = serializer.validated_data.get('force', False)
             preview = serializer.validated_data.get('preview', False)
             
-            # Additional check for existing period if not force and not preview
             if not force and not preview:
                 existing = PayrollPeriod.objects.filter(
                     company_id=company_id,
@@ -405,44 +620,31 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                         'error': 'Payroll already exists for this period. Use force=true to regenerate.'
                     }, status=400)
             
-            # Start date is 1st of month
             start_date = date(year, month, 1)
-            # End date is last day of month
             if month == 12:
                 end_date = date(year + 1, 1, 1) - timedelta(days=1)
             else:
                 end_date = date(year, month + 1, 1) - timedelta(days=1)
 
-            # Create list to hold preview data
             preview_data = []
-
-        try:
-            # We use a nested atomic block for preview to allow rollback while catching exception
+            
             sid = transaction.savepoint()
             
-            try:
-                period, created = PayrollPeriod.objects.get_or_create(
-                    company_id=company_id,
-                    month=month,
-                    year=year,
-                    defaults={
-                        'name': start_date.strftime('%B %Y'),
-                        'start_date': start_date,
-                        'end_date': end_date,
-                        'status': 'processing' if not preview else 'draft'
-                    }
-                )
-            except Exception as e:
-                print(f"[DEBUG] Generate Payroll - EXCEPTION in get_or_create: {str(e)}")
-                raise e
-            
-            print(f"[DEBUG] Generate Payroll: Month={month}, Year={year}, Force={force}, Preview={preview}")
+            period, created = PayrollPeriod.objects.get_or_create(
+                company_id=company_id,
+                month=month,
+                year=year,
+                defaults={
+                    'name': start_date.strftime('%B %Y'),
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'status': 'processing' if not preview else 'draft'
+                }
+            )
             
             if not created and period.status != 'draft' and not preview:
                 if force:
-                    # Bypass: Delete existing payslips
                     PaySlip.objects.filter(payroll_period=period).delete()
-                    # Reset totals
                     period.total_employees = 0
                     period.total_gross = 0
                     period.total_net = 0
@@ -452,16 +654,12 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                 else:
                     return Response({'error': 'Payroll already processed for this period'}, status=400)
             
-            # For preview, we always want to recalculate, so if period exists we shouldn't fail, 
-            # but we also don't want to actually delete if we are just previewing? 
-            # Actually, since we rollback, we CAN delete and re-create in the transaction!
             if preview and not created:
                  PaySlip.objects.filter(payroll_period=period).delete()
             
             period.status = 'processing'
             period.save()
             
-            # Get all active employees with current salary
             employees = Employee.objects.filter(
                 company_id=company_id,
                 status='active'
@@ -474,15 +672,10 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
             total_lop = Decimal(0)
             
             for employee in employees:
-                # Get current salary
-                try:
-                    emp_salary = EmployeeSalary.objects.filter(employee=employee, is_current=True).first()
-                    if not emp_salary:
-                         continue
-                except EmployeeSalary.DoesNotExist:
-                    continue
+                emp_salary = EmployeeSalary.objects.filter(employee=employee, is_current=True).first()
+                if not emp_salary:
+                     continue
                 
-                # Get or Generate Attendance Summary
                 summary, _ = AttendanceSummary.objects.get_or_create(
                     employee=employee,
                     month=month,
@@ -490,13 +683,11 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                 )
                 summary.calculate_summary()
                 
-                # Step 1: Determine Days
                 working_days = Decimal(summary.total_working_days)
                 effective_present = Decimal(summary.present_days) + (Decimal(summary.half_days) * Decimal(0.5))
                 paid_days = effective_present + Decimal(summary.leave_days)
                 lop_days = max(Decimal(0), working_days - paid_days)
                 
-                # Overtime
                 overtime_hours = Decimal(summary.overtime_hours)
                 overtime_amount = Decimal(0)
 
@@ -510,7 +701,6 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                          per_hour_salary = per_day_salary / daily_hours
                          overtime_amount = per_hour_salary * overtime_hours * multiplier
 
-                # Create payslip
                 payslip, _ = PaySlip.objects.update_or_create(
                     employee=employee,
                     payroll_period=period,
@@ -549,7 +739,6 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                         'lop_deduction': float(payslip.lop_deduction)
                     })
             
-            # Update period totals
             period.total_employees = payslips_created
             period.total_gross = total_gross
             period.total_deductions = total_deductions
@@ -572,7 +761,6 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                     }
                 })
 
-            # Log activity
             log_activity(
                 user=request.user,
                 action_type='PROCESS',
@@ -591,14 +779,24 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                 'total_lop': str(total_lop),
                 'total_employees': payslips_created
             })
-        except Exception as e:
-            logger.error(f"Error generating payroll: {str(e)}")
-            return Response({'error': str(e)}, status=500)
-    
-    @action(detail=True, methods=['post'])
-    def mark_paid(self, request, pk=None):
-        """Mark all payslips in period as paid"""
-        period = self.get_object()
+
+    return logic()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_payroll_paid(request, pk):
+    """Mark all payslips in period as paid"""
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        period = get_object_or_404(PayrollPeriod, pk=pk, company=company)
         payment_date = request.data.get('payment_date', date.today().isoformat())
         payment_mode = request.data.get('payment_mode', 'bank')
         
@@ -611,10 +809,9 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
         period.status = 'paid'
         period.save()
         
-        # Log activity
         log_activity(
             user=request.user,
-            action_type='APPROVE', # Or 'PROCESS'
+            action_type='APPROVE',
             module='PAYROLL',
             description=f"Marked payroll period {period.name} as Paid",
             reference_id=str(period.id),
@@ -624,121 +821,216 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
         
         return Response({'message': 'Payroll marked as paid'})
 
+    return logic()
 
-class PaySlipViewSet(viewsets.ModelViewSet):
-    queryset = PaySlip.objects.select_related(
-        'employee', 'payroll_period', 'employee_salary'
-    ).prefetch_related('components__component').all()
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['employee', 'payroll_period', 'status']
-    search_fields = ['employee__employee_id', 'employee__first_name']
-    ordering_fields = ['payroll_period__year', 'payroll_period__month']
-    
-    def get_queryset(self):
-        """Filter payslips by the current user's organization"""
-        try:
-            queryset = super().get_queryset()
-            user = self.request.user
+
+
+def _send_payslip_email(payslip):
+    """Helper to send payslip email"""
+    try:
+        from apps.accounts.utils import send_html_email
+        context = {
+            'employee_name': payslip.employee.full_name,
+            'period': payslip.payroll_period.name,
+            'net_salary': payslip.net_salary,
+            'payslip_url': f"/payroll/payslips/{payslip.id}/download"
+        }
+        send_html_email(
+            subject=f"Payslip for {payslip.payroll_period.name}",
+            template_name='emails/payslip.html',
+            context=context,
+            recipient_list=[payslip.employee.user.email]
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Error sending payslip email: {str(e)}")
+        return False
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def payslip_list(request):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        queryset = PaySlip.objects.filter(employee__company=company).select_related(
+            'employee', 'payroll_period', 'employee_salary'
+        ).prefetch_related('components__component')
+        
+        period_id = request.query_params.get('payroll_period')
+        if period_id:
+            queryset = queryset.filter(payroll_period_id=period_id)
             
-            # If user has an employee profile, filter by their company
-            if hasattr(user, 'employee_profile') and user.employee_profile:
-                company = user.employee_profile.company
-                if company:
-                    queryset = queryset.filter(employee__company=company)
-            # If user is a ClientAdmin (has organization), filter by that
-            elif hasattr(user, 'organization') and user.organization:
-                queryset = queryset.filter(employee__company=user.organization)
+        employee_id = request.query_params.get('employee')
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
             
-            return queryset
-        except Exception as e:
-            return self.queryset.none()
-    
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            return PaySlipDetailSerializer
-        return PaySlipSerializer
-    
-    @action(detail=False, methods=['get'])
-    def my_payslips(self, request):
-        """Get all payslips for an employee"""
-        try:
-            employee_id = request.query_params.get('employee')
-            if not employee_id:
-                return Response({'error': 'employee parameter required'}, status=400)
-            
-            payslips = self.get_queryset().filter(employee_id=employee_id)
-            serializer = PaySlipSerializer(payslips, many=True)
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(employee__employee_id__icontains=search) | 
+                models.Q(employee__first_name__icontains=search)
+            )
+
+        queryset = queryset.order_by('-payroll_period__year', '-payroll_period__month')
+        serializer = PaySlipSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    return logic()
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def payslip_detail(request, pk):
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        instance = get_object_or_404(PaySlip, pk=pk, employee__company=company)
+
+        if request.method == 'GET':
+            serializer = PaySlipDetailSerializer(instance)
             return Response(serializer.data)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
-    @action(detail=False, methods=['get'])
-    def dashboard_stats(self, request):
-        """Get payroll dashboard statistics for a specific month/year"""
-        try:
-            month = int(request.query_params.get('month', date.today().month))
-            year = int(request.query_params.get('year', date.today().year))
-            
-            from django.db.models import Sum, Count, F, Value
-            from django.db.models.functions import Concat
-            
-            # Get payslips for the specified period (filtered by org)
-            payslips = self.get_queryset().filter(
-                payroll_period__month=month,
-                payroll_period__year=year
-            )
-            
-            # 1. Status Counts
-            # Mapping: 'generated'->'draft', 'approved'->'confirmed', 'paid'->'paid'
-            status_counts = {
-                'paid': payslips.filter(status='paid').count(),
-                'confirmed': payslips.filter(status='approved').count(),
-                'review_ongoing': 0, # Not currently used in model
-                'draft': payslips.filter(status='generated').count(),
-            }
-            
-            # 2. Totals
-            totals = payslips.aggregate(
-                payslips_generated=Count('id'),
-                total_gross=Sum('gross_earnings') or 0,
-                total_deductions=Sum('total_deductions') or 0,
-                total_lop=Sum('lop_deduction') or 0,
-                total_net=Sum('net_salary') or 0
-            )
-            
-            # 3. Employee Payslips (for chart)
-            employee_payslips = payslips.select_related('employee').annotate(
-                name=Concat('employee__first_name', Value(' '), 'employee__last_name'),
-                gross=F('gross_earnings')
-            ).values('id', 'name', 'gross', 'status')
-            
-            # 4. Department Breakdown
-            department_breakdown = payslips.values(
-                name=F('employee__department__name')
-            ).annotate(
-                employee_count=Count('id'),
-                total_gross=Sum('gross_earnings'),
-                total_deductions=Sum('total_deductions'),
-                total_lop=Sum('lop_deduction'),
-                total_net=Sum('net_salary')
-            ).order_by('name')
-            
-            return Response({
-                'status_counts': status_counts,
-                'totals': totals,
-                'employee_payslips': list(employee_payslips),
-                'department_breakdown': list(department_breakdown)
-            })
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['get'])
-    def download(self, request, pk=None):
-        """Generate and download PDF payslip"""
+        elif request.method in ['PUT', 'PATCH']:
+            partial = request.method == 'PATCH'
+            serializer = PaySlipSerializer(instance, data=request.data, partial=partial)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'DELETE':
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    return logic()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_my_payslips(request):
+    """Get all payslips for an employee"""
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        employee_id = request.query_params.get('employee')
+        if not employee_id:
+            if hasattr(user, 'employee_profile') and user.employee_profile:
+                employee_id = user.employee_profile.id
+            else:
+                return Response({'error': 'employee parameter required'}, status=400)
+        
+        payslips = PaySlip.objects.filter(employee_id=employee_id, employee__company=company)
+        serializer = PaySlipSerializer(payslips, many=True)
+        return Response(serializer.data)
+
+    return logic()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_payroll_dashboard_stats(request):
+    """Get payroll dashboard statistics for a specific month/year"""
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        month = int(request.query_params.get('month', date.today().month))
+        year = int(request.query_params.get('year', date.today().year))
+        
+        from django.db.models import Sum, Count, F, Value
+        from django.db.models.functions import Concat
+        
+        payslips = PaySlip.objects.filter(
+            employee__company=company,
+            payroll_period__month=month,
+            payroll_period__year=year
+        )
+        
+        status_counts = {
+            'paid': payslips.filter(status='paid').count(),
+            'confirmed': payslips.filter(status='approved').count(),
+            'review_ongoing': 0,
+            'draft': payslips.filter(status='generated').count(),
+        }
+        
+        totals = payslips.aggregate(
+            payslips_generated=Count('id'),
+            total_gross=Sum('gross_earnings') or 0,
+            total_deductions=Sum('total_deductions') or 0,
+            total_lop=Sum('lop_deduction') or 0,
+            total_net=Sum('net_salary') or 0
+        )
+        
+        employee_payslips = payslips.select_related('employee').annotate(
+            name=Concat('employee__first_name', Value(' '), 'employee__last_name'),
+            gross=F('gross_earnings')
+        ).values('id', 'name', 'gross', 'status')
+        
+        department_breakdown = payslips.values(
+            name=F('employee__department__name')
+        ).annotate(
+            employee_count=Count('id'),
+            total_gross=Sum('gross_earnings'),
+            total_deductions=Sum('total_deductions'),
+            total_lop=Sum('lop_deduction'),
+            total_net=Sum('net_salary')
+        ).order_by('name')
+        
+        return Response({
+            'status_counts': status_counts,
+            'totals': totals,
+            'employee_payslips': list(employee_payslips),
+            'department_breakdown': list(department_breakdown)
+        })
+
+    return logic()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_payslip(request, pk):
+    """Generate and download PDF payslip"""
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        payslip = get_object_or_404(PaySlip, pk=pk, employee__company=company)
+        
         try:
-            payslip = self.get_object()
             from .utils import generate_payslip_pdf
-            
             pdf_buffer = generate_payslip_pdf(payslip)
             
             response = HttpResponse(
@@ -758,11 +1050,27 @@ class PaySlipViewSet(viewsets.ModelViewSet):
                 content_type="text/plain"
             )
 
-    @action(detail=True, methods=['post'])
-    def recalculate(self, request, pk=None):
-        """Recalculate salary (useful after manual adjustments)"""
-        payslip = self.get_object()
+    return logic()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def recalculate_payslip(request, pk):
+    """Recalculate salary (useful after manual adjustments)"""
+    @safe_api
+    def logic():
+        user = request.user
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+
+        payslip = get_object_or_404(PaySlip, pk=pk, employee__company=company)
         payslip.calculate_salary()
         payslip.save()
-        serializer = self.get_serializer(payslip)
+        serializer = PaySlipSerializer(payslip)
         return Response(serializer.data)
+
+    return logic()
+    

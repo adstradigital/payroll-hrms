@@ -80,16 +80,16 @@ urlpatterns = [
     path('employees/<uuid:employee_id>/experience/<uuid:pk>/', views.employee_experience_detail, name='employee_experience_detail'),
 
     # ==================== REQUESTS ====================
-    path('employees/document-requests/', req_views.DocumentRequestListCreate.as_view(), name='document_request_list'),
+    path('employees/document-requests/', req_views.document_request_list, name='document_request_list'),
     path('employees/document-requests/<uuid:pk>/submit/', req_views.submit_document, name='submit_document'),
     path('employees/document-requests/<uuid:pk>/approve/', req_views.approve_document_request, name='approve_document_request'),
     path('employees/document-requests/<uuid:pk>/reject/', req_views.reject_document_request, name='reject_document_request'),
-    path('employees/shift-requests/', req_views.ShiftRequestListCreate.as_view(), name='shift_request_list'),
-    path('employees/work-type-requests/', req_views.WorkTypeRequestListCreate.as_view(), name='work_type_request_list'),
-    path('employees/reimbursement-requests/', req_views.ReimbursementRequestListCreate.as_view(), name='reimbursement_request_list'),
-    path('employees/reimbursement-requests/<uuid:pk>/', req_views.ReimbursementRequestDetail.as_view(), name='reimbursement_request_detail'),
-    path('employees/encashment-requests/', req_views.EncashmentRequestListCreate.as_view(), name='encashment_request_list'),
-    path('employees/encashment-requests/<uuid:pk>/', req_views.EncashmentRequestDetail.as_view(), name='encashment_request_detail'),
+    path('employees/shift-requests/', req_views.shift_request_list, name='shift_request_list'),
+    path('employees/work-type-requests/', req_views.work_type_request_list, name='work_type_request_list'),
+    path('employees/reimbursement-requests/', req_views.reimbursement_request_list, name='reimbursement_request_list'),
+    path('employees/reimbursement-requests/<uuid:pk>/', req_views.reimbursement_request_detail, name='reimbursement_request_detail'),
+    path('employees/encashment-requests/', req_views.encashment_request_list, name='encashment_request_list'),
+    path('employees/encashment-requests/<uuid:pk>/', req_views.encashment_request_detail, name='encashment_request_detail'),
     
     # ==================== SECURITY & ACCESS ====================
     path('security/profile/', views.security_profile_detail, name='security_profile_detail'),
