@@ -31,6 +31,7 @@ from .serializers import (
     SecurityProfileSerializer, SetPinSerializer, VerifyPinSerializer
 )
 from .permissions import is_client_admin, require_admin, require_permission, PermissionChecker
+from .utils import get_employee_or_none, get_employee_org_id
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ def register_organization(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            if User.objects.filter(email=email).exists():
+            if User.objects.filter(email=email).exists() or Employee.objects.filter(email=email).exists():
                 return Response({'error': 'Email already registered'}, status=status.HTTP_400_BAD_REQUEST)
             
             employee_count_map = {'1-50': 50, '51-200': 200, '201-1000': 1000, '1000+': 10000}
@@ -631,20 +632,19 @@ def department_list_create(request):
     try:
         if request.method == 'GET':
             # Isolate data by user's company
-            current_employee = Employee.objects.filter(user=request.user).first()
-            if current_employee:
-                user_company_id = current_employee.company_id
-            else:
-                org = Organization.objects.filter(created_by=request.user).first()
-                user_company_id = org.id if org else None
+            company_id = request.query_params.get('company')
+            employee = get_employee_or_none(request.user)
+            user_company_id = employee.company_id if employee else None
 
-            company_id = request.query_params.get('company', user_company_id)
             queryset = Department.objects.select_related('company', 'parent', 'head')
             
             if user_company_id:
                 queryset = queryset.filter(company_id=user_company_id)
             elif company_id:
                 queryset = queryset.filter(company_id=company_id)
+            elif not request.user.is_superuser:
+                # Business user with no profile should see nothing (or error)
+                return Response({'error': 'Employee profile not found'}, status=status.HTTP_403_FORBIDDEN)
             
             # Use specific serializer for list
             paginator = StandardResultsSetPagination()
@@ -657,14 +657,7 @@ def department_list_create(request):
                  return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
             # Determine company
-            company_id = request.data.get('company')
-            if not company_id:
-                current_employee = Employee.objects.filter(user=request.user).first()
-                if current_employee:
-                    company_id = current_employee.company_id
-                else:
-                    org = Organization.objects.filter(created_by=request.user).first()
-                    company_id = org.id if org else None
+            company_id = request.data.get('company') or get_employee_org_id(request.user)
 
             if not company_id:
                 return Response({'error': 'Company identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -725,20 +718,18 @@ def designation_list_create(request):
         
         if request.method == 'GET':
             # Isolate data by user's company
-            current_employee = Employee.objects.filter(user=request.user).first()
-            if current_employee:
-                user_company_id = current_employee.company_id
-            else:
-                org = Organization.objects.filter(created_by=request.user).first()
-                user_company_id = org.id if org else None
+            company_id = request.query_params.get('company')
+            employee = get_employee_or_none(request.user)
+            user_company_id = employee.company_id if employee else None
 
-            company_id = request.query_params.get('company', user_company_id)
             queryset = Designation.objects.select_related('company').prefetch_related('roles')
             
             if user_company_id:
                 queryset = queryset.filter(company_id=user_company_id)
             elif company_id:
                 queryset = queryset.filter(company_id=company_id)
+            elif not request.user.is_superuser:
+                return Response({'error': 'Employee profile not found'}, status=status.HTTP_403_FORBIDDEN)
             
             paginator = StandardResultsSetPagination()
             paginated = paginator.paginate_queryset(queryset, request)
@@ -748,21 +739,14 @@ def designation_list_create(request):
         
         elif request.method == 'POST':
             # Determine company
+            company_id = request.data.get('company') or get_employee_org_id(request.user)
             company = None
-            company_id = request.data.get('company')
             
             if company_id:
                 try:
                     company = Organization.objects.get(id=company_id)
-                except Organization.DoesNotExist:
+                except (Organization.DoesNotExist, ValueError):
                     pass
-            
-            if not company:
-                current_employee = Employee.objects.filter(user=request.user).first()
-                if current_employee:
-                    company = current_employee.company
-                else:
-                    company = Organization.objects.filter(created_by=request.user).first()
             
             if not company:
                 return Response({'error': 'Company could not be determined'}, status=status.HTTP_400_BAD_REQUEST)
@@ -877,14 +861,13 @@ def datascope_list(request):
 def role_list_create(request):
     """List or create roles"""
     try:
-        # Try to get employee, but handle users without employee records (virtual admins)
-        employee = Employee.objects.filter(user=request.user).first()
+        # Try to get employee profile
+        employee = get_employee_or_none(request.user)
         
         if employee:
             org = employee.company.get_root_parent() if hasattr(employee.company, 'get_root_parent') else employee.company
         else:
-            # For users without employee records, get their organization via subscription/other means
-            # or just return system roles
+            # For superadmins, they might manage all organizations or system roles
             org = None
         
         if request.method == 'GET':
@@ -999,40 +982,34 @@ def role_detail(request, pk):
 def get_my_profile(request):
     """Get the profile of the currently logged-in user"""
     try:
-        try:
-            employee = Employee.objects.select_related('company', 'department', 'designation', 'reporting_manager').get(user=request.user)
+        if request.user.is_superuser:
             data = {
-                'id': str(employee.id), 'employee_id': employee.employee_id, 'full_name': employee.full_name,
-                'first_name': employee.first_name, 'middle_name': employee.middle_name, 'last_name': employee.last_name,
-                'email': employee.email, 'phone': employee.phone, 'date_of_birth': str(employee.date_of_birth) if employee.date_of_birth else None,
-                'gender': employee.gender, 'company': {'id': str(employee.company.id), 'name': employee.company.name},
-                'department': {'id': str(employee.department.id), 'name': employee.department.name} if employee.department else None,
-                'designation': {'id': str(employee.designation.id), 'name': employee.designation.name} if employee.designation else None,
-                'status': employee.status, 'employment_type': employee.employment_type,
-                'is_admin': employee.is_admin,
-                'date_of_joining': str(employee.date_of_joining), 'age': employee.age, 'tenure_in_days': employee.tenure_in_days
-            }
-            return Response({'success': True, 'employee': data})
-        except Employee.DoesNotExist:
-            # Fallback for users without an employee record (like the registering Admin)
-            # Find the organization they created
-            main_org = Organization.objects.filter(created_by=request.user).first()
-            
-            data = {
-                'id': None,
-                'user_id': str(request.user.id),
+                'id': str(request.user.id),
                 'full_name': request.user.get_full_name() or request.user.username,
-                'first_name': request.user.first_name,
-                'last_name': request.user.last_name,
                 'email': request.user.email,
-                'status': 'active',
-                'designation_name': 'Administrator',
+                'role': 'super_admin',
                 'is_admin': True,
-                'role': 'admin',
-                'is_virtual': True,
-                'company': {'id': str(main_org.id), 'name': main_org.name} if main_org else None
+                'is_superuser': True,
+                'company': {'id': 'system', 'name': 'System Administrator'}
             }
             return Response({'success': True, 'employee': data})
+
+        employee = get_employee_or_none(request.user)
+        if not employee:
+            return Response({'success': False, 'error': 'Business user has no employee profile'}, status=status.HTTP_403_FORBIDDEN)
+            
+        data = {
+            'id': str(employee.id), 'employee_id': employee.employee_id, 'full_name': employee.full_name,
+            'first_name': employee.first_name, 'middle_name': employee.middle_name, 'last_name': employee.last_name,
+            'email': employee.email, 'phone': employee.phone, 'date_of_birth': str(employee.date_of_birth) if employee.date_of_birth else None,
+            'gender': employee.gender, 'company': {'id': str(employee.company.id), 'name': employee.company.name},
+            'department': {'id': str(employee.department.id), 'name': employee.department.name} if employee.department else None,
+            'designation': {'id': str(employee.designation.id), 'name': employee.designation.name} if employee.designation else None,
+            'status': employee.status, 'employment_type': employee.employment_type,
+            'is_admin': employee.is_admin,
+            'date_of_joining': str(employee.date_of_joining), 'age': employee.age, 'tenure_in_days': employee.tenure_in_days
+        }
+        return Response({'success': True, 'employee': data})
     except Exception as e:
         logger.error(f"Error in get_my_profile: {str(e)}")
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1048,7 +1025,7 @@ def get_my_permissions(request):
         logger.info(f"[get_my_permissions] Fetching permissions for user: {request.user}")
         
         # Determine organization context
-        employee = Employee.objects.filter(user=request.user).first()
+        employee = get_employee_or_none(request.user)
         organization = employee.company.get_root_parent() if employee else None
         
         # Use PermissionChecker to get consolidated permissions
@@ -1094,30 +1071,23 @@ def employee_list_create(request):
         
         if request.method == 'GET':
             # Determine the user's company to enforce isolation
-            current_employee = Employee.objects.filter(user=request.user).first()
-            if current_employee:
-                user_company_id = current_employee.company_id
-            else:
-                # Fallback for virtual admins (org creators)
-                org = Organization.objects.filter(created_by=request.user).first()
-                user_company_id = org.id if org else None
-
+            user_company_id = get_employee_org_id(request.user)
             company_id = request.query_params.get('company', user_company_id)
-            department_id = request.query_params.get('department', None)
-            status_filter = request.query_params.get('status', None)
-            search = request.query_params.get('search', None)
+            department_id = request.query_params.get('department')
+            status_filter = request.query_params.get('status')
+            search = request.query_params.get('search')
             
             queryset = Employee.objects.select_related('company', 'department', 'designation')
             
-            # CRITICAL: Always filter by the user's company (or the requested one if valid)
+            # CRITICAL: Always filter by the user's company
             if user_company_id:
-                 # If user has a company, strict filter. 
-                 # Even if they request another company_id via params, they shouldn't see it unless logic allows (e.g. superuser)
-                 # For now, we enforce the user's company or the one they manage.
                  queryset = queryset.filter(company_id=user_company_id)
-            elif company_id:
-                 # Fallback if we couldn't determine user's company but param exists (unsafe generally, but for superadmin maybe)
+            elif company_id and request.user.is_superuser:
+                 # Superusers can see any requested company
                  queryset = queryset.filter(company_id=company_id)
+            elif not request.user.is_superuser:
+                 # Business user with no profile
+                 return Response({'error': 'Employee profile not found'}, status=status.HTTP_403_FORBIDDEN)
             
             if department_id:
                 queryset = queryset.filter(department_id=department_id)
@@ -1145,14 +1115,7 @@ def employee_list_create(request):
             if user_id == '': user_id = None
 
             # Infer Company ID
-            company_id = request.data.get('company')
-            if not company_id:
-                current_employee = Employee.objects.filter(user=request.user).first()
-                if current_employee:
-                    company_id = current_employee.company_id
-                else:
-                    org = Organization.objects.filter(created_by=request.user).first()
-                    company_id = org.id if org else None
+            company_id = request.data.get('company') or get_employee_org_id(request.user)
             
             if not company_id:
                 return Response({'error': 'Company is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1497,16 +1460,35 @@ def user_list(request):
         return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
     users = User.objects.all().order_by('-date_joined')
-    data = [{
-        'id': str(u.id),
-        'email': u.email,
-        'name': f"{u.first_name} {u.last_name}",
-        'is_active': u.is_active,
-        'is_staff': u.is_staff,
-        'is_superuser': u.is_superuser,
-        'last_login': str(u.last_login) if u.last_login else None,
-        'date_joined': str(u.date_joined)
-    } for u in users]
+    data = []
+    
+    for u in users:
+        employee = getattr(u, 'employee', None)
+        role_name = "Super Admin" if u.is_superuser else "Employee"
+        org_name = "System" if u.is_superuser else "Unassigned"
+        
+        if employee:
+            org_name = employee.company.name if employee.company else "No Company"
+            if employee.is_admin:
+                role_name = "Company Admin"
+            elif employee.designation:
+                role_name = employee.designation.name
+        
+        data.append({
+            'id': str(u.id),
+            'username': u.username,
+            'email': u.email,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
+            'name': f"{u.first_name} {u.last_name}".strip() or u.username,
+            'is_active': u.is_active,
+            'is_staff': u.is_staff,
+            'is_superuser': u.is_superuser,
+            'last_login': str(u.last_login) if u.last_login else None,
+            'date_joined': str(u.date_joined),
+            'organization': org_name,
+            'role_name': role_name
+        })
     
     return Response({'success': True, 'results': data})
 
@@ -1612,6 +1594,10 @@ def approve_registration(request, pk):
         
         if registration.status != 'pending':
             return Response({'error': 'Registration already processed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check for existing user or employee with this email
+        if User.objects.filter(email=registration.admin_email).exists() or Employee.objects.filter(email=registration.admin_email).exists():
+            return Response({'error': f"An account or employee profile with email '{registration.admin_email}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
         
         with transaction.atomic():
             # Generate password

@@ -97,37 +97,37 @@
     margin-bottom: 1.5rem;
 }
 
-.toggle-info {
+.ot-toggle-info {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
 }
 
-.toggle-label {
+.ot-toggle-label {
     font-weight: 600;
     color: var(--text-primary);
 }
 
-.toggle-desc {
+.ot-toggle-desc {
     font-size: 0.85rem;
     color: var(--text-secondary);
 }
 
 /* Switch Styles */
-.switch {
+.ot-switch {
     position: relative;
     display: inline-block;
     width: 48px;
     height: 24px;
 }
 
-.switch input {
+.ot-switch input {
     opacity: 0;
     width: 0;
     height: 0;
 }
 
-.slider {
+.ot-slider {
     position: absolute;
     cursor: pointer;
     top: 0;
@@ -140,7 +140,7 @@
     border-radius: 24px;
 }
 
-.slider:before {
+.ot-slider:before {
     position: absolute;
     content: "";
     height: 18px;
@@ -152,22 +152,22 @@
     border-radius: 50%;
 }
 
-input:checked+.slider {
+input:checked+.ot-slider {
     background-color: var(--brand-primary);
     border-color: var(--brand-primary);
 }
 
-input:checked+.slider:before {
+input:checked+.ot-slider:before {
     transform: translateX(24px);
     background-color: white;
 }
 
-.field-hint {
+.ot-field-hint {
     font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
-.card-footer {
+.ot-card-footer {
     padding: 1.25rem 1.5rem;
     background: var(--bg-tertiary);
     border-top: 1px solid var(--border-color);
@@ -175,7 +175,7 @@ input:checked+.slider:before {
     justify-content: flex-end;
 }
 
-.btn-save {
+.ot-btn-save {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -189,17 +189,17 @@ input:checked+.slider:before {
     transition: all 0.2s ease;
 }
 
-.btn-save:hover:not(:disabled) {
+.ot-btn-save:hover:not(:disabled) {
     background: var(--brand-primary-dark);
     transform: translateY(-1px);
 }
 
-.btn-save:disabled {
+.ot-btn-save:disabled {
     opacity: 0.7;
     cursor: not-allowed;
 }
 
-.notification {
+.ot-notification {
     position: fixed;
     top: 2rem;
     right: 2rem;
@@ -209,25 +209,25 @@ input:checked+.slider:before {
     align-items: center;
     gap: 0.75rem;
     z-index: 1000;
-    animation: slideIn 0.3s ease-out;
+    animation: ot-slideIn 0.3s ease-out;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-.notification.success {
+.ot-notification.success {
     background: #10B981;
     color: white;
 }
 
-.notification.error {
+.ot-notification.error {
     background: #EF4444;
     color: white;
 }
 
-.spin {
-    animation: rotate 1s linear infinite;
+.ot-spin {
+    animation: ot-rotate 1s linear infinite;
 }
 
-@keyframes rotate {
+@keyframes ot-rotate {
     from {
         transform: rotate(0deg);
     }
@@ -237,7 +237,7 @@ input:checked+.slider:before {
     }
 }
 
-@keyframes slideIn {
+@keyframes ot-slideIn {
     from {
         transform: translateX(100%);
         opacity: 0;

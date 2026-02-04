@@ -120,19 +120,24 @@ const LoginManagement = () => {
                                     <tr key={user.id} className="nexus-row">
                                         <td>
                                             <div className="user-profile-cell">
-                                                <div className="user-avatar-sm">
+                                                <div className={`user-avatar-sm ${user.is_superuser ? 'avatar-superuser' : ''}`}>
                                                     {user.email[0].toUpperCase()}
                                                 </div>
                                                 <div className="user-meta">
-                                                    <div className="user-name-text">{user.name || 'Unknown'}</div>
-                                                    <div className="user-email-text">{user.email}</div>
+                                                    <div className="user-name-text">{user.name}</div>
+                                                    <div className="user-sub-meta">
+                                                        <span className="user-id-tag">{user.username}</span>
+                                                        <span className="user-email-text">{user.email}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
                                             <div className="org-cell">
-                                                <span className="org-name-text">{user.is_superuser ? 'Global' : 'Acme Corp'}</span>
-                                                <div className="user-role-text">{user.is_superuser ? 'Super Admin' : 'Admin'}</div>
+                                                <span className="org-name-text">{user.organization}</span>
+                                                <div className={`user-role-badge ${user.is_superuser ? 'role-superuser' : user.role_name === 'Company Admin' ? 'role-admin' : 'role-employee'}`}>
+                                                    {user.role_name}
+                                                </div>
                                             </div>
                                         </td>
                                         <td>

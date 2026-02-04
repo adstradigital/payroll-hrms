@@ -93,8 +93,8 @@ export default function OverTimeSettings({ standalone = true }) {
 
     if (loading) {
         return (
-            <div className="flex-center" style={{ height: '400px', flexDirection: 'column', gap: '1rem' }}>
-                <Loader2 className="spin" size={40} color="var(--brand-primary)" />
+            <div className="ot-flex-center" style={{ height: '400px', flexDirection: 'column', gap: '1rem' }}>
+                <Loader2 className="ot-spin" size={40} color="var(--brand-primary)" />
                 <p style={{ color: 'var(--text-secondary)' }}>Loading Overtime Rules...</p>
             </div>
         );
@@ -103,7 +103,7 @@ export default function OverTimeSettings({ standalone = true }) {
     return (
         <div className={standalone ? "overtime-settings animate-fade-in" : "overtime-embedded animate-fade-in"}>
             {notification && (
-                <div className={`notification ${notification.type}`}>
+                <div className={`ot-notification ${notification.type}`}>
                     {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
                     {notification.message}
                 </div>
@@ -120,18 +120,18 @@ export default function OverTimeSettings({ standalone = true }) {
 
             <form onSubmit={handleSubmit}>
                 <div className="overtime-toggle-row">
-                    <div className="toggle-info">
-                        <span className="toggle-label">Enable Overtime Tracking</span>
-                        <span className="toggle-desc">Calculate and track overtime hours automatically</span>
+                    <div className="ot-toggle-info">
+                        <span className="ot-toggle-label">Enable Overtime Tracking</span>
+                        <span className="ot-toggle-desc">Calculate and track overtime hours automatically</span>
                     </div>
-                    <label className="switch">
+                    <label className="ot-switch">
                         <input
                             type="checkbox"
                             name="overtime_applicable"
                             checked={formData.overtime_applicable}
                             onChange={handleChange}
                         />
-                        <span className="slider"></span>
+                        <span className="ot-slider"></span>
                     </label>
                 </div>
 
@@ -156,7 +156,7 @@ export default function OverTimeSettings({ standalone = true }) {
                                             step="0.1"
                                             min="1"
                                         />
-                                        <span className="field-hint">Multiplier for regular working days</span>
+                                        <span className="ot-field-hint">Multiplier for regular working days</span>
                                     </div>
                                     <div className="overtime-field">
                                         <label>Weekend OT Multiplier</label>
@@ -169,7 +169,7 @@ export default function OverTimeSettings({ standalone = true }) {
                                             step="0.1"
                                             min="1"
                                         />
-                                        <span className="field-hint">Multiplier for Saturdays and Sundays</span>
+                                        <span className="ot-field-hint">Multiplier for Saturdays and Sundays</span>
                                     </div>
                                     <div className="overtime-field">
                                         <label>Holiday OT Multiplier</label>
@@ -182,7 +182,7 @@ export default function OverTimeSettings({ standalone = true }) {
                                             step="0.1"
                                             min="1"
                                         />
-                                        <span className="field-hint">Multiplier for Public Holidays</span>
+                                        <span className="ot-field-hint">Multiplier for Public Holidays</span>
                                     </div>
                                 </div>
                             </div>
@@ -206,7 +206,7 @@ export default function OverTimeSettings({ standalone = true }) {
                                             className="overtime-input"
                                             min="0"
                                         />
-                                        <span className="field-hint">Minutes worked after regular shift</span>
+                                        <span className="ot-field-hint">Minutes worked after regular shift</span>
                                     </div>
                                     <div className="overtime-field">
                                         <label>Min Session Duration (min)</label>
@@ -218,7 +218,7 @@ export default function OverTimeSettings({ standalone = true }) {
                                             className="overtime-input"
                                             min="0"
                                         />
-                                        <span className="field-hint">Min minutes to qualify for OT pay</span>
+                                        <span className="ot-field-hint">Min minutes to qualify for OT pay</span>
                                     </div>
                                     <div className="overtime-field">
                                         <label>Max OT Per Day (hours)</label>
@@ -230,7 +230,7 @@ export default function OverTimeSettings({ standalone = true }) {
                                             className="overtime-input"
                                             min="1"
                                         />
-                                        <span className="field-hint">Cap on daily overtime hours</span>
+                                        <span className="ot-field-hint">Cap on daily overtime hours</span>
                                     </div>
                                     <div className="overtime-field">
                                         <label>Max OT Per Week (hours)</label>
@@ -242,7 +242,7 @@ export default function OverTimeSettings({ standalone = true }) {
                                             className="overtime-input"
                                             min="1"
                                         />
-                                        <span className="field-hint">Cap on weekly overtime hours</span>
+                                        <span className="ot-field-hint">Cap on weekly overtime hours</span>
                                     </div>
                                 </div>
                             </div>
@@ -256,18 +256,18 @@ export default function OverTimeSettings({ standalone = true }) {
                             </div>
                             <div className="overtime-card-body">
                                 <div className="overtime-toggle-row" style={{ margin: 0, padding: 0, background: 'none' }}>
-                                    <div className="toggle-info">
-                                        <span className="toggle-label">Require Pre-Approval</span>
-                                        <span className="toggle-desc">Managers must approve overtime before it counts</span>
+                                    <div className="ot-toggle-info">
+                                        <span className="ot-toggle-label">Require Pre-Approval</span>
+                                        <span className="ot-toggle-desc">Managers must approve overtime before it counts</span>
                                     </div>
-                                    <label className="switch">
+                                    <label className="ot-switch">
                                         <input
                                             type="checkbox"
                                             name="require_overtime_pre_approval"
                                             checked={formData.require_overtime_pre_approval}
                                             onChange={handleChange}
                                         />
-                                        <span className="slider"></span>
+                                        <span className="ot-slider"></span>
                                     </label>
                                 </div>
                             </div>
@@ -275,9 +275,9 @@ export default function OverTimeSettings({ standalone = true }) {
                     </div>
                 )}
 
-                <div className="card-footer" style={{ background: 'none', border: 'none', padding: '1rem 0' }}>
-                    <button type="submit" className="btn-save" disabled={saving}>
-                        {saving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
+                <div className="ot-card-footer" style={{ background: 'none', border: 'none', padding: '1rem 0' }}>
+                    <button type="submit" className="ot-btn-save" disabled={saving}>
+                        {saving ? <Loader2 size={18} className="ot-spin" /> : <Save size={18} />}
                         {saving ? 'Updating...' : 'Save Overtime Rules'}
                     </button>
                 </div>

@@ -99,19 +99,19 @@ export default function MyAttendance() {
                         total_hours: dashboardData.stats?.total_hours || 0,
                         attendance_score: calculateAttendanceScore(dashboardData.stats)
                     },
-                    // Mocking Balances & Payroll as they are not in the current API response
+                    // Real Balances & Payroll from API
                     balances: {
-                        casual: 12,
-                        sick: 8,
-                        privilege: 10
+                        casual: dashboardData.balances?.find(b => b.type.toLowerCase().includes('casual'))?.available || 0,
+                        sick: dashboardData.balances?.find(b => b.type.toLowerCase().includes('sick'))?.available || 0,
+                        privilege: dashboardData.balances?.find(b => b.type.toLowerCase().includes('privilege') || b.type.toLowerCase().includes('earned'))?.available || 0,
+                        raw: dashboardData.balances || []
                     },
                     payroll: {
-                        base_salary: 5000,
-                        currency: '$',
-                        deductions: {
-                            absent: 150,
-                            late: 25
-                        }
+                        base_salary: dashboardData.payroll?.gross || 0,
+                        currency: '₹',
+                        net: dashboardData.payroll?.net || 0,
+                        deductions_total: dashboardData.payroll?.deductions || 0,
+                        lop_deduction: dashboardData.payroll?.lop_deduction || 0
                     },
                     history: dashboardData.recent_logs?.map((log, idx) => {
                         let hours = log.total_hours || '0.00';
@@ -126,7 +126,7 @@ export default function MyAttendance() {
                             in: log.check_in_time ? new Date(log.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
                             out: log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
                             hours: hours,
-                            isLate: log.is_late // NEW: Map is_late property
+                            isLate: log.is_late
                         };
                     }) || [],
                     settings: dashboardData.settings || { track_break_time: true, enable_shift_system: true }
@@ -365,11 +365,10 @@ export default function MyAttendance() {
 
     if (!data) return <div className="my-attendance">Failed to load data.</div>;
 
-    // Calculate Deductions
-    const absentCost = data.stats.absent * data.payroll.deductions.absent;
-    const lateCost = data.stats.late * data.payroll.deductions.late;
-    const totalDeductions = absentCost + lateCost;
-    const projectedSalary = data.payroll.base_salary - totalDeductions;
+    // Simplified Deductions from backend
+    const totalDeductions = data.payroll.deductions_total;
+    const projectedSalary = data.payroll.net;
+    const lopDeduction = data.payroll.lop_deduction;
 
     return (
         <div className="my-attendance">
@@ -561,15 +560,15 @@ export default function MyAttendance() {
                         <div className="balances-row">
                             <div className="balance-card bc-casual">
                                 <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{data.balances.casual}</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Casual Leaves</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Casual</div>
                             </div>
                             <div className="balance-card bc-sick">
                                 <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{data.balances.sick}</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sick Leaves</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sick</div>
                             </div>
                             <div className="balance-card bc-priv">
                                 <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{data.balances.privilege}</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Privilege Leaves</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Earned/Privilege</div>
                             </div>
                         </div>
 
@@ -583,26 +582,22 @@ export default function MyAttendance() {
                             <div className="card-body">
                                 <div className="payslip-preview">
                                     <div className="deductions-list">
-                                        <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Projected Deductions</h4>
+                                        <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Projected Adjustments</h4>
 
                                         <div className="deduction-item">
-                                            <span>Unpaid Absences ({data.stats.absent})</span>
-                                            <span className="text-danger font-mono">- {data.payroll.currency}{absentCost}</span>
+                                            <span>Attendance LOP ({data.stats.absent}A, {data.stats.half_day}H)</span>
+                                            <span className="text-danger font-mono">- {data.payroll.currency}{lopDeduction}</span>
                                         </div>
                                         <div className="deduction-item">
-                                            <span>Late Penalty ({data.stats.late})</span>
-                                            <span className="text-danger font-mono">- {data.payroll.currency}{lateCost}</span>
-                                        </div>
-                                        <div className="deduction-item">
-                                            <span>Tax Estimate (10%)</span>
-                                            <span className="text-danger font-mono">- {data.payroll.currency}{(data.payroll.base_salary * 0.1).toFixed(0)}</span>
+                                            <span>Statutory/Other Deductions</span>
+                                            <span className="text-danger font-mono">- {data.payroll.currency}{(data.payroll.deductions_total - lopDeduction).toFixed(2)}</span>
                                         </div>
                                     </div>
 
                                     <div className="total-est-box">
-                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Estimated Net Salary</span>
+                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Estimated Net Payout</span>
                                         <span style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--brand-primary)', margin: '0.5rem 0' }}>
-                                            {data.payroll.currency}{projectedSalary - (data.payroll.base_salary * 0.1)}
+                                            {data.payroll.currency}{projectedSalary}
                                         </span>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                             Base: {data.payroll.currency}{data.payroll.base_salary}

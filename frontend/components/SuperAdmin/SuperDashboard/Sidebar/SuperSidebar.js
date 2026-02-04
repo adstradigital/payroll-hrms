@@ -65,7 +65,7 @@ const SuperSidebar = ({ activeTab, setActiveTab, sidebarOpen, setSidebarOpen, ha
                         </div>
                         {sidebarOpen && (
                             <div className="logo-text">
-                                <h3>Nexus<span>Admin</span></h3>
+                                <h3>HRMS<span>Admin</span></h3>
                             </div>
                         )}
                     </div>
