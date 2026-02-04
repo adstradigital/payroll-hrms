@@ -17,7 +17,7 @@ from .serializers import (
     PerformanceReviewCreateSerializer, PerformanceReviewSelfAssessmentSerializer,
     PerformanceReviewManagerSerializer, RatingScaleSerializer, RatingCategorySerializer,
     PerformanceCriteriaSerializer, CriteriaRatingSerializer, BonusMappingSerializer,
-    GoalSerializer, DashboardStatsSerializer
+    GoalSerializer, GoalCreateSerializer, DashboardStatsSerializer
 )
 from .permissions import (
     IsAdminOrHR, IsManagerOrAbove, CanManageReviewPeriod,
@@ -620,10 +620,31 @@ def goal_list(request):
             return Response(serializer.data, status=status.HTTP_200_OK)
             
         elif request.method == 'POST':
-            serializer = GoalSerializer(data=request.data)
+            # Create a mutable copy of data
+            data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            
+            # Default to current user if employee not specified
+            if 'employee' not in data:
+                data['employee'] = user.id
+            
+            # Default to active review period if not specified
+            if 'review_period' not in data or not data['review_period']:
+                active_period = ReviewPeriod.objects.filter(status='active').order_by('-start_date').first()
+                if active_period:
+                    data['review_period'] = active_period.id
+                else:
+                    return Response(
+                        {'review_period': ['No active review period found. Please contact admin to create one.']},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            print(f"Goal Creation Data: {data}")    
+            serializer = GoalCreateSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(GoalSerializer(serializer.instance).data, status=status.HTTP_201_CREATED)
+            
+            print(f"Goal Creation Errors: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
     return safe_api(logic)

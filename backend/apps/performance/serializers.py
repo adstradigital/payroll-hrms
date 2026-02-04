@@ -62,9 +62,24 @@ class CriteriaRatingSerializer(serializers.ModelSerializer):
                  'self_rating', 'manager_rating', 'comments']
 
 
+class GoalCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating goals"""
+    
+    class Meta:
+        model = Goal
+        # Include all fields that can be set during creation
+        fields = '__all__'
+        extra_kwargs = {
+            'employee': {'required': False},  # Will be set from request.user
+            'status': {'required': False},
+            'progress_percentage': {'required': False},
+            'performance_review': {'required': False}
+        }
+
 class GoalSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.get_full_name', read_only=True)
     is_overdue = serializers.ReadOnlyField()
+    employee = UserBasicSerializer(read_only=True)  # Nested for GET
     
     class Meta:
         model = Goal
