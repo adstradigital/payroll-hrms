@@ -197,3 +197,24 @@ export const getSecurityProfile = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.
 export const updateSecurityProfile = (data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.SECURITY_PROFILE, data);
 export const setSecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SET_SECURITY_PIN, data);
 export const verifySecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.VERIFY_SECURITY_PIN, data);
+
+// Assets
+export const getAssets = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSETS, { params });
+export const getAssetById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id));
+export const createAsset = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSETS, data);
+export const updateAsset = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id), data);
+export const deleteAsset = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id));
+export const allocateAsset = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id)}allocate/`, data);
+export const deallocateAsset = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id)}deallocate/`);
+
+export const getAssetBatches = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_BATCHES, { params });
+export const createAssetBatch = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSET_BATCHES, data);
+export const updateAssetBatch = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ASSET_BATCH_DETAIL(id), data);
+export const deleteAssetBatch = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ASSET_BATCH_DETAIL(id));
+
+export const getAssetRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_REQUESTS, { params });
+export const createAssetRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSET_REQUESTS, data);
+export const processAssetRequest = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSET_REQUEST_PROCESS(id), data);
+
+export const getAssetHistory = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_HISTORY, { params });
+export const getAssetDashboardStats = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.ASSETS}dashboard_stats/`);

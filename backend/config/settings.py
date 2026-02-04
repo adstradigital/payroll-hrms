@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     'apps.support',
     'apps.audit',
     'apps.biometrics',
+    'apps.assets',
 ]
 
 # Custom User Model - uncomment if you create a custom User class

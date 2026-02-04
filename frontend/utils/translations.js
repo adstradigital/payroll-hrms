@@ -61,7 +61,12 @@ export const translations = {
             biometricDevices: "Biometric Devices",
             mainMenu: "MAIN MENU",
             encashments: "Encashments & Reimbursements",
-            tax: "Tax Management"
+            tax: "Tax Management",
+            assets: "Assets",
+            manageAssets: "Manage Assets",
+            assetBatches: "Asset Batches",
+            assetRequests: "Asset Requests",
+            assetHistory: "Asset History"
         },
         auth: {
             login: "Login",
@@ -167,7 +172,12 @@ export const translations = {
             biometricDevices: "ബയോമെട്രിക് ഉപകരണങ്ങൾ",
             mainMenu: "പ്രധാന മെനു",
             encashments: "എൻകാഷ്‌മെന്റും റീഇംബേഴ്സ്‌മെന്റും",
-            tax: "ടാക്സ് മാനേജ്മെന്റ്"
+            tax: "ടാക്സ് മാനേജ്മെന്റ്",
+            assets: "അസറ്റുകൾ",
+            manageAssets: "അസറ്റുകൾ കൈകാര്യം ചെയ്യുക",
+            assetBatches: "അസറ്റ് ബാച്ചുകൾ",
+            assetRequests: "അസറ്റ് അപേക്ഷകൾ",
+            assetHistory: "അസറ്റ് ചരിത്രം"
         },
         auth: {
             login: "ലോഗിൻ",
@@ -273,7 +283,12 @@ export const translations = {
             biometricDevices: "أجهزة البصمة",
             mainMenu: "القائمة الرئيسية",
             encashments: "صرف الإجازات والتعويضات",
-            tax: "إدارة الضرائب"
+            tax: "إدارة الضرائب",
+            assets: "الأصول",
+            manageAssets: "إدارة الأصول",
+            assetBatches: "دفعات الأصول",
+            assetRequests: "طلبات الأصول",
+            assetHistory: "سجل الأصول"
         },
         auth: {
             login: "تسجيل الدخول",

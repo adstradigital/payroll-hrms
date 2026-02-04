@@ -1,23 +1,64 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Send, CheckCircle2, XCircle, Clock,
     User, Box, MessageSquare, Filter,
-    Search, ArrowUpRight
+    Search, ArrowUpRight, Calendar
 } from 'lucide-react';
+import { getAssetRequests, createAssetRequest, processAssetRequest } from '@/api/api_clientadmin';
 import './AssetRequests.css';
 
-const initialRequests = [
-    { id: 'REQ-001', user: 'Anil Kumar', assetType: 'Laptop', priority: 'High', date: '2023-11-20', status: 'pending', reason: 'Old machine performance issues' },
-    { id: 'REQ-002', user: 'Sneha Rao', assetType: 'Monitor', priority: 'Medium', date: '2023-11-21', status: 'approved', reason: 'Dual monitor setup for design' },
-    { id: 'REQ-003', user: 'Rahul Singh', assetType: 'Mouse', priority: 'Low', date: '2023-11-22', status: 'rejected', reason: 'Damaged existing mouse' },
-    { id: 'REQ-004', user: 'Priya Verma', assetType: 'Keyboard', priority: 'Medium', date: '2023-11-23', status: 'pending', reason: 'Ergonomic keyboard requirement' },
-];
-
 export default function AssetRequests() {
-    const [requests, setRequests] = useState(initialRequests);
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('all');
+    const [formData, setFormData] = useState({ asset_type: '', priority: 'medium', reason: '' });
+    const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });
+
+    useEffect(() => {
+        fetchRequests();
+    }, []);
+
+    const fetchRequests = async () => {
+        try {
+            setLoading(true);
+            const response = await getAssetRequests();
+            const data = response.data.results || response.data;
+            setRequests(data);
+
+            // Calculate stats
+            setStats({
+                total: data.length,
+                pending: data.filter(r => r.status === 'pending').length,
+                approved: data.filter(r => r.status === 'approved').length
+            });
+        } catch (error) {
+            console.error('Error fetching requests:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await createAssetRequest(formData);
+            setFormData({ asset_type: '', priority: 'medium', reason: '' });
+            fetchRequests();
+        } catch (error) {
+            console.error('Error creating request:', error);
+        }
+    };
+
+    const handleProcess = async (id, action) => {
+        try {
+            await processAssetRequest(id, { action });
+            fetchRequests();
+        } catch (error) {
+            console.error('Error processing request:', error);
+        }
+    };
 
     const filteredRequests = activeTab === 'all' ? requests : requests.filter(r => r.status === activeTab);
 
@@ -30,32 +71,42 @@ export default function AssetRequests() {
                     <div className="ar-card-header">
                         <h3><Send size={18} /> New Asset Request</h3>
                     </div>
-                    <form className="ar-form">
+                    <form className="ar-form" onSubmit={handleSubmit}>
                         <div className="ar-form-row">
                             <div className="ar-form-group">
                                 <label>Asset Type</label>
-                                <select>
-                                    <option>Select Asset Type</option>
-                                    <option>Laptop</option>
-                                    <option>Monitor</option>
-                                    <option>Mobile</option>
-                                    <option>Peripherals</option>
+                                <select
+                                    value={formData.asset_type}
+                                    onChange={(e) => setFormData({ ...formData, asset_type: e.target.value })}
+                                    required
+                                >
+                                    <option value="">Select Asset Type</option>
+                                    <option value="Laptop">Laptop</option>
+                                    <option value="Monitor">Monitor</option>
+                                    <option value="Mobile">Mobile</option>
+                                    <option value="Peripherals">Peripherals</option>
                                 </select>
                             </div>
                             <div className="ar-form-group">
                                 <label>Priority</label>
                                 <div className="ar-priority-options">
-                                    <label><input type="radio" name="priority" value="low" /> Low</label>
-                                    <label><input type="radio" name="priority" value="medium" defaultChecked /> Medium</label>
-                                    <label><input type="radio" name="priority" value="high" /> High</label>
+                                    <label><input type="radio" name="priority" value="low" checked={formData.priority === 'low'} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} /> Low</label>
+                                    <label><input type="radio" name="priority" value="medium" checked={formData.priority === 'medium'} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} /> Medium</label>
+                                    <label><input type="radio" name="priority" value="high" checked={formData.priority === 'high'} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} /> High</label>
                                 </div>
                             </div>
                         </div>
                         <div className="ar-form-group">
                             <label>Reason for Request</label>
-                            <textarea rows={3} placeholder="Explain why you need this asset..."></textarea>
+                            <textarea
+                                rows={3}
+                                placeholder="Explain why you need this asset..."
+                                value={formData.reason}
+                                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                                required
+                            ></textarea>
                         </div>
-                        <button type="button" className="ar-btn-primary">Submit Request</button>
+                        <button type="submit" className="ar-btn-primary">Submit Request</button>
                     </form>
                 </div>
 
@@ -63,22 +114,22 @@ export default function AssetRequests() {
                 <div className="ar-stats-side">
                     <div className="ar-mini-stat">
                         <div className="ar-mini-stat-info">
-                            <span className="label">Your Requests</span>
-                            <span className="value">12</span>
+                            <span className="label">Total Requests</span>
+                            <span className="value">{stats.total}</span>
                         </div>
                         <div className="ar-mini-stat-icon blue"><Send size={20} /></div>
                     </div>
                     <div className="ar-mini-stat">
                         <div className="ar-mini-stat-info">
                             <span className="label">Pending</span>
-                            <span className="value">2</span>
+                            <span className="value">{stats.pending}</span>
                         </div>
                         <div className="ar-mini-stat-icon orange"><Clock size={20} /></div>
                     </div>
                     <div className="ar-mini-stat">
                         <div className="ar-mini-stat-info">
                             <span className="label">Approved</span>
-                            <span className="value">9</span>
+                            <span className="value">{stats.approved}</span>
                         </div>
                         <div className="ar-mini-stat-icon green"><CheckCircle2 size={20} /></div>
                     </div>
@@ -108,9 +159,9 @@ export default function AssetRequests() {
                             <div className="ar-req-main">
                                 <div className="ar-req-info">
                                     <span className="ar-req-id">{req.id}</span>
-                                    <h4 className="ar-req-title">{req.assetType} Request</h4>
+                                    <h4 className="ar-req-title">{req.asset_type} Request</h4>
                                     <div className="ar-req-meta">
-                                        <span><User size={14} /> {req.user}</span>
+                                        <span><User size={14} /> {req.employee_details ? req.employee_details.full_name : '-'}</span>
                                         <span><Calendar size={14} /> {req.date}</span>
                                         <span className={`ar-priority-tag ar-priority--${req.priority.toLowerCase()}`}>{req.priority} Priority</span>
                                     </div>
@@ -121,8 +172,8 @@ export default function AssetRequests() {
                                 <div className="ar-req-actions">
                                     {req.status === 'pending' ? (
                                         <>
-                                            <button className="ar-action-btn ar-action--approve" title="Approve"><CheckCircle2 size={18} /></button>
-                                            <button className="ar-action-btn ar-action--reject" title="Reject"><XCircle size={18} /></button>
+                                            <button className="ar-action-btn ar-action--approve" title="Approve" onClick={() => handleProcess(req.id, 'approve')}><CheckCircle2 size={18} /></button>
+                                            <button className="ar-action-btn ar-action--reject" title="Reject" onClick={() => handleProcess(req.id, 'reject')}><XCircle size={18} /></button>
                                         </>
                                     ) : (
                                         <button className="ar-action-btn" title="View Details"><ArrowUpRight size={18} /></button>

@@ -30,8 +30,8 @@ urlpatterns = [
     path('api/payroll/', include('apps.payroll.urls')),
     path('api/reports/', include('apps.reports.urls')),
     path('api/biometrics/', include('apps.biometrics.urls')),
-    path('api/support/', include('apps.support.urls')),
     path('api/audit/', include('apps.audit.urls')),
+    path('api/assets/', include('apps.assets.urls')),
 ]
 
 # Serve media and static files in development

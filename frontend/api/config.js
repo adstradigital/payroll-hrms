@@ -139,6 +139,16 @@ export const CLIENTADMIN_ENDPOINTS = {
     SECURITY_PROFILE: `${BASE_URL}/account/security/profile/`,
     SET_SECURITY_PIN: `${BASE_URL}/account/security/pin/set/`,
     VERIFY_SECURITY_PIN: `${BASE_URL}/account/security/pin/verify/`,
+
+    // Assets
+    ASSETS: `${BASE_URL}/assets/inventory/`,
+    ASSET_DETAIL: (id) => `${BASE_URL}/assets/inventory/${id}/`,
+    ASSET_BATCHES: `${BASE_URL}/assets/batches/`,
+    ASSET_BATCH_DETAIL: (id) => `${BASE_URL}/assets/batches/${id}/`,
+    ASSET_REQUESTS: `${BASE_URL}/assets/requests/`,
+    ASSET_REQUEST_DETAIL: (id) => `${BASE_URL}/assets/requests/${id}/`,
+    ASSET_REQUEST_PROCESS: (id) => `${BASE_URL}/assets/requests/${id}/process/`,
+    ASSET_HISTORY: `${BASE_URL}/assets/history/`,
 };
 
 export default BASE_URL;

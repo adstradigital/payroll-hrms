@@ -8,7 +8,7 @@ import {
     Wallet, FileText, Settings, ChevronDown,
     ChevronRight, LogOut, Bell, User, CheckCircle2,
     X, Loader, AlertCircle, HelpCircle, Upload, Activity,
-    Box
+    Box, Package
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -108,21 +108,21 @@ const menuItems = [
             { id: 'encashments', label: 'Encashments & Reimbursements', translationKey: 'common.encashments', path: '/dashboard/payroll/encashments-reimbursements', permission: 'payroll.manage' },
             { id: 'tax', label: 'Tax Management', translationKey: 'common.tax', path: '/dashboard/payroll/tax', permission: 'payroll.manage' },
             { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
-            {
-                id: 'assets',
-                label: 'Assets',
-                translationKey: 'common.assets',
-                icon: Box,
-                path: '/dashboard/payroll/assets',
-                permission: 'payroll.manage',
-                children: [
-                    { id: 'assets-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll/assets' },
-                    { id: 'assets-manage', label: 'Manage Assets', translationKey: 'common.manageAssets', path: '/dashboard/payroll/assets/manage' },
-                    { id: 'assets-batches', label: 'Asset Batches', translationKey: 'common.assetBatches', path: '/dashboard/payroll/assets/batches' },
-                    { id: 'assets-requests', label: 'Requests & Approvals', translationKey: 'common.requests', path: '/dashboard/payroll/assets/requests' },
-                    { id: 'assets-history', label: 'Asset History', translationKey: 'common.history', path: '/dashboard/payroll/assets/history' },
-                ]
-            },
+        ]
+    },
+    {
+        id: 'assets-module',
+        label: 'Assets',
+        translationKey: 'common.assets',
+        module: 'Payroll',
+        icon: Package,
+        path: '/dashboard/payroll/assets',
+        children: [
+            { id: 'assets-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll/assets' },
+            { id: 'assets-manage', label: 'Manage Assets', translationKey: 'common.manageAssets', path: '/dashboard/payroll/assets/manage' },
+            { id: 'assets-batches', label: 'Asset Batches', translationKey: 'common.assetBatches', path: '/dashboard/payroll/assets/batches' },
+            { id: 'assets-requests-sub', label: 'Asset Requests', translationKey: 'common.assetRequests', path: '/dashboard/payroll/assets/requests' },
+            { id: 'assets-history-sub', label: 'Asset History', translationKey: 'common.assetHistory', path: '/dashboard/payroll/assets/history' },
         ]
     },
     {
@@ -195,13 +195,35 @@ export default function Sidebar() {
 
     const [expandedItems, setExpandedItems] = useState(() => {
         const defaultExpanded = [];
-        menuItems.forEach(item => {
-            if (item.children && !defaultExpanded.includes(item.id)) {
-                if (item.children.some(child => pathname.startsWith(child.path))) {
-                    defaultExpanded.push(item.id);
+
+        // Find the "best match" top-level item for the current path
+        const findBestMatch = (items) => {
+            let bestMatch = null;
+            let maxLen = -1;
+
+            items.forEach(item => {
+                if (pathname.startsWith(item.path) && item.path.length > maxLen) {
+                    // Check if is actually a subpath (ends in / or is exact)
+                    if (pathname === item.path || pathname.startsWith(item.path + '/')) {
+                        maxLen = item.path.length;
+                        bestMatch = item;
+                    }
                 }
+            });
+            return bestMatch;
+        };
+
+        const activeTopLevel = findBestMatch(menuItems);
+        if (activeTopLevel && activeTopLevel.children) {
+            defaultExpanded.push(activeTopLevel.id);
+
+            // Check for second level matches
+            const activeChild = findBestMatch(activeTopLevel.children);
+            if (activeChild && activeChild.children) {
+                defaultExpanded.push(activeChild.id);
             }
-        });
+        }
+
         return defaultExpanded;
     });
 
@@ -225,15 +247,40 @@ export default function Sidebar() {
     useEffect(() => {
         const itemsToExpand = [...expandedItems];
         let changed = false;
-        menuItems.forEach(item => {
-            if (item.children && !itemsToExpand.includes(item.id)) {
-                if (item.children.some(child => pathname.startsWith(child.path))) {
-                    itemsToExpand.push(item.id);
-                    changed = true;
+
+        const findBestMatch = (items) => {
+            let bestMatch = null;
+            let maxLen = -1;
+
+            items.forEach(item => {
+                if (pathname.startsWith(item.path) && item.path.length > maxLen) {
+                    if (pathname === item.path || pathname.startsWith(item.path + '/')) {
+                        maxLen = item.path.length;
+                        bestMatch = item;
+                    }
                 }
+            });
+            return bestMatch;
+        };
+
+        const activeTopLevel = findBestMatch(menuItems);
+        if (activeTopLevel && activeTopLevel.children && !itemsToExpand.includes(activeTopLevel.id)) {
+            itemsToExpand.push(activeTopLevel.id);
+            changed = true;
+        }
+
+        // If a top level is expanded, check its children
+        if (activeTopLevel && activeTopLevel.children) {
+            const activeChild = findBestMatch(activeTopLevel.children);
+            if (activeChild && activeChild.children && !itemsToExpand.includes(activeChild.id)) {
+                itemsToExpand.push(activeChild.id);
+                changed = true;
             }
-        });
-        if (changed) setExpandedItems(itemsToExpand);
+        }
+
+        if (changed) {
+            setExpandedItems(itemsToExpand);
+        }
     }, [pathname]);
 
     useEffect(() => {
@@ -250,10 +297,32 @@ export default function Sidebar() {
     const isActive = (path) => pathname === path;
     const isParentActive = (item) => {
         if (isActive(item.path)) return true;
-        if (item.children) {
-            return item.children.some(child => pathname.startsWith(child.path));
+
+        // Stricter check: is this item the best matching top-level item?
+        const itemsToMatch = menuItems;
+        let bestMatch = null;
+        let maxLen = -1;
+
+        itemsToMatch.forEach(mi => {
+            if (pathname.startsWith(mi.path) && (pathname === mi.path || pathname.startsWith(mi.path + '/'))) {
+                if (mi.path.length > maxLen) {
+                    maxLen = mi.path.length;
+                    bestMatch = mi;
+                }
+            }
+        });
+
+        // If this is a top-level item, check if it's the best match
+        if (menuItems.some(mi => mi.id === item.id)) {
+            return bestMatch?.id === item.id;
         }
-        return false;
+
+        // If this is a sub-item, check if it's a prefix of the current path
+        if (item.children) {
+            return item.children.some(child => pathname === child.path || pathname.startsWith(child.path + '/'));
+        }
+
+        return pathname.startsWith(item.path + '/');
     };
 
     const fetchTicketStats = async () => {
@@ -416,21 +485,62 @@ export default function Sidebar() {
 
                                     {isExpanded && (
                                         <div className="sidebar__submenu">
-                                            {filterChildren(item.children).map(child => (
-                                                <Link
-                                                    key={child.id}
-                                                    href={child.path}
-                                                    className={`sidebar__subitem ${isActive(child.path) ? 'sidebar__subitem--active' : ''}`}
-                                                >
-                                                    <span className="sidebar__subitem-dot"></span>
-                                                    {t(child.translationKey) || child.label}
-                                                    {item.id === 'support' && child.id === 'support-tickets' && ticketStats && (
-                                                        <span className="sidebar__badge">
-                                                            {ticketStats.open + ticketStats.in_progress}
-                                                        </span>
-                                                    )}
-                                                </Link>
-                                            ))}
+                                            {filterChildren(item.children).map(child => {
+                                                const hasGrandChildren = child.children && child.children.length > 0;
+                                                const isChildExpanded = expandedItems.includes(child.id);
+                                                const isChildActive = isParentActive(child);
+                                                const ChildIcon = child.icon;
+
+                                                return (
+                                                    <div key={child.id} className="sidebar__subitem-wrapper">
+                                                        {hasGrandChildren ? (
+                                                            <>
+                                                                <button
+                                                                    className={`sidebar__subitem ${isChildActive ? 'sidebar__subitem--active' : ''}`}
+                                                                    onClick={() => toggleExpand(child.id)}
+                                                                >
+                                                                    <span className="sidebar__subitem-dot"></span>
+                                                                    {ChildIcon && <ChildIcon className="sidebar__subitem-icon" size={16} />}
+                                                                    <span className="sidebar__subitem-label">{t(child.translationKey) || child.label}</span>
+                                                                    {isChildExpanded ? (
+                                                                        <ChevronDown className="sidebar__item-arrow" size={14} />
+                                                                    ) : (
+                                                                        <ChevronRight className="sidebar__item-arrow" size={14} />
+                                                                    )}
+                                                                </button>
+                                                                {isChildExpanded && (
+                                                                    <div className="sidebar__grand-submenu">
+                                                                        {filterChildren(child.children).map(grandChild => (
+                                                                            <Link
+                                                                                key={grandChild.id}
+                                                                                href={grandChild.path}
+                                                                                className={`sidebar__grand-subitem ${isActive(grandChild.path) ? 'sidebar__grand-subitem--active' : ''}`}
+                                                                            >
+                                                                                <span className="sidebar__grand-subitem-dot"></span>
+                                                                                {t(grandChild.translationKey) || grandChild.label}
+                                                                            </Link>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <Link
+                                                                href={child.path}
+                                                                className={`sidebar__subitem ${isActive(child.path) ? 'sidebar__subitem--active' : ''}`}
+                                                            >
+                                                                <span className="sidebar__subitem-dot"></span>
+                                                                {ChildIcon && <ChildIcon className="sidebar__subitem-icon" size={16} />}
+                                                                {t(child.translationKey) || child.label}
+                                                                {item.id === 'support' && child.id === 'support-tickets' && ticketStats && (
+                                                                    <span className="sidebar__badge">
+                                                                        {ticketStats.open + ticketStats.in_progress}
+                                                                    </span>
+                                                                )}
+                                                            </Link>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </>

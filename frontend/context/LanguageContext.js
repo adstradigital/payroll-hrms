@@ -42,6 +42,7 @@ export const LanguageProvider = ({ children }) => {
     // Helper function to get translation
     // Usage: t('common.dashboard')
     const t = (path, replacements = {}) => {
+        if (typeof path !== 'string') return path;
         const keys = path.split('.');
         let translation = translations[language];
 

@@ -1,34 +1,56 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Box, CheckCircle, Clock, AlertCircle,
     TrendingUp, UserCheck, Plus, Search,
     Filter, MoreVertical, ArrowRight
 } from 'lucide-react';
+import { getAssetDashboardStats } from '@/api/api_clientadmin';
+import { useRouter } from 'next/navigation';
 import './AssetsDashboard.css';
 
-const summaryCards = [
-    { label: 'Total Assets', value: '1,284', icon: Box, color: 'blue', trend: '+12%' },
-    { label: 'Active Assets', value: '1,120', icon: CheckCircle, color: 'green', trend: '+5%' },
-    { label: 'Allocated', value: '856', icon: UserCheck, color: 'indigo', trend: '+8%' },
-    { label: 'Pending Requests', value: '24', icon: Clock, color: 'orange', trend: '-2%' }
-];
-
-const recentActivity = [
-    { id: 1, type: 'allocation', user: 'Anil Kumar', asset: 'MacBook Pro M2', date: '2 hours ago', status: 'completed' },
-    { id: 2, type: 'request', user: 'Sneha Rao', asset: 'Dell Monitor 27"', date: '4 hours ago', status: 'pending' },
-    { id: 3, type: 'return', user: 'Rahul Singh', asset: 'iPhone 13', date: 'Yesterday', status: 'completed' },
-    { id: 4, type: 'maintenance', user: 'IT Support', asset: 'HP Laser Jet', date: 'Yesterday', status: 'in-progress' },
-    { id: 5, type: 'allocation', user: 'Priya Verma', asset: 'Magic Mouse', date: '2 days ago', status: 'completed' }
-];
-
 export default function AssetsDashboard() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        summary: { total: 0, active: 0, available: 0, allocated: 0, pending_requests: 0 },
+        health: { functional_pct: 0, maintenance_pct: 0, damaged_pct: 0 },
+        recent_activity: []
+    });
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            const response = await getAssetDashboardStats();
+            setStats(response.data);
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const cards = [
+        { label: 'Total Assets', value: stats.summary.total, icon: Box, color: 'blue' },
+        { label: 'Active Assets', value: stats.summary.active, icon: CheckCircle, color: 'green' },
+        { label: 'Allocated', value: stats.summary.allocated, icon: UserCheck, color: 'indigo' },
+        { label: 'Pending Requests', value: stats.summary.pending_requests, icon: Clock, color: 'orange' }
+    ];
+
+    if (loading) {
+        return <div className="ad-loading">Loading Dashboard Stats...</div>;
+    }
+
     return (
         <div className="assets-dashboard">
             {/* Summary Cards */}
             <div className="ad-stats-grid">
-                {summaryCards.map((card, index) => {
+                {cards.map((card, index) => {
                     const Icon = card.icon;
                     return (
                         <div key={index} className={`ad-stat-card ad-stat-card--${card.color}`}>
@@ -39,9 +61,6 @@ export default function AssetsDashboard() {
                                 <span className="ad-stat-label">{card.label}</span>
                                 <div className="ad-stat-value-row">
                                     <span className="ad-stat-value">{card.value}</span>
-                                    <span className={`ad-stat-trend ad-stat-trend--${card.trend.startsWith('+') ? 'up' : 'down'}`}>
-                                        <TrendingUp size={12} /> {card.trend}
-                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -54,24 +73,22 @@ export default function AssetsDashboard() {
                 <div className="ad-card ad-activity-feed">
                     <div className="ad-card-header">
                         <h3>Recent Activity</h3>
-                        <button className="ad-btn-text">View All <ArrowRight size={16} /></button>
+                        <button className="ad-btn-text" onClick={() => router.push('/dashboard/payroll/assets/history')}>View All <ArrowRight size={16} /></button>
                     </div>
                     <div className="ad-activity-list">
-                        {recentActivity.map((activity) => (
+                        {stats.recent_activity.length === 0 ? (
+                            <div className="ad-no-data">No recent activity</div>
+                        ) : stats.recent_activity.map((activity) => (
                             <div key={activity.id} className="ad-activity-item">
-                                <div className={`ad-activity-dot ad-activity-dot--${activity.status}`}></div>
+                                <div className={`ad-activity-dot ad-activity-dot--${activity.history_type}`}></div>
                                 <div className="ad-activity-content">
                                     <p className="ad-activity-text">
-                                        <strong>{activity.user}</strong>
-                                        {activity.type === 'allocation' ? ' was allocated ' :
-                                            activity.type === 'request' ? ' requested ' :
-                                                activity.type === 'return' ? ' returned ' : ' started maintenance on '}
-                                        <strong>{activity.asset}</strong>
+                                        <strong>{activity.asset_name}</strong> - {activity.action}
                                     </p>
-                                    <span className="ad-activity-time">{activity.date}</span>
+                                    <span className="ad-activity-time">{new Date(activity.date).toLocaleString()}</span>
                                 </div>
-                                <span className={`ad-status-badge ad-status-badge--${activity.status}`}>
-                                    {activity.status}
+                                <span className={`ad-status-badge ad-status-badge--${activity.history_type}`}>
+                                    {activity.history_type}
                                 </span>
                             </div>
                         ))}
@@ -85,14 +102,14 @@ export default function AssetsDashboard() {
                             <h3>Quick Actions</h3>
                         </div>
                         <div className="ad-actions-list">
-                            <button className="ad-action-btn ad-action-btn--primary">
-                                <Plus size={18} /> Add New Asset
+                            <button className="ad-action-btn ad-action-btn--primary" onClick={() => router.push('/dashboard/payroll/assets/manage')}>
+                                <Plus size={18} /> Manage Assets
                             </button>
-                            <button className="ad-action-btn ad-action-btn--outline">
-                                <UserCheck size={18} /> Assign Asset
+                            <button className="ad-action-btn ad-action-btn--outline" onClick={() => router.push('/dashboard/payroll/assets/requests')}>
+                                <UserCheck size={18} /> Asset Requests
                             </button>
-                            <button className="ad-action-btn ad-action-btn--outline">
-                                <Box size={18} /> Create Batch
+                            <button className="ad-action-btn ad-action-btn--outline" onClick={() => router.push('/dashboard/payroll/assets/batches')}>
+                                <Box size={18} /> Manage Batches
                             </button>
                         </div>
                     </div>
@@ -105,28 +122,28 @@ export default function AssetsDashboard() {
                             <div className="ad-health-item">
                                 <div className="ad-health-info">
                                     <span>Functional</span>
-                                    <span>92%</span>
+                                    <span>{stats.health.functional_pct}%</span>
                                 </div>
                                 <div className="ad-health-bar">
-                                    <div className="ad-health-progress ad-health-progress--good" style={{ width: '92%' }}></div>
+                                    <div className="ad-health-progress ad-health-progress--good" style={{ width: `${stats.health.functional_pct}%` }}></div>
                                 </div>
                             </div>
                             <div className="ad-health-item">
                                 <div className="ad-health-info">
                                     <span>In Maintenance</span>
-                                    <span>5%</span>
+                                    <span>{stats.health.maintenance_pct}%</span>
                                 </div>
                                 <div className="ad-health-bar">
-                                    <div className="ad-health-progress ad-health-progress--warning" style={{ width: '5%' }}></div>
+                                    <div className="ad-health-progress ad-health-progress--warning" style={{ width: `${stats.health.maintenance_pct}%` }}></div>
                                 </div>
                             </div>
                             <div className="ad-health-item">
                                 <div className="ad-health-info">
-                                    <span>Damaged</span>
-                                    <span>3%</span>
+                                    <span>Damaged/Lost</span>
+                                    <span>{stats.health.damaged_pct}%</span>
                                 </div>
                                 <div className="ad-health-bar">
-                                    <div className="ad-health-progress ad-health-progress--danger" style={{ width: '3%' }}></div>
+                                    <div className="ad-health-progress ad-health-progress--danger" style={{ width: `${stats.health.damaged_pct}%` }}></div>
                                 </div>
                             </div>
                         </div>
