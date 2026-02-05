@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, Key, Edit2, Trash2, TrendingUp, CheckCircle, Clock } from 'lucide-react';
-import { getGoals, updateGoalProgress, getReviewPeriods } from '../services/performanceService';
+import { getGoals, updateGoalProgress, getReviewPeriods, updateGoal } from '../services/performanceService';
 import './KeyResults.css';
 
 export default function KeyResults() {
@@ -51,7 +51,16 @@ export default function KeyResults() {
 
     const handleProgressUpdate = async (id) => {
         try {
-            await updateGoalProgress(id, progressValue);
+            // Find current key result to get other details if needed, though updateGoal might be partial patch
+            // But we need to calculate status based on progressValue
+            let newStatus = 'in_progress';
+            if (progressValue === 100) newStatus = 'completed';
+            else if (progressValue === 0) newStatus = 'not_started';
+
+            await updateGoal(id, { 
+                progress_percentage: progressValue,
+                status: newStatus
+            });
             setEditingProgress(null);
             loadKeyResults();
         } catch (error) {

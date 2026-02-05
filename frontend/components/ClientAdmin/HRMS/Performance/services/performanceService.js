@@ -314,6 +314,12 @@ export const updateGoalProgress = async (id, progressPercentage) => {
     });
 };
 
+export const claimGoal = async (id) => {
+    return authFetch(`${PERFORMANCE_BASE}/goals/${id}/claim/`, {
+        method: 'POST'
+    });
+};
+
 // ==================== REPORTS ====================
 export const getPerformanceReport = async (reviewPeriodId) => {
     return authFetch(`${PERFORMANCE_BASE}/reports/?type=performance-report&review_period_id=${reviewPeriodId}`);

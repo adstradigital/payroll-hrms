@@ -70,7 +70,7 @@ class GoalCreateSerializer(serializers.ModelSerializer):
         # Include all fields that can be set during creation
         fields = '__all__'
         extra_kwargs = {
-            'employee': {'required': False},  # Will be set from request.user
+            'employee': {'required': False, 'allow_null': True},  # Allow null for unassigned tasks
             'status': {'required': False},
             'progress_percentage': {'required': False},
             'performance_review': {'required': False}
@@ -80,6 +80,9 @@ class GoalSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.get_full_name', read_only=True)
     is_overdue = serializers.ReadOnlyField()
     employee = UserBasicSerializer(read_only=True)  # Nested for GET
+    employee_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), source='employee', write_only=True, required=False, allow_null=True
+    )
     
     class Meta:
         model = Goal

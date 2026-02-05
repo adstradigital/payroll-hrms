@@ -9,7 +9,7 @@ from .views import (
     rating_category_list, rating_category_detail,
     performance_criteria_list, performance_criteria_detail,
     bonus_mapping_list, bonus_mapping_detail, calculate_bonus,
-    goal_list, goal_detail, goal_update_progress
+    goal_list, goal_detail, goal_update_progress, claim_goal
 )
 
 urlpatterns = [
@@ -53,4 +53,5 @@ urlpatterns = [
     path('goals/', goal_list, name='goal-list'),
     path('goals/<uuid:pk>/', goal_detail, name='goal-detail'),
     path('goals/<uuid:pk>/update_progress/', goal_update_progress, name='goal-update-progress'),
+    path('goals/<uuid:pk>/claim/', claim_goal, name='goal-claim'),
 ]

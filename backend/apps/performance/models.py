@@ -237,7 +237,7 @@ class Goal(BaseModel):
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goals')
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goals', null=True, blank=True)
     review_period = models.ForeignKey(ReviewPeriod, on_delete=models.CASCADE, related_name='goals')
     performance_review = models.ForeignKey(PerformanceReview, on_delete=models.CASCADE, 
                                           related_name='goals', null=True, blank=True)

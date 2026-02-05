@@ -603,9 +603,32 @@ def goal_list(request):
             if role in ['admin', 'hr']:
                 pass
             elif role == 'manager':
-                queryset = queryset.filter(employee__manager=user)
+                # Managers see their team's goals AND unassigned goals? Or just team?
+                # Let's say managers can see all unassigned to assign?
+                # For now keeping it simple:
+                # If query params has 'unassigned=true', showing unassigned.
+                pass
             else:
-                queryset = queryset.filter(employee=user)
+                # Regular employees see their own goals OR unassigned goals they can claim
+                pass
+            
+            # Simplified Logic for "Take Task" support across all roles:
+            # 1. Base filter by role logic (existing)
+            # 2. Add OR condition for unassigned goals if they are public pool
+            
+            # RE-WRITING QUERYSET LOGIC:
+            if role in ['admin', 'hr']:
+                 # Admin sees all
+                 pass 
+            elif role == 'manager':
+                queryset = queryset.filter(
+                    Q(employee__manager=request.user) | Q(employee__isnull=True)
+                )
+            else:
+                # Employees see their own AND unassigned
+                queryset = queryset.filter(
+                    Q(employee=request.user) | Q(employee__isnull=True)
+                )
             
             review_period_id = request.query_params.get('review_period')
             if review_period_id:
@@ -710,6 +733,29 @@ def goal_update_progress(request, pk):
             )
             
         goal.save()
+        serializer = GoalSerializer(goal)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    return safe_api(logic)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def claim_goal(request, pk):
+    """Claim an unassigned goal (Take Task)"""
+    def logic():
+        goal = get_object_or_404(Goal, pk=pk)
+        
+        if goal.employee:
+            return Response(
+                {'error': 'This goal is already assigned'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        goal.employee = request.user
+        goal.status = 'in_progress' # Automatically start when claimed? Or keep not_started?
+        goal.save()
+        
         serializer = GoalSerializer(goal)
         return Response(serializer.data, status=status.HTTP_200_OK)
         
