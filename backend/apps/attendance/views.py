@@ -978,7 +978,7 @@ def my_dashboard(request):
         if not employee:
             return Response({'error': 'Employee profile not found'}, status=status.HTTP_404_NOT_FOUND)
         
-        today = date.today()
+        today = timezone.localdate()
         month = int(request.query_params.get('month', today.month))
         year = int(request.query_params.get('year', today.year))
         

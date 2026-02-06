@@ -1,12 +1,50 @@
 from rest_framework import permissions
 
 
+from apps.accounts.permissions import is_client_admin
+
+def get_user_role(user):
+    """
+    Helper to determine user role for performance module permissions.
+    Returns: 'admin', 'hr', 'manager', or 'employee'
+    """
+    if not user.is_authenticated:
+        return None
+        
+    # 1. Admin Check
+    if is_client_admin(user):
+        return 'admin'
+        
+    try:
+        emp = getattr(user, 'employee_profile', None)
+        if not emp:
+            return None
+            
+        # 2. HR Check (Heuristic based on Department or Designation)
+        # Adjust logic as per actual HR detection needs
+        if emp.department and 'hum' in emp.department.name.lower(): # matches Human Resources
+            return 'hr'
+        if emp.designation and 'hr' in emp.designation.name.lower():
+            return 'hr'
+            
+        # 3. Manager Check
+        # If they have subordinates, they are a manager
+        if emp.subordinates.exists():
+            return 'manager'
+            
+    except Exception:
+        pass
+        
+    return 'employee'
+
+
 class IsAdminOrHR(permissions.BasePermission):
     """
     Only Admin or HR can access
     """
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'hr']
+        role = get_user_role(request.user)
+        return role in ['admin', 'hr']
 
 
 class IsManagerOrAbove(permissions.BasePermission):
@@ -14,7 +52,8 @@ class IsManagerOrAbove(permissions.BasePermission):
     Manager, HR, or Admin can access
     """
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'hr', 'manager']
+        role = get_user_role(request.user)
+        return role in ['admin', 'hr', 'manager']
 
 
 class CanManageReviewPeriod(permissions.BasePermission):
@@ -24,7 +63,8 @@ class CanManageReviewPeriod(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return request.user.is_authenticated
-        return request.user.is_authenticated and request.user.role in ['admin', 'hr']
+        role = get_user_role(request.user)
+        return role in ['admin', 'hr']
 
 
 class CanViewPerformanceReview(permissions.BasePermission):
@@ -38,13 +78,14 @@ class CanViewPerformanceReview(permissions.BasePermission):
     
     def has_object_permission(self, request, view, obj):
         user = request.user
+        role = get_user_role(user)
         
         # Admin/HR can view all
-        if user.role in ['admin', 'hr']:
+        if role in ['admin', 'hr']:
             return True
         
         # Manager can view their team's reviews
-        if user.role == 'manager' and hasattr(obj.employee, 'manager'):
+        if role == 'manager' and hasattr(obj.employee, 'manager'):
             if obj.employee.manager == user:
                 return True
         
@@ -66,13 +107,14 @@ class CanEditPerformanceReview(permissions.BasePermission):
     
     def has_object_permission(self, request, view, obj):
         user = request.user
+        role = get_user_role(user)
         
         # Admin/HR can edit all
-        if user.role in ['admin', 'hr']:
+        if role in ['admin', 'hr']:
             return True
         
         # Manager can edit their team's reviews
-        if user.role == 'manager' and hasattr(obj.employee, 'manager'):
+        if role == 'manager' and hasattr(obj.employee, 'manager'):
             if obj.employee.manager == user:
                 return True
         
@@ -99,8 +141,9 @@ class CanSubmitManagerReview(permissions.BasePermission):
     """
     def has_object_permission(self, request, view, obj):
         user = request.user
+        role = get_user_role(user)
         
-        if user.role in ['admin', 'hr']:
+        if role in ['admin', 'hr']:
             return True
         
         if obj.reviewer == user or (hasattr(obj.employee, 'manager') and obj.employee.manager == user):
@@ -116,7 +159,8 @@ class CanManageRatings(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return request.user.is_authenticated
-        return request.user.is_authenticated and request.user.role in ['admin', 'hr']
+        role = get_user_role(request.user)
+        return role in ['admin', 'hr']
 
 
 class CanManageBonusMapping(permissions.BasePermission):
@@ -126,9 +170,11 @@ class CanManageBonusMapping(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             # Managers can view bonus rules (read-only)
-            return request.user.is_authenticated and request.user.role in ['admin', 'hr', 'manager']
+            role = get_user_role(request.user)
+            return role in ['admin', 'hr', 'manager']
         # Only Admin/HR can create/edit
-        return request.user.is_authenticated and request.user.role in ['admin', 'hr']
+        role = get_user_role(request.user)
+        return role in ['admin', 'hr']
 
 
 class CanViewOwnBonusOnly(permissions.BasePermission):
@@ -137,8 +183,9 @@ class CanViewOwnBonusOnly(permissions.BasePermission):
     """
     def has_object_permission(self, request, view, obj):
         user = request.user
+        role = get_user_role(user)
         
-        if user.role in ['admin', 'hr']:
+        if role in ['admin', 'hr']:
             return True
         
         # If this is bonus data related to a specific employee
@@ -159,11 +206,12 @@ class CanManageGoals(permissions.BasePermission):
     
     def has_object_permission(self, request, view, obj):
         user = request.user
+        role = get_user_role(user)
         
-        if user.role in ['admin', 'hr']:
+        if role in ['admin', 'hr']:
             return True
         
-        if user.role == 'manager' and hasattr(obj.employee, 'manager'):
+        if role == 'manager' and hasattr(obj.employee, 'manager'):
             if obj.employee.manager == user:
                 return True
         

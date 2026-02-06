@@ -127,15 +127,7 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
             </div>
 
             <div className="header__center">
-                {/* Centered Search */}
-                <div className="header__search">
-                    <Search size={16} className="header__search-icon" />
-                    <input
-                        type="text"
-                        placeholder={t('common.search')}
-                        className="header__search-input"
-                    />
-                </div>
+                {/* Centered Search - REMOVED as per user request (redundant with page-level search) */}
             </div>
 
             <div className="header__right">

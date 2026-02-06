@@ -218,3 +218,18 @@ export const processAssetRequest = (id, data) => axiosInstance.post(CLIENTADMIN_
 
 export const getAssetHistory = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_HISTORY, { params });
 export const getAssetDashboardStats = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.ASSETS}dashboard_stats/`);
+
+// Performance
+export const getReviewPeriods = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REVIEW_PERIODS, { params });
+export const getGoals = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.GOALS, { params });
+export const getGoalById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.GOAL_DETAIL(id));
+export const updateGoal = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.GOAL_DETAIL(id), data);
+export const updateGoalProgress = (id, progress) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.GOAL_UPDATE_PROGRESS(id), { progress_percentage: progress });
+
+export const getReviews = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REVIEWS, { params });
+export const getReviewById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REVIEW_DETAIL(id));
+export const createReviews = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_BULK_CREATE, data); 
+export const submitSelfAssessment = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_SUBMIT_SELF(id), data);
+export const submitManagerReview = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_SUBMIT_MANAGER(id), data);
+export const approveReview = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_APPROVE(id));
+export const rejectReview = (id, reason) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_REJECT(id), { reason });

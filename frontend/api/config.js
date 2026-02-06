@@ -149,6 +149,22 @@ export const CLIENTADMIN_ENDPOINTS = {
     ASSET_REQUEST_DETAIL: (id) => `${BASE_URL}/assets/requests/${id}/`,
     ASSET_REQUEST_PROCESS: (id) => `${BASE_URL}/assets/requests/${id}/process/`,
     ASSET_HISTORY: `${BASE_URL}/assets/history/`,
+    
+    // Performance
+    PERFORMANCE_DASHBOARD: `${BASE_URL}/performance/dashboard/`,
+    PERFORMANCE_REPORTS: `${BASE_URL}/performance/reports/`,
+    REVIEW_PERIODS: `${BASE_URL}/performance/review-periods/`,
+    REVIEW_PERIOD_DETAIL: (id) => `${BASE_URL}/performance/review-periods/${id}/`,
+    GOALS: `${BASE_URL}/performance/goals/`,
+    GOAL_DETAIL: (id) => `${BASE_URL}/performance/goals/${id}/`,
+    GOAL_UPDATE_PROGRESS: (id) => `${BASE_URL}/performance/goals/${id}/update_progress/`,
+    REVIEWS: `${BASE_URL}/performance/reviews/`,
+    REVIEW_DETAIL: (id) => `${BASE_URL}/performance/reviews/${id}/`,
+    REVIEW_SUBMIT_SELF: (id) => `${BASE_URL}/performance/reviews/${id}/submit_self_assessment/`,
+    REVIEW_SUBMIT_MANAGER: (id) => `${BASE_URL}/performance/reviews/${id}/submit_manager_review/`,
+    REVIEW_APPROVE: (id) => `${BASE_URL}/performance/reviews/${id}/approve/`,
+    REVIEW_REJECT: (id) => `${BASE_URL}/performance/reviews/${id}/reject/`,
+    REVIEW_BULK_CREATE: `${BASE_URL}/performance/reviews/bulk_create/`,
 };
 
 export default BASE_URL;

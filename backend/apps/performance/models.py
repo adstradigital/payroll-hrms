@@ -35,6 +35,15 @@ class ReviewPeriod(BaseModel):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     description = models.TextField(blank=True, null=True)
     
+    # Review Settings
+    enable_self_assessment = models.BooleanField(default=True)
+    enable_manager_review = models.BooleanField(default=True)
+    enable_peer_review = models.BooleanField(default=False)
+    
+    # Notifications
+    auto_reminders = models.BooleanField(default=True)
+    reminder_days = models.IntegerField(default=3)
+    
     class Meta:
         db_table = 'review_periods'
         ordering = ['-start_date']
