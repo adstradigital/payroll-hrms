@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 from rest_framework.decorators import api_view, permission_classes
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_payroll_advanced(request):

@@ -62,10 +62,10 @@
 
 .theme-toggle__icon {
     color: #f59e0b;
-    /* Amber 500 */
+    /* Amber 500 - for dark mode sun icon */
 }
 
 [data-theme="light"] .theme-toggle__icon {
-    color: #d97706;
-    /* Amber 600 */
+    color: #3b82f6;
+    /* Blue 500 - for light mode sun icon */
 }
