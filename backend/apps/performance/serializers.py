@@ -187,11 +187,32 @@ class BonusMappingSerializer(serializers.ModelSerializer):
 
 
 class DashboardStatsSerializer(serializers.Serializer):
-    """Serializer for dashboard statistics"""
-    total_reviews = serializers.IntegerField()
-    completed_reviews = serializers.IntegerField()
-    pending_reviews = serializers.IntegerField()
-    overdue_reviews = serializers.IntegerField()
-    average_rating = serializers.DecimalField(max_digits=3, decimal_places=2)
-    rating_distribution = serializers.DictField()
-    recent_reviews = PerformanceReviewSerializer(many=True)
+    """Serializer for dashboard statistics (handling Admin, Manager, and Employee views)"""
+    # Common / Shared
+    completion_percentage = serializers.FloatField(required=False)
+    
+    # Admin & Manager Fields
+    total_reviews = serializers.IntegerField(required=False)
+    completed_reviews = serializers.IntegerField(required=False)
+    pending_reviews = serializers.IntegerField(required=False)
+    
+    # Admin Specific
+    overdue_reviews = serializers.IntegerField(required=False)
+    average_rating = serializers.DecimalField(max_digits=3, decimal_places=2, required=False, allow_null=True)
+    rating_distribution = serializers.DictField(required=False)
+    recent_reviews = PerformanceReviewSerializer(many=True, required=False)
+    department_stats = serializers.ListField(required=False)
+    trend_data = serializers.ListField(required=False)
+    
+    # Manager Specific
+    average_team_rating = serializers.DecimalField(max_digits=3, decimal_places=2, required=False, allow_null=True)
+    team_performance = serializers.ListField(required=False)
+    pending_actions = serializers.IntegerField(required=False)
+    
+    # Employee Specific
+    current_review = PerformanceReviewSerializer(required=False, allow_null=True)
+    performance_history = serializers.ListField(required=False)
+    total_goals = serializers.IntegerField(required=False)
+    completed_goals = serializers.IntegerField(required=False)
+    overdue_goals = serializers.IntegerField(required=False)
+    goal_completion_rate = serializers.FloatField(required=False)

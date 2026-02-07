@@ -532,7 +532,14 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
 
         try {
             const { createReviews } = require('../../../../../api/api_clientadmin');
-            await createReviews(formData);
+            
+            // Map state keys to backend expected keys
+            const payload = {
+                review_period_id: formData.review_period,
+                employee_ids: formData.employee_ids
+            };
+            
+            await createReviews(payload);
             onSuccess();
         } catch (err) {
             console.error('Create failed:', err);
