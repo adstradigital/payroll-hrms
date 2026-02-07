@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import {
     Plus, Search, RefreshCw, Wallet,
     Calendar, User, AlertCircle, CheckCircle2,
@@ -15,6 +17,8 @@ import {
 import './Loans.css';
 
 export default function Loans() {
+    const router = useRouter();
+    const { user } = useAuth();
     const [loans, setLoans] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -36,6 +40,21 @@ export default function Loans() {
         fetchData();
         fetchEmployees();
     }, []);
+
+    // Auto-select logged-in employee
+    useEffect(() => {
+        if (employees.length > 0) {
+            const storedEmpId = localStorage.getItem('employeeId');
+            if (storedEmpId) {
+                setFormData(prev => ({ ...prev, employee: storedEmpId }));
+            } else if (user?.email) {
+                const found = employees.find(e => e.email === user.email);
+                if (found) {
+                    setFormData(prev => ({ ...prev, employee: found.id }));
+                }
+            }
+        }
+    }, [employees, user]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -60,6 +79,12 @@ export default function Loans() {
 
     const handleCreateLoan = async (e) => {
         e.preventDefault();
+
+        if (!formData.employee) {
+            alert('Error: Could not identify current employee account. Please try logging out and logging back in.');
+            return;
+        }
+
         setActionLoading(true);
         try {
             await createLoan(formData);
@@ -68,7 +93,9 @@ export default function Loans() {
             fetchData();
         } catch (err) {
             console.error('Failed to create loan:', err);
-            alert('Error creating loan: ' + (err.response?.data?.error || 'Unknown error'));
+            const errorData = err.response?.data;
+            const errorMessage = errorData?.error || (typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData)) || 'Unknown error';
+            alert('Error creating loan: ' + errorMessage);
         } finally {
             setActionLoading(false);
         }
@@ -123,6 +150,9 @@ export default function Loans() {
                     <p className="cinematic-subtitle">Manage Employee Borrowings & Repayments</p>
                 </div>
                 <div className="header-actions">
+                    <button className="btn-secondary-premium" onClick={() => router.push('/dashboard/payroll/loan-approvals')}>
+                        Review Approvals <ArrowUpRight size={18} />
+                    </button>
                     <button className="btn-primary-premium" onClick={() => { resetForm(); setIsModalOpen(true); }}>
                         <Plus size={18} /> New Loan Request
                     </button>
@@ -211,16 +241,7 @@ export default function Loans() {
                                     </td>
                                     <td onClick={e => e.stopPropagation()}>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            {loan.status === 'pending' && (
-                                                <>
-                                                    <button className="action-btn text-green" onClick={() => handleUpdateStatus(loan.id, 'approved')} title="Approve">
-                                                        <Check size={16} />
-                                                    </button>
-                                                    <button className="action-btn text-red" onClick={() => handleUpdateStatus(loan.id, 'rejected')} title="Reject">
-                                                        <Ban size={16} />
-                                                    </button>
-                                                </>
-                                            )}
+
                                             {loan.status === 'approved' && (
                                                 <button className="action-btn text-blue" onClick={() => handleUpdateStatus(loan.id, 'disbursed')} title="Mark Disbursed">
                                                     <CreditCard size={16} />
@@ -310,18 +331,10 @@ export default function Loans() {
                                 <form onSubmit={handleCreateLoan} style={{ display: 'contents' }}>
                                     <div className="form-column">
                                         <div className="form-group">
-                                            <label>Select Employee</label>
-                                            <select
-                                                className="premium-select"
-                                                required
-                                                value={formData.employee}
-                                                onChange={e => setFormData({ ...formData, employee: e.target.value })}
-                                            >
-                                                <option value="">Select Employee</option>
-                                                {Array.isArray(employees) && employees.map(emp => (
-                                                    <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_id})</option>
-                                                ))}
-                                            </select>
+                                            <label>Employee</label>
+                                            <div className="premium-input" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'default' }}>
+                                                {employees.find(e => e.id === formData.employee)?.full_name || user?.name || 'Current Employee'}
+                                            </div>
                                         </div>
                                         <div className="form-group">
                                             <label>Loan Type</label>
@@ -403,13 +416,7 @@ export default function Loans() {
                                     {actionLoading ? 'Creating...' : 'Submit Request'}
                                 </button>
                             )}
-                            {selectedLoan && selectedLoan.status === 'pending' && (
-                                <>
-                                    <button className="btn-primary-premium" style={{ background: '#10b981' }} onClick={() => { handleUpdateStatus(selectedLoan.id, 'approved'); setIsModalOpen(false); }}>
-                                        Approve Loan
-                                    </button>
-                                </>
-                            )}
+
                         </div>
                     </div>
                 </div>

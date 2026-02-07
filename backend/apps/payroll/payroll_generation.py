@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 
 from rest_framework.decorators import api_view, permission_classes
-from .views import safe_api
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -165,76 +164,76 @@ def generate_payroll_advanced(request):
             overtime_hours = attendances.aggregate(total=Sum('overtime_hours'))['total'] or Decimal(0)
             overtime_amount = Decimal(0)
 
-        if overtime_hours > 0:
-            policy = employee.company.attendance_policies.filter(is_active=True).first()
-            multiplier = policy.overtime_rate_multiplier if policy else Decimal('1.5')
-            daily_hours = policy.full_day_hours if policy else Decimal('8.0')
-            
-            if working_days > 0 and daily_hours > 0:
-                 gross_salary_val = employee_salary.gross_salary if 'employee_salary' in locals() else basic_salary
-                 per_day_salary = gross_salary_val / Decimal(working_days)
-                 per_hour_salary = per_day_salary / daily_hours
-                 overtime_amount = per_hour_salary * overtime_hours * multiplier
-        
-        attendance_factor = (present_days + half_days + leave_days) / Decimal(working_days) if working_days > 0 else Decimal(1)
-        prorated_basic = basic_salary * attendance_factor
-        
-        earnings = []
-        deductions = []
-        total_earnings = prorated_basic
-        total_deductions = Decimal(0)
-        
-        try:
-            salary_components = EmployeeSalaryComponent.objects.filter(
-                employee_salary=employee_salary
-            ).select_related('component')
-            
-            for comp in salary_components:
-                comp_amount = comp.amount
+            if overtime_hours > 0:
+                policy = employee.company.attendance_policies.filter(is_active=True).first()
+                multiplier = policy.overtime_rate_multiplier if policy else Decimal('1.5')
+                daily_hours = policy.full_day_hours if policy else Decimal('8.0')
                 
-                if comp.component.calculation_type == 'attendance_prorated':
-                    comp_amount = comp.amount * attendance_factor
-                elif comp.component.calculation_type == 'per_day':
-                    comp_amount = comp.amount * (present_days + half_days)
+                if working_days > 0 and daily_hours > 0:
+                     gross_salary_val = employee_salary.gross_salary if 'employee_salary' in locals() else basic_salary
+                     per_day_salary = gross_salary_val / Decimal(working_days)
+                     per_hour_salary = per_day_salary / daily_hours
+                     overtime_amount = per_hour_salary * overtime_hours * multiplier
+            
+            attendance_factor = (present_days + half_days + leave_days) / Decimal(working_days) if working_days > 0 else Decimal(1)
+            prorated_basic = basic_salary * attendance_factor
+            
+            earnings = []
+            deductions = []
+            total_earnings = prorated_basic
+            total_deductions = Decimal(0)
+            
+            try:
+                salary_components = EmployeeSalaryComponent.objects.filter(
+                    employee_salary=employee_salary
+                ).select_related('component')
+                
+                for comp in salary_components:
+                    comp_amount = comp.amount
+                    
+                    if comp.component.calculation_type == 'attendance_prorated':
+                        comp_amount = comp.amount * attendance_factor
+                    elif comp.component.calculation_type == 'per_day':
+                        comp_amount = comp.amount * (present_days + half_days)
 
-                if comp.component.component_type == 'earning':
-                    earnings.append({
-                        'name': comp.component.name,
-                        'code': comp.component.code,
-                        'amount': float(comp_amount),
-                        'calc_type': comp.component.calculation_type
-                    })
-                    total_earnings += comp_amount
-                else:
-                    deductions.append({
-                        'name': comp.component.name,
-                        'code': comp.component.code,
-                        'amount': float(comp_amount),
-                        'calc_type': comp.component.calculation_type
-                    })
-                    total_deductions += comp_amount
-        except Exception:
-            pass
-        
-        lop_deduction = Decimal(0)
-        if lop_days > 0:
-            per_day_salary = basic_salary / Decimal(working_days)
-            lop_deduction = per_day_salary * Decimal(lop_days) 
-            deductions.append({
-                'name': 'Loss of Pay',
-                'code': 'LOP',
-                'amount': float(lop_deduction)
-            })
-            total_deductions += lop_deduction
-        
-        if overtime_amount > 0:
-            earnings.append({
-                'name': 'Overtime Pay',
-                'code': 'OT',
-                'amount': float(overtime_amount),
-                'calc_type': 'attendance_based'
-            })
-            total_earnings += overtime_amount
+                    if comp.component.component_type == 'earning':
+                        earnings.append({
+                            'name': comp.component.name,
+                            'code': comp.component.code,
+                            'amount': float(comp_amount),
+                            'calc_type': comp.component.calculation_type
+                        })
+                        total_earnings += comp_amount
+                    else:
+                        deductions.append({
+                            'name': comp.component.name,
+                            'code': comp.component.code,
+                            'amount': float(comp_amount),
+                            'calc_type': comp.component.calculation_type
+                        })
+                        total_deductions += comp_amount
+            except Exception:
+                pass
+            
+            lop_deduction = Decimal(0)
+            if lop_days > 0:
+                per_day_salary = basic_salary / Decimal(working_days)
+                lop_deduction = per_day_salary * Decimal(lop_days) 
+                deductions.append({
+                    'name': 'Loss of Pay',
+                    'code': 'LOP',
+                    'amount': float(lop_deduction)
+                })
+                total_deductions += lop_deduction
+            
+            if overtime_amount > 0:
+                earnings.append({
+                    'name': 'Overtime Pay',
+                    'code': 'OT',
+                    'amount': float(overtime_amount),
+                    'calc_type': 'attendance_based'
+                })
+                total_earnings += overtime_amount
 
             gross_earnings = total_earnings
             net_salary = gross_earnings - total_deductions

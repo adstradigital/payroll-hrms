@@ -126,6 +126,7 @@ const menuItems = [
             { id: 'encashments', label: 'Encashments & Reimbursements', translationKey: 'common.encashments', path: '/dashboard/payroll/encashments-reimbursements', permission: 'payroll.manage' },
             { id: 'tax', label: 'Tax Management', translationKey: 'common.tax', path: '/dashboard/payroll/tax', permission: 'payroll.manage' },
             { id: 'loans', label: 'Loans & EMI', translationKey: 'common.loans', path: '/dashboard/payroll/loans', permission: 'payroll.manage' },
+            { id: 'loan-approvals', label: 'Loan Approvals', path: '/dashboard/payroll/loan-approvals', adminOnly: true },
             { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
         ]
     },
