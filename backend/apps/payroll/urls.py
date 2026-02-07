@@ -11,7 +11,7 @@ from .views import (
     payroll_settings_detail,
     loan_list_create, loan_detail, loan_generate_schedule
 )
-from .payroll_generation import GeneratePayrollView, PayrollReportsView
+from .payroll_generation import generate_payroll_advanced, get_payroll_reports
 
 urlpatterns = [
     # Global Settings
@@ -38,14 +38,14 @@ urlpatterns = [
     # Employee Salaries
     path('employee-salaries/', employee_salary_list_create, name='employee-salary-list'),
     path('employee-salaries/<uuid:pk>/', employee_salary_detail, name='employee-salary-detail'),
-    path('employee-salaries/current/', get_current_salary, name='employee-salary-current'),
-    path('employee-salaries/stats/', get_salary_stats, name='employee-salary-stats'),
+    path('employee-salaries/current/', employee_salary_current, name='employee-salary-current'),
+    path('employee-salaries/stats/', employee_salary_stats, name='employee-salary-stats'),
     
     # Payroll Periods
     path('periods/', payroll_period_list_create, name='payroll-period-list'),
     path('periods/<uuid:pk>/', payroll_period_detail, name='payroll-period-detail'),
-    path('periods/generate/', generate_payroll, name='payroll-period-generate'),
-    path('periods/<uuid:pk>/mark-paid/', mark_payroll_paid, name='payroll-period-mark-paid'),
+    path('periods/generate/', payroll_period_generate, name='payroll-period-generate'),
+    path('periods/<uuid:pk>/mark-paid/', payroll_period_mark_paid, name='payroll-period-mark-paid'),
     
     # PaySlips
     path('payslips/', payslip_list_create, name='payslip-list'),
@@ -60,7 +60,7 @@ urlpatterns = [
     path('loans/<uuid:pk>/', loan_detail, name='loan-detail'),
     path('loans/<uuid:pk>/generate-schedule/', loan_generate_schedule, name='loan-generate-schedule'),
 
-    # Payroll generation and reports (Note: These might still be class-based or need similar refactor if desired)
-    path('generate/', GeneratePayrollView.as_view(), name='generate-payroll'),
-    path('reports/', PayrollReportsView.as_view(), name='payroll-reports'),
+    # Payroll generation and reports
+    path('generate/', generate_payroll_advanced, name='generate-payroll'),
+    path('reports/', get_payroll_reports, name='payroll-reports'),
 ]

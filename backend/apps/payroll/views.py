@@ -234,7 +234,6 @@ def salary_structure_update_components(request, pk):
             if 'percentage' in data: percentage = data['percentage']
 
             SalaryStructureComponent.objects.update_or_create(
-            SalaryStructureComponent.objects.update_or_create(
                 salary_structure=structure,
                 component_id=component_id,
                 defaults={'amount': fixed_amount, 'percentage': percentage}
