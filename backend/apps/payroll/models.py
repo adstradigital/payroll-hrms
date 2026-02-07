@@ -265,12 +265,15 @@ class PaySlip(BaseModel):
         
         # Clean up existing calculated components to regenerate them
         self.components.all().delete()
+        # Detach any EMIs linked to this payslip (they will be re-attached if still valid)
+        EMI.objects.filter(payslip=self).update(payslip=None)
         
         # Get components from employee salary
         components = self.employee_salary.components.select_related('component').all()
         
         total_earnings = Decimal(0)
         total_deductions = Decimal(0)
+        final_basic = Decimal(0)
         
         # 2b. Process Basic Salary (Always Prorated)
         basic_salary = self.employee_salary.basic_salary
@@ -279,10 +282,14 @@ class PaySlip(BaseModel):
             final_basic = final_basic.quantize(Decimal('0.01'))
             total_earnings += final_basic
             
-            # NOTE: Ideally we should create a PaySlipComponent for Basic here if one doesn't exist,
-            # but for now we just ensure the amounts are captured in the totals.
-            # If a SalaryComponent 'Basic' exists, it might be duplicated if we are not careful?
-            # Standard Practice: 'Basic' is usually NOT in the components list if it's in the main field.
+            # Create a PaySlipComponent for Basic if a component named 'Basic' or similar exists
+            basic_component = SalaryComponent.objects.filter(company=self.employee.company, name__icontains='Basic', is_active=True).first()
+            if basic_component:
+                PaySlipComponent.objects.get_or_create(
+                    payslip=self,
+                    component=basic_component,
+                    defaults={'amount': final_basic}
+                )
             
         for comp in components:
             calc_type = comp.component.calculation_type
@@ -339,6 +346,79 @@ class PaySlip(BaseModel):
                 
         self.lop_deduction = (potential_earnings - total_earnings).quantize(Decimal('0.01'))
 
+        # 5. Handle Statutory Deductions based on settings
+        settings = PayrollSettings.objects.filter(company=self.employee.company).first()
+        if settings:
+            # PF Calculation
+            if settings.pf_enabled:
+                pf_component = SalaryComponent.objects.filter(company=self.employee.company, statutory_type='pf', is_active=True).first()
+                if pf_component and not self.components.filter(component=pf_component).exists():
+                    pf_base = final_basic if basic_salary > 0 else Decimal(0)
+                    if settings.pf_is_restricted_basic:
+                        pf_base = min(pf_base, settings.pf_wage_ceiling)
+                    
+                    pf_emp_amount = (pf_base * settings.pf_contribution_rate_employee / 100).quantize(Decimal('0.01'))
+                    if pf_emp_amount > 0:
+                        PaySlipComponent.objects.create(payslip=self, component=pf_component, amount=pf_emp_amount)
+                        self.total_deductions += pf_emp_amount
+
+            # ESI Calculation
+            if settings.esi_enabled:
+                esi_component = SalaryComponent.objects.filter(company=self.employee.company, statutory_type='esi', is_active=True).first()
+                if esi_component and not self.components.filter(component=esi_component).exists():
+                    # ESI is usually on Gross Earning
+                    if self.gross_earnings <= settings.esi_wage_ceiling:
+                        esi_emp_amount = (self.gross_earnings * settings.esi_contribution_rate_employee / 100).quantize(Decimal('0.01'))
+                        if esi_emp_amount > 0:
+                            PaySlipComponent.objects.create(payslip=self, component=esi_component, amount=esi_emp_amount)
+                            self.total_deductions += esi_emp_amount
+
+            # TDS logic (existing but refactored to use fetched settings)
+            if not settings.enable_auto_tds:
+                tds_comps = self.components.filter(component__statutory_type='tds')
+                for tc in tds_comps:
+                    if tc.component.component_type == 'deduction':
+                        self.total_deductions -= tc.amount
+                tds_comps.delete()
+        
+        # 5. Process Loan EMIs
+        unpaid_emis = EMI.objects.filter(
+            loan__employee=self.employee,
+            month=self.payroll_period.month,
+            year=self.payroll_period.year,
+            status='unpaid',
+            payslip__isnull=True
+        )
+        for emi in unpaid_emis:
+            loan_component = SalaryComponent.objects.filter(
+                company=self.employee.company, 
+                code='LOAN_EMI'
+            ).first()
+            if not loan_component:
+                loan_component = SalaryComponent.objects.create(
+                    company=self.employee.company,
+                    name='Loan EMI',
+                    code='LOAN_EMI',
+                    component_type='deduction',
+                    statutory_type='other'
+                )
+            
+            # Check if already added to avoid duplicates if rerun
+            if not self.components.filter(component=loan_component).exists():
+                PaySlipComponent.objects.create(
+                    payslip=self,
+                    component=loan_component,
+                    amount=emi.amount
+                )
+                self.total_deductions += emi.amount
+                
+                # Link to payslip but don't mark as paid yet
+                emi.payslip = self
+                emi.save()
+
+        # Final Net Salary Update
+        self.net_salary = self.gross_earnings - self.total_deductions
+
 
 class PaySlipComponent(BaseModel):
     """Line items in a payslip"""
@@ -352,3 +432,203 @@ class PaySlipComponent(BaseModel):
 
     def __str__(self):
         return f"{self.payslip} - {self.component.name}: ₹{self.amount}"
+
+
+class Loan(BaseModel):
+    """Employee Loan and Advance tracking"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('disbursed', 'Disbursed'),
+        ('completed', 'Completed'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='loans')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='loans')
+    
+    loan_type = models.CharField(max_length=50) # Advance, Personal, etc.
+    principal_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    interest_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tenure_months = models.PositiveIntegerField()
+    
+    disbursement_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    total_payable = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    remarks = models.TextField(blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.total_payable or self.total_payable == 0:
+            # Simple interest for now: P + (P * R * T / 100)
+            # T is in years, tenure is in months
+            interest = (self.principal_amount * self.interest_rate * self.tenure_months) / (12 * 100)
+            self.total_payable = (self.principal_amount + interest).quantize(Decimal('0.01'))
+            if not self.balance_amount or self.balance_amount == 0:
+                self.balance_amount = self.total_payable
+        super().save(*args, **kwargs)
+
+    def generate_emis(self):
+        """Generates EMI schedule starting from next month of disbursement"""
+        if self.status not in ['approved', 'disbursed']:
+            return
+        
+        if self.emis.exists():
+            return
+            
+        emi_amount = (self.total_payable / self.tenure_months).quantize(Decimal('0.01'))
+        
+        # Start from next month of disbursement
+        start_date = self.disbursement_date or self.created_at.date()
+        
+        curr_month = start_date.month
+        curr_year = start_date.year
+        
+        for i in range(self.tenure_months):
+            curr_month += 1
+            if curr_month > 12:
+                curr_month = 1
+                curr_year += 1
+            
+            EMI.objects.create(
+                loan=self,
+                amount=emi_amount,
+                month=curr_month,
+                year=curr_year,
+                status='unpaid'
+            )
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.loan_type} (₹{self.principal_amount})"
+
+
+class EMI(BaseModel):
+    """Monthly installment for a loan"""
+    STATUS_CHOICES = [
+        ('unpaid', 'Unpaid'),
+        ('paid', 'Paid'),
+        ('skipped', 'Skipped'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    loan = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name='emis')
+    
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    month = models.PositiveIntegerField()
+    year = models.PositiveIntegerField()
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid')
+    payslip = models.ForeignKey('PaySlip', on_delete=models.SET_NULL, null=True, blank=True, related_name='loan_emis')
+    
+    class Meta:
+        ordering = ['year', 'month']
+        verbose_name_plural = 'EMIs'
+
+    def __str__(self):
+        return f"{self.loan.employee.full_name} - EMI ₹{self.amount} ({self.month}/{self.year})"
+
+
+class TaxSlab(BaseModel):
+    """Income Tax Slabs"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='tax_slabs')
+    
+    REGIME_CHOICES = [
+        ('new', 'New Regime'),
+        ('old', 'Old Regime'),
+    ]
+    
+    regime = models.CharField(max_length=10, choices=REGIME_CHOICES)
+    min_income = models.DecimalField(max_digits=12, decimal_places=2)
+    max_income = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, help_text='Percentage')
+    cess = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text='Health and Education Cess %')
+    
+    class Meta:
+        ordering = ['regime', 'min_income']
+        verbose_name_plural = 'Tax Slabs'
+
+    def __str__(self):
+        max_val = f"₹{self.max_income}" if self.max_income else "Above"
+        return f"{self.get_regime_display()}: ₹{self.min_income} - {max_val} @ {self.tax_rate}%"
+
+
+class TaxDeclaration(BaseModel):
+    """Employee Tax Declarations (80C, HRA, etc)"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='tax_declarations')
+    
+    REGIME_CHOICES = [
+        ('new', 'New Regime'),
+        ('old', 'Old Regime'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    financial_year = models.CharField(max_length=9, help_text='e.g., 2025-2026')
+    regime = models.CharField(max_length=10, choices=REGIME_CHOICES, default='new')
+    
+    # Store dynamic declarations as JSON
+    # Structure: [{'type': '80C', 'amount': 150000, 'description': 'LIC Premium'}, ...]
+    declarations = models.JSONField(default=list)
+    
+    total_declared_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    verification_notes = models.TextField(blank=True)
+    verified_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_declarations'
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['employee', 'financial_year']
+
+    def __str__(self):
+        return f"{self.employee.first_name} - {self.financial_year} ({self.status})"
+
+
+class PayrollSettings(BaseModel):
+    """Global payroll and tax settings for an organization"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='payroll_settings')
+    
+    # TDS Settings
+    enable_auto_tds = models.BooleanField(default=True, help_text='Enable automatic TDS calculation during payroll')
+    financial_year = models.CharField(max_length=9, default='2025-2026', help_text='Current financial year (e.g., 2025-2026)')
+    
+    REGIME_CHOICES = [
+        ('new', 'New Regime'),
+        ('old', 'Old Regime'),
+    ]
+    default_tax_regime = models.CharField(max_length=10, choices=REGIME_CHOICES, default='new')
+    allow_manual_tds_override = models.BooleanField(default=False, help_text='Allow admin to manually override TDS amounts')
+    apply_tds_monthly = models.BooleanField(default=True, help_text='Standard monthly TDS deduction')
+    
+    # PF Settings
+    pf_enabled = models.BooleanField(default=True)
+    pf_contribution_rate_employer = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('12.00'))
+    pf_contribution_rate_employee = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('12.00'))
+    pf_wage_ceiling = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('15000.00'))
+    pf_is_restricted_basic = models.BooleanField(default=True, help_text='Restrict PF calculation to ceiling if basic > ceiling')
+    pf_include_employer_share_in_ctc = models.BooleanField(default=True)
+
+    # ESI Settings
+    esi_enabled = models.BooleanField(default=True)
+    esi_contribution_rate_employer = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('3.25'))
+    esi_contribution_rate_employee = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.75'))
+    esi_wage_ceiling = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('21000.00'))
+
+    class Meta:
+        verbose_name_plural = 'Payroll Settings'
+
+    def __str__(self):
+        return f"Payroll Settings- {self.company.name}"

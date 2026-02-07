@@ -129,7 +129,7 @@ class GeneratePayrollView(views.APIView):
                     employee=employee,
                     is_current=True
                 )
-                basic_salary = employee_salary.basic_amount
+                basic_salary = employee_salary.basic_salary
             except EmployeeSalary.DoesNotExist:
                 basic_salary = Decimal('50000')  # Default
             
@@ -246,8 +246,8 @@ class GeneratePayrollView(views.APIView):
                 })
                 total_earnings += overtime_amount
 
-            gross_salary = total_earnings
-            net_salary = gross_salary - total_deductions
+            gross_earnings = total_earnings
+            net_salary = gross_earnings - total_deductions
             
             return {
                 'employee_id': str(employee.id),
@@ -264,7 +264,7 @@ class GeneratePayrollView(views.APIView):
                 'earnings': earnings,
                 'deductions': deductions,
                 'basic_salary': float(prorated_basic),
-                'gross_salary': float(gross_salary),
+                'gross_earnings': float(gross_earnings),
                 'total_deductions': float(total_deductions),
                 'net_salary': float(net_salary)
             }
@@ -288,9 +288,22 @@ class PayrollReportsView(views.APIView):
             year = request.query_params.get('year')
             company_id = request.query_params.get('company_id')
             
-            if not all([month, year, company_id]):
+            # Default to current month/year if not provided
+            now = timezone.now()
+            if not month: month = now.month
+            if not year: year = now.year
+
+            # Infer company_id if not provided
+            if not company_id:
+                user = request.user
+                if hasattr(user, 'employee_profile') and user.employee_profile:
+                    company_id = user.employee_profile.company_id
+                elif hasattr(user, 'organization') and user.organization:
+                    company_id = user.organization.id
+            
+            if not company_id:
                 return Response(
-                    {'error': 'month, year, and company_id are required'},
+                    {'error': 'company_id is required or could not be determined'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
@@ -298,6 +311,8 @@ class PayrollReportsView(views.APIView):
                 return self._generate_summary_report(company_id, int(month), int(year))
             elif report_type == 'detailed':
                 return self._generate_detailed_report(company_id, int(month), int(year))
+            elif report_type == 'statutory':
+                return self._generate_statutory_report(company_id, int(month), int(year))
             else:
                 return Response(
                     {'error': f'Invalid report type: {report_type}'},
@@ -327,7 +342,7 @@ class PayrollReportsView(views.APIView):
             )
             
             summary = payslips.aggregate(
-                total_gross=Sum('gross_salary'),
+                total_gross=Sum('gross_earnings'),
                 total_deductions=Sum('total_deductions'),
                 total_net=Sum('net_salary'),
                 count=Count('id')
@@ -338,7 +353,7 @@ class PayrollReportsView(views.APIView):
                 'employee__department__name'
             ).annotate(
                 employees=Count('id'),
-                gross=Sum('gross_salary'),
+                gross=Sum('gross_earnings'),
                 deductions=Sum('total_deductions'),
                 net=Sum('net_salary')
             )
@@ -415,9 +430,8 @@ class PayrollReportsView(views.APIView):
                     'employee_id': payslip.employee.employee_id,
                     'department': payslip.employee.department.name if payslip.employee.department else 'N/A',
                     'designation': payslip.employee.designation.name if payslip.employee.designation else 'N/A',
-                    'basic_salary': float(payslip.basic_amount),
+                    'gross_salary': float(payslip.gross_earnings),
                     'earnings': earnings,
-                    'gross_salary': float(payslip.gross_salary),
                     'deductions': deductions,
                     'total_deductions': float(payslip.total_deductions),
                     'net_salary': float(payslip.net_salary),
@@ -436,4 +450,72 @@ class PayrollReportsView(views.APIView):
             
         except Exception as e:
             logger.error(f"Error generating detailed report: {str(e)}")
+            raise
+
+    def _generate_statutory_report(self, company_id, month, year):
+        """Generate EPF & ESI statutory report"""
+        try:
+            from .models import PayrollSettings
+            
+            payslips = PaySlip.objects.filter(
+                employee__company_id=company_id,
+                payroll_period__month=month,
+                payroll_period__year=year
+            ).select_related(
+                'employee', 'employee__department', 'employee_salary'
+            ).prefetch_related('components__component')
+
+            settings = PayrollSettings.objects.filter(company_id=company_id).first()
+            
+            report_data = []
+            for payslip in payslips:
+                components = payslip.components.all()
+                
+                # Employee Shares
+                pf_emp = sum(c.amount for c in components if c.component.statutory_type == 'pf')
+                esi_emp = sum(c.amount for c in components if c.component.statutory_type == 'esi')
+                
+                # PF Calculation (Employer Share)
+                # We use basic_salary from linked employee_salary (as it's the base)
+                # Prorated basic is needed. Since we don't store it, we estimate it or 
+                # use the sum of earnings if it's simpler. 
+                # Better: In calculation we did: pf_base = final_basic
+                # final_basic = basic_salary * proration_ratio
+                # proration_ratio = (present + leave) / working
+                
+                working_days = payslip.working_days
+                paid_days = working_days - payslip.lop_days
+                proration_ratio = paid_days / working_days if working_days > 0 else Decimal(1)
+                
+                basic_salary = payslip.employee_salary.basic_salary if payslip.employee_salary else Decimal(0)
+                pf_base = (basic_salary * proration_ratio).quantize(Decimal('0.01'))
+                
+                if settings and settings.pf_is_restricted_basic:
+                    pf_base = min(pf_base, settings.pf_wage_ceiling)
+                
+                pf_employer = (pf_base * settings.pf_contribution_rate_employer / 100).quantize(Decimal('0.01')) if settings and pf_emp > 0 else Decimal(0)
+                
+                # ESI Calculation (Employer Share)
+                # ESI is usually on Gross Earning
+                esi_base = payslip.gross_earnings
+                esi_employer = (esi_base * settings.esi_contribution_rate_employer / 100).quantize(Decimal('0.01')) if settings and esi_emp > 0 else Decimal(0)
+                
+                report_data.append({
+                    'Employee': str(payslip.employee),
+                    'Employee ID': payslip.employee.employee_id,
+                    'Gross Salary': float(payslip.gross_earnings),
+                    'PF Base (Basic)': float(pf_base),
+                    'PF Employee Share': float(pf_emp),
+                    'PF Employer Share': float(pf_employer),
+                    'PF Total': float(pf_emp + pf_employer),
+                    'ESI Base (Gross)': float(esi_base),
+                    'ESI Employee Share': float(esi_emp),
+                    'ESI Employer Share': float(esi_employer),
+                    'ESI Total': float(esi_emp + esi_employer),
+                })
+            
+            return Response(report_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error generating statutory report: {str(e)}")
             raise

@@ -66,7 +66,8 @@ export const translations = {
             manageAssets: "Manage Assets",
             assetBatches: "Asset Batches",
             assetRequests: "Asset Requests",
-            assetHistory: "Asset History"
+            assetHistory: "Asset History",
+            loans: "Loans & EMI"
         },
         auth: {
             login: "Login",
@@ -177,7 +178,8 @@ export const translations = {
             manageAssets: "അസറ്റുകൾ കൈകാര്യം ചെയ്യുക",
             assetBatches: "അസറ്റ് ബാച്ചുകൾ",
             assetRequests: "അസറ്റ് അപേക്ഷകൾ",
-            assetHistory: "അസറ്റ് ചരിത്രം"
+            assetHistory: "അസറ്റ് ചരിത്രം",
+            loans: "ലോണുകളും ഇഎംഐയും"
         },
         auth: {
             login: "ലോഗിൻ",
@@ -288,7 +290,8 @@ export const translations = {
             manageAssets: "إدارة الأصول",
             assetBatches: "دفعات الأصول",
             assetRequests: "طلبات الأصول",
-            assetHistory: "سجل الأصول"
+            assetHistory: "سجل الأصول",
+            loans: "القروض والأقساط"
         },
         auth: {
             login: "تسجيل الدخول",

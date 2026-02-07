@@ -1,8 +1,35 @@
 from rest_framework import serializers
 from .models import (
     SalaryComponent, SalaryStructure, SalaryStructureComponent,
-    EmployeeSalary, EmployeeSalaryComponent, PayrollPeriod, PaySlip, PaySlipComponent
+    EmployeeSalary, EmployeeSalaryComponent, PayrollPeriod, PaySlip, PaySlipComponent,
+    TaxSlab, TaxDeclaration, PayrollSettings, Loan, EMI
 )
+
+
+class EMISerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EMI
+        fields = '__all__'
+
+
+class LoanSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_id_display = serializers.CharField(source='employee.employee_id', read_only=True)
+    emis = EMISerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Loan
+        fields = '__all__'
+        read_only_fields = ['company', 'total_payable', 'balance_amount']
+
+
+class PayrollSettingsSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    
+    class Meta:
+        model = PayrollSettings
+        fields = '__all__'
+        read_only_fields = ['company']
 
 
 class SalaryComponentSerializer(serializers.ModelSerializer):
@@ -126,3 +153,27 @@ class GeneratePayrollSerializer(serializers.Serializer):
     year = serializers.IntegerField(min_value=2020, max_value=2100)
     force = serializers.BooleanField(default=False, required=False)
     preview = serializers.BooleanField(default=False, required=False)
+
+
+class TaxSlabSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    
+    class Meta:
+        model = TaxSlab
+        fields = '__all__'
+        read_only_fields = ['company']
+
+
+class TaxDeclarationSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_id_display = serializers.CharField(source='employee.employee_id', read_only=True)
+    verified_by_name = serializers.CharField(source='verified_by.full_name', read_only=True)
+    
+    class Meta:
+        model = TaxDeclaration
+        fields = '__all__'
+        read_only_fields = ['total_declared_amount']  # Calculated or updated via specific logic
+        # OR usually total_declared_amount is calculated from the JSON, 
+        # so we might want to allow it to be sent or auto-calculate it in validation/save.
+        # For now, allowing it to be writable or auto-calculated in frontend?
+        # Let's keep it standard.

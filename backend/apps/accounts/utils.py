@@ -26,4 +26,13 @@ def get_employee_org_id(user):
     employee = get_employee_or_none(user)
     if employee:
         return employee.company_id
+    
+    # Fallback for organization creators (Admins) who might not have an employee profile
+    if user and user.is_authenticated:
+        from .models import Organization
+        org = Organization.objects.filter(created_by=user).first()
+        if org:
+            return org.id
+            
     return None
+

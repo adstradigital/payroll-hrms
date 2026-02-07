@@ -119,7 +119,20 @@ export const CLIENTADMIN_ENDPOINTS = {
     PAYROLL_PERIODS: `${BASE_URL}/payroll/periods/`,
     PAYROLL_PERIOD_DETAIL: (id) => `${BASE_URL}/payroll/periods/${id}/`,
     PAYROLL_GENERATE: `${BASE_URL}/payroll/periods/generate/`,
+    PAYROLL_SETTINGS: `${BASE_URL}/payroll/settings/`,
     PAYROLL_REPORTS: `${BASE_URL}/payroll/reports/`,
+
+    // Loans & Advances
+    LOANS: `${BASE_URL}/payroll/loans/`,
+    LOAN_DETAIL: (id) => `${BASE_URL}/payroll/loans/${id}/`,
+    LOAN_GENERATE_SCHEDULE: (id) => `${BASE_URL}/payroll/loans/${id}/generate-schedule/`,
+
+    // Tax Management
+    TAX_SLABS: `${BASE_URL}/payroll/tax-slabs/`,
+    TAX_SLAB_DETAIL: (id) => `${BASE_URL}/payroll/tax-slabs/${id}/`,
+    TAX_DECLARATIONS: `${BASE_URL}/payroll/tax-declarations/`,
+    TAX_DECLARATION_DETAIL: (id) => `${BASE_URL}/payroll/tax-declarations/${id}/`,
+    TAX_DASHBOARD_STATS: `${BASE_URL}/payroll/tax-declarations/dashboard-stats/`,
 
     // Reports
     REPORTS_ATTENDANCE: `${BASE_URL}/reports/attendance/`,

@@ -212,6 +212,9 @@ export default function Reports() {
                         [`${l.type}_Available`]: l.available
                     }), {})
                 })) : [];
+            } else if (reportId === 'epf-esi') {
+                const res = await getPayrollReports({ type: 'statutory' });
+                exportData = res.data || [];
             } else {
                 exportData = [{ Report: reportName, Info: 'Detailed export coming soon in backend update.', Timestamp: new Date().toISOString() }];
             }

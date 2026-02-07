@@ -4,14 +4,14 @@
     --comp-primary: var(--brand-primary);
     --comp-primary-soft: var(--brand-primary-light);
     --comp-primary-dim: var(--brand-primary-hover);
-    --bg-darker: #0d0d0d;
-    --bg-panel: #151515;
+    --bg-darker: var(--bg-secondary);
+    --bg-panel: var(--bg-tertiary);
     --shimmer-white: linear-gradient(135deg,
-            rgba(212, 175, 55, 1) 0%,
-            rgba(252, 246, 186, 1) 25%,
-            rgba(179, 135, 40, 1) 50%,
-            rgba(251, 245, 183, 1) 75%,
-            rgba(170, 119, 28, 1) 100%);
+            #d4af37 0%,
+            #fcf6ba 25%,
+            #b38728 50%,
+            #fbf5b7 75%,
+            #aa771c 100%);
     /* Scaling Overrides: Moving from XL to L */
     --title-scale: 2.75rem;
     --dash-value-scale: 1.8rem;
@@ -70,7 +70,7 @@
     letter-spacing: -2px;
     margin: 0;
     line-height: 1;
-    color: white;
+    color: var(--text-primary);
     text-transform: uppercase;
 }
 
@@ -362,8 +362,8 @@
 }
 
 .modal-content-premium {
-    background: var(--bg-darker);
-    border: 1px solid #1a1a1a;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     width: 90%;
     max-width: 850px;
@@ -374,7 +374,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-xl);
 }
 
 .modal-form-layout {
@@ -387,7 +387,7 @@
 
 .modal-header-premium {
     padding: 1.2rem 1.75rem;
-    border-bottom: 1px solid #151515;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -406,19 +406,19 @@
 .modal-title-text {
     font-size: 1.2rem;
     font-weight: 700;
-    color: white;
+    color: var(--text-primary);
     margin: 0;
     letter-spacing: -0.5px;
 }
 
 .modal-subtitle-text {
     font-size: 0.75rem;
-    color: #555;
+    color: var(--text-secondary);
     margin: 2px 0 0 0;
 }
 
 .modal-close-btn {
-    color: #444;
+    color: var(--text-muted);
     background: none;
     border: none;
     cursor: pointer;
@@ -426,7 +426,7 @@
 }
 
 .modal-close-btn:hover {
-    color: white;
+    color: var(--text-primary);
 }
 
 .modal-body-premium {
@@ -459,7 +459,7 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: white;
+    color: var(--text-primary);
     margin: 0;
 }
 
@@ -481,13 +481,13 @@
 .field-label {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #777;
+    color: var(--text-secondary);
 }
 
 /* Dark Panel for Structure/Basic */
 .primary-config-box {
-    background: #0d0d0d;
-    border: 1px solid #1a1a1a;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     border-top: 2px solid var(--comp-primary);
     padding: 1.25rem;
     border-radius: 6px;
@@ -505,13 +505,14 @@
 .custom-select-premium,
 .premium-form-input,
 .premium-textarea {
-    background: #111;
-    border: 1px solid #1a1a1a;
-    color: white;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
     padding: 0.75rem 0.9rem;
     border-radius: 4px;
     outline: none;
     font-size: 0.85rem;
+    color-scheme: var(--theme-mode, light dark);
 }
 
 .custom-select-premium:focus,
@@ -528,7 +529,7 @@
 .input-symbol {
     position: absolute;
     left: 0.9rem;
-    color: #444;
+    color: var(--text-muted);
     font-weight: 700;
 }
 
@@ -555,9 +556,9 @@
 .checkbox-visual {
     width: 18px;
     height: 18px;
-    border: 1px solid #222;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    background: #0a0a0a;
+    background: var(--bg-tertiary);
     position: relative;
 }
 
@@ -588,12 +589,31 @@
 }
 
 .component-list-premium {
-    background: #080808;
-    border: 1px solid #151515;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     min-height: 200px;
     display: flex;
     flex-direction: column;
+}
+
+.empty-breakdown-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 1rem;
+    color: var(--text-muted);
+    opacity: 0.8;
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
 }
 
 /* Component Item */
@@ -602,7 +622,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 15px;
-    border-bottom: 1px solid #111;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .component-item-premium.overridden {
@@ -620,7 +640,7 @@
 .comp-name-row {
     font-size: 0.8rem;
     font-weight: 700;
-    color: #eee;
+    color: var(--text-primary);
 }
 
 .manual-flag {
@@ -646,13 +666,13 @@
     position: absolute;
     left: 0.5rem;
     font-size: 0.75rem;
-    color: #444;
+    color: var(--text-muted);
 }
 
 .component-input-premium {
-    background: #0d0d0d;
-    border: 1px solid #1a1a1a;
-    color: white;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
     padding: 0.4rem 0.5rem 0.4rem 1.3rem;
     border-radius: 3px;
     width: 90px;
@@ -669,7 +689,7 @@
 /* Summary List Styling (Section 3) */
 .summary-list-container {
     padding: 1.25rem 1px 0 1px;
-    border-top: 1px solid #151515;
+    border-top: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
@@ -681,16 +701,16 @@
     align-items: center;
     font-size: 0.85rem;
     font-weight: 600;
-    color: #aaa;
+    color: var(--text-secondary);
 }
 
 .summary-row.main-net {
     margin-top: 0.4rem;
     padding-top: 0.8rem;
-    border-top: 1px dotted #222;
+    border-top: 1px dotted var(--border-color);
     font-size: 1.05rem;
     font-weight: 800;
-    color: white;
+    color: var(--text-primary);
 }
 
 .summary-amount {
@@ -705,7 +725,7 @@
 /* Buttons with Shimmer */
 .modal-footer-premium {
     padding: 1.25rem 2rem;
-    border-top: 1px solid #151515;
+    border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: flex-end;
     gap: 1.25rem;
@@ -733,19 +753,19 @@
 }
 
 .btn-cancel-plain {
-    color: #555;
+    color: var(--text-secondary);
     font-size: 0.85rem;
     font-weight: 700;
     background: none;
-    border: 1px solid #1a1a1a;
+    border: 1px solid var(--border-color);
     padding: 0.75rem 1.5rem;
     border-radius: 6px;
     cursor: pointer;
 }
 
 .btn-cancel-plain:hover {
-    color: #eee;
-    border-color: #333;
+    color: var(--text-primary);
+    border-color: var(--text-muted);
 }
 
 /* Empty States */
@@ -781,7 +801,7 @@
 .reset-calc-btn {
     background: none;
     border: none;
-    color: #444;
+    color: var(--text-muted);
     font-size: 0.6rem;
     font-weight: 800;
     display: flex;

@@ -157,6 +157,8 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
     updated_by = UserSerializer(read_only=True)
     active_employees = serializers.SerializerMethodField()
     total_departments = serializers.SerializerMethodField()
+    enable_tax_management = serializers.SerializerMethodField()
+    enable_global_search = serializers.SerializerMethodField()
     
     class Meta:
         model = Organization
@@ -165,13 +167,13 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             'state', 'country', 'pincode', 'gstin', 'pan', 'tax_id',
             'logo', 'website', 'is_parent', 'parent', 'parent_name',
             'is_active', 'is_verified', 'verified_at', 'employee_count',
-            'active_employees', 'total_departments', 'established_date',
-            'industry', 'settings', 'created_at', 'updated_at',
+            'active_employees',            'total_departments', 'established_date',
+            'industry', 'settings', 'enable_tax_management', 'enable_global_search', 'created_at', 'updated_at',
             'created_by', 'updated_by'
         ]
         read_only_fields = [
             'id', 'slug', 'verified_at', 'active_employees', 'total_departments',
-            'created_at', 'updated_at', 'created_by', 'updated_by'
+            'enable_tax_management', 'enable_global_search', 'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
     
     def get_active_employees(self, obj):
@@ -179,6 +181,18 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
     
     def get_total_departments(self, obj):
         return obj.departments.filter(is_active=True).count()
+    
+    def get_enable_tax_management(self, obj):
+        """Get enable_tax_management from settings JSONField, default to True"""
+        if obj.settings and isinstance(obj.settings, dict):
+            return obj.settings.get('enable_tax_management', True)
+        return True
+    
+    def get_enable_global_search(self, obj):
+        """Get enable_global_search from settings JSONField, default to True"""
+        if obj.settings and isinstance(obj.settings, dict):
+            return obj.settings.get('enable_global_search', True)
+        return True
 
 
 class OrganizationWithSubsidiariesSerializer(OrganizationDetailSerializer):

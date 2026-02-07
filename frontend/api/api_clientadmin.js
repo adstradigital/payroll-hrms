@@ -44,6 +44,7 @@ export const resetPassword = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.
 // Organization
 export const getOrganization = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ORGANIZATION);
 export const updateOrganization = (data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ORGANIZATION, data);
+export const updateOrganizationSettings = (settings) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ORGANIZATION, { settings });
 
 // Employees
 export const getAllEmployees = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEES, { params });
@@ -115,6 +116,17 @@ export const downloadPayslip = (id) => axiosInstance.get(`${CLIENTADMIN_ENDPOINT
 export const getPayslipDashboardStats = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DASHBOARD_STATS, { params });
 export const getMyPayslips = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_MY_PAYSLIPS);
 
+// Tax Management
+export const getTaxSlabs = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.TAX_SLABS, { params });
+export const createTaxSlab = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.TAX_SLABS, data);
+export const updateTaxSlab = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.TAX_SLAB_DETAIL(id), data);
+export const deleteTaxSlab = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.TAX_SLAB_DETAIL(id));
+
+export const getTaxDeclarations = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.TAX_DECLARATIONS, { params });
+export const updateTaxDeclaration = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.TAX_DECLARATION_DETAIL(id), data);
+export const getTaxDashboardStats = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.TAX_DASHBOARD_STATS);
+
+
 // Salary Components
 export const getSalaryComponents = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENTS, { params });
 export const getSalaryComponentById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SALARY_COMPONENT_DETAIL(id));
@@ -140,6 +152,18 @@ export const updateEmployeeSalary = (id, data) => axiosInstance.put(CLIENTADMIN_
 export const deleteEmployeeSalary = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_DETAIL(id));
 export const getCurrentEmployeeSalary = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_CURRENT, { params });
 export const getEmployeeSalaryStats = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_SALARY_STATS, { params });
+
+// Loans & Advances
+export const getLoans = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LOANS, { params });
+export const getLoanById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LOAN_DETAIL(id));
+export const createLoan = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOANS, data);
+export const updateLoan = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.LOAN_DETAIL(id), data);
+export const deleteLoan = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.LOAN_DETAIL(id));
+export const generateLoanSchedule = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOAN_GENERATE_SCHEDULE(id));
+
+// Payroll Settings
+export const getPayrollSettings = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_SETTINGS);
+export const updatePayrollSettings = (data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.PAYROLL_SETTINGS, data);
 
 // Payroll Periods
 export const getPayrollPeriods = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_PERIODS, { params });

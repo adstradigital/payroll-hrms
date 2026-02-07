@@ -428,6 +428,13 @@ def organization_detail(request):
         
         if request.method == 'GET':
             subsidiaries = organization.subsidiaries.filter(is_active=True)
+            # Get settings from organization
+            enable_tax_management = True
+            enable_global_search = True
+            if organization.settings and isinstance(organization.settings, dict):
+                enable_tax_management = organization.settings.get('enable_tax_management', True)
+                enable_global_search = organization.settings.get('enable_global_search', True)
+            
             data = {
                 'id': str(organization.id), 'name': organization.name, 'slug': organization.slug,
                 'email': organization.email, 'phone': organization.phone, 'address': organization.address,
@@ -437,15 +444,55 @@ def organization_detail(request):
                 'employee_count': organization.employee_count,
                 'established_date': str(organization.established_date) if organization.established_date else None,
                 'industry': organization.industry, 'is_verified': organization.is_verified,
+                'enable_tax_management': enable_tax_management,
+                'enable_global_search': enable_global_search,
                 'subsidiaries': [{'id': str(sub.id), 'name': sub.name, 'slug': sub.slug} for sub in subsidiaries]
             }
             return Response({'success': True, 'organization': data}, status=status.HTTP_200_OK)
         
         elif request.method == 'PATCH':
+            # Check if user is admin for settings updates
+            settings_fields = ['enable_tax_management', 'enable_global_search', 'settings']
+            if any(field in request.data for field in settings_fields) and not employee.is_admin:
+                return Response({'error': 'Admin access required to modify organization settings'}, status=status.HTTP_403_FORBIDDEN)
+            
             allowed_fields = ['name', 'email', 'phone', 'address', 'city', 'state', 'country', 'pincode', 'website', 'industry', 'established_date']
             for field in allowed_fields:
                 if field in request.data:
                     setattr(organization, field, request.data[field])
+            
+            # Handle settings updates - support both individual fields and settings object
+            if 'settings' in request.data and isinstance(request.data['settings'], dict):
+                # Frontend sends settings object
+                try:
+                    if not organization.settings:
+                        organization.settings = {}
+                    # Update settings from the settings object
+                    for key, value in request.data['settings'].items():
+                        organization.settings[key] = bool(value) if isinstance(value, bool) else value
+                except Exception as settings_error:
+                    logger.error(f"Error updating settings: {str(settings_error)}")
+                    return Response({'error': 'Failed to update settings'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Handle individual setting fields for backward compatibility
+                if 'enable_tax_management' in request.data:
+                    try:
+                        if not organization.settings:
+                            organization.settings = {}
+                        organization.settings['enable_tax_management'] = bool(request.data['enable_tax_management'])
+                    except Exception as settings_error:
+                        logger.error(f"Error updating tax management setting: {str(settings_error)}")
+                        return Response({'error': 'Failed to update tax management setting'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                if 'enable_global_search' in request.data:
+                    try:
+                        if not organization.settings:
+                            organization.settings = {}
+                        organization.settings['enable_global_search'] = bool(request.data['enable_global_search'])
+                    except Exception as settings_error:
+                        logger.error(f"Error updating global search setting: {str(settings_error)}")
+                        return Response({'error': 'Failed to update global search setting'}, status=status.HTTP_400_BAD_REQUEST)
+            
             organization.updated_by = request.user
             organization.save()
             return Response({'success': True, 'message': 'Organization updated successfully'}, status=status.HTTP_200_OK)
@@ -996,6 +1043,24 @@ def get_my_profile(request):
 
         employee = get_employee_or_none(request.user)
         if not employee:
+            if is_client_admin(request.user):
+                from .models import Organization
+                # Try to find org created by user or linked
+                org = Organization.objects.filter(created_by=request.user).first()
+                if not org and hasattr(request.user, 'organization'):
+                    org = request.user.organization
+
+                data = {
+                    'id': f"admin-{request.user.id}",
+                    'user_id': request.user.id,
+                    'full_name': request.user.get_full_name() or request.user.username,
+                    'email': request.user.email,
+                    'is_admin': True,
+                    'company': {'id': str(org.id), 'name': org.name} if org else None,
+                    'status': 'active',
+                    'role': 'Administrator'
+                }
+                return Response({'success': True, 'employee': data})
             return Response({'success': False, 'error': 'Business user has no employee profile'}, status=status.HTTP_403_FORBIDDEN)
             
         data = {

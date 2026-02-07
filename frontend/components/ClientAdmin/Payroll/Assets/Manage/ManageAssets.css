@@ -150,6 +150,25 @@
     background: var(--bg-tertiary);
 }
 
+.ma-tr-selected {
+    background: rgba(79, 70, 229, 0.05) !important;
+}
+
+.ma-th-checkbox,
+.ma-td-checkbox {
+    width: 48px;
+    padding: 1rem !important;
+    text-align: center;
+}
+
+.ma-th-checkbox input,
+.ma-td-checkbox input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--brand-primary);
+}
+
 .ma-td-id {
     font-family: monospace;
     font-weight: 600;
@@ -474,4 +493,63 @@
     60% {
         transform: translate3d(4px, 0, 0);
     }
+}
+
+/* Import Modal Specifics */
+.ma-modal--small {
+    max-width: 500px;
+}
+
+.ma-modal-content {
+    padding: 1.5rem;
+}
+
+.ma-import-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.ma-import-step {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.ma-import-step:hover {
+    border-color: var(--brand-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.ma-step-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--brand-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ma-step-info h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.ma-step-info p {
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.ma-btn--sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
 }

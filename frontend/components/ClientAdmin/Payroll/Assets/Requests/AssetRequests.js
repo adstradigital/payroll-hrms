@@ -6,13 +6,14 @@ import {
     User, Box, MessageSquare, Filter,
     Search, ArrowUpRight, Calendar
 } from 'lucide-react';
-import { getAssetRequests, createAssetRequest, processAssetRequest } from '@/api/api_clientadmin';
+import { getAssetRequests, createAssetRequest } from '@/api/api_clientadmin';
 import './AssetRequests.css';
 
 export default function AssetRequests() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
     const [formData, setFormData] = useState({ asset_type: '', priority: 'medium', reason: '' });
     const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });
 
@@ -51,16 +52,12 @@ export default function AssetRequests() {
         }
     };
 
-    const handleProcess = async (id, action) => {
-        try {
-            await processAssetRequest(id, { action });
-            fetchRequests();
-        } catch (error) {
-            console.error('Error processing request:', error);
-        }
-    };
-
-    const filteredRequests = activeTab === 'all' ? requests : requests.filter(r => r.status === activeTab);
+    const filteredRequests = requests.filter(req => {
+        const matchesTab = activeTab === 'all' ? true : req.status === activeTab;
+        const matchesSearch = req.asset_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (req.reason || '').toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesTab && matchesSearch;
+    });
 
     return (
         <div className="asset-requests">
@@ -148,43 +145,52 @@ export default function AssetRequests() {
                     <div className="ar-list-actions">
                         <div className="ar-search-mini">
                             <Search size={16} />
-                            <input type="text" placeholder="Search requests..." />
+                            <input
+                                type="text"
+                                placeholder="Search requests..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
                     </div>
                 </div>
 
                 <div className="ar-requests-list">
-                    {filteredRequests.map(req => (
-                        <div key={req.id} className="ar-request-item">
-                            <div className="ar-req-main">
-                                <div className="ar-req-info">
-                                    <span className="ar-req-id">{req.id}</span>
-                                    <h4 className="ar-req-title">{req.asset_type} Request</h4>
-                                    <div className="ar-req-meta">
-                                        <span><User size={14} /> {req.employee_details ? req.employee_details.full_name : '-'}</span>
-                                        <span><Calendar size={14} /> {req.date}</span>
-                                        <span className={`ar-priority-tag ar-priority--${req.priority.toLowerCase()}`}>{req.priority} Priority</span>
+                    {loading ? (
+                        <div className="ar-loading">Loading requests...</div>
+                    ) : filteredRequests.length === 0 ? (
+                        <div className="ar-empty">No requests found.</div>
+                    ) : (
+                        filteredRequests.map(req => (
+                            <div key={req.id} className="ar-request-item">
+                                <div className="ar-req-main">
+                                    <div className="ar-req-info">
+                                        <span className="ar-req-id">{req.id}</span>
+                                        <h4 className="ar-req-title">{req.asset_type} Request</h4>
+                                        <div className="ar-req-meta">
+                                            <span><User size={14} /> {req.employee_details ? req.employee_details.full_name : '-'}</span>
+                                            <span><Calendar size={14} /> {req.date}</span>
+                                            <span className={`ar-priority-tag ar-priority--${req.priority.toLowerCase()}`}>{req.priority} Priority</span>
+                                        </div>
+                                    </div>
+                                    <div className="ar-req-status-col">
+                                        <span className={`ar-status-badge ar-status--${req.status}`}>{req.status}</span>
+                                    </div>
+                                    <div className="ar-req-actions">
+                                        <button className="ar-action-btn" title="View Details"><ArrowUpRight size={18} /></button>
                                     </div>
                                 </div>
-                                <div className="ar-req-status-col">
-                                    <span className={`ar-status-badge ar-status--${req.status}`}>{req.status}</span>
-                                </div>
-                                <div className="ar-req-actions">
-                                    {req.status === 'pending' ? (
-                                        <>
-                                            <button className="ar-action-btn ar-action--approve" title="Approve" onClick={() => handleProcess(req.id, 'approve')}><CheckCircle2 size={18} /></button>
-                                            <button className="ar-action-btn ar-action--reject" title="Reject" onClick={() => handleProcess(req.id, 'reject')}><XCircle size={18} /></button>
-                                        </>
-                                    ) : (
-                                        <button className="ar-action-btn" title="View Details"><ArrowUpRight size={18} /></button>
+                                <div className="ar-req-footer">
+                                    <p><MessageSquare size={14} /> {req.reason}</p>
+                                    {req.status === 'rejected' && req.rejection_reason && (
+                                        <div className="rejection-box">
+                                            <strong>Rejection Reason:</strong> {req.rejection_reason}
+                                        </div>
                                     )}
                                 </div>
                             </div>
-                            <div className="ar-req-footer">
-                                <p><MessageSquare size={14} /> {req.reason}</p>
-                            </div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
             </div>
         </div>

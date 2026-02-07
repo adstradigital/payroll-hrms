@@ -107,6 +107,7 @@ const menuItems = [
             { id: 'payslips', label: 'Payslips', translationKey: 'common.payslips', path: '/dashboard/payroll/payslips' },
             { id: 'encashments', label: 'Encashments & Reimbursements', translationKey: 'common.encashments', path: '/dashboard/payroll/encashments-reimbursements', permission: 'payroll.manage' },
             { id: 'tax', label: 'Tax Management', translationKey: 'common.tax', path: '/dashboard/payroll/tax', permission: 'payroll.manage' },
+            { id: 'loans', label: 'Loans & EMI', translationKey: 'common.loans', path: '/dashboard/payroll/loans', permission: 'payroll.manage' },
             { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
         ]
     },
@@ -122,6 +123,7 @@ const menuItems = [
             { id: 'assets-manage', label: 'Manage Assets', translationKey: 'common.manageAssets', path: '/dashboard/payroll/assets/manage' },
             { id: 'assets-batches', label: 'Asset Batches', translationKey: 'common.assetBatches', path: '/dashboard/payroll/assets/batches' },
             { id: 'assets-requests-sub', label: 'Asset Requests', translationKey: 'common.assetRequests', path: '/dashboard/payroll/assets/requests' },
+            { id: 'assets-approvals', label: 'Asset Approvals', translationKey: 'common.approvals', path: '/dashboard/payroll/assets/approvals', adminOnly: true },
             { id: 'assets-history-sub', label: 'Asset History', translationKey: 'common.assetHistory', path: '/dashboard/payroll/assets/history' },
         ]
     },
@@ -182,7 +184,7 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const { t } = useLanguage();
-    const { hasHRMS, hasPayroll, hasPermission, hasAnyPermission, isAdmin } = usePermissions();
+    const { hasHRMS, hasPayroll, hasPermission, hasAnyPermission, isAdmin, hasTaxManagement, designation } = usePermissions();
 
     // Logout Flow States
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -348,7 +350,10 @@ export default function Sidebar() {
         // 2. Check Admin-Only
         if (item.adminOnly && !isAdmin) return false;
 
-        // 3. Check Granular Permission
+        // 3. Check Conditional Features
+        if (item.id === 'tax' && !hasTaxManagement) return false;
+
+        // 4. Check Granular Permission
         if (item.permission) {
             if (Array.isArray(item.permission)) {
                 if (!hasAnyPermission(item.permission)) return false;
@@ -364,18 +369,7 @@ export default function Sidebar() {
     // Also filter children based on permissions
     const filterChildren = (children) => {
         if (!children) return [];
-        return children.filter(child => {
-            if (child.adminOnly && !isAdmin) return false;
-
-            if (child.permission) {
-                if (Array.isArray(child.permission)) {
-                    if (!hasAnyPermission(child.permission)) return false;
-                } else {
-                    if (!hasPermission(child.permission)) return false;
-                }
-            }
-            return true;
-        });
+        return children.filter(checkPermission);
     };
 
     // Logout Flow Handlers
@@ -577,6 +571,7 @@ export default function Sidebar() {
                         className="sidebar__logout-btn"
                         onClick={handleLogoutClick}
                         disabled={checkingAttendance}
+                        title={t('common.logout')}
                     >
                         {checkingAttendance ? <Loader size={18} className="animate-spin" /> : <LogOut size={18} />}
                     </button>

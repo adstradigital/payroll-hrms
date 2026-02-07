@@ -418,6 +418,16 @@ export default function RunPayroll() {
                                                             </div>
                                                             <div className="rp-stat-box">
                                                                 <div className="rp-stat-header">
+                                                                    <span>Statutory Deductions</span>
+                                                                    <ShieldCheck size={16} className="text-amber-500" />
+                                                                </div>
+                                                                <div className="rp-stat-value text-amber-500">
+                                                                    {previewData ? formatCurrency(previewData.summary.total_deductions - (previewData.summary.total_lop || 0)) : '--'}
+                                                                </div>
+                                                                <div className="rp-stat-meta">PF, ESI & Taxes</div>
+                                                            </div>
+                                                            <div className="rp-stat-box">
+                                                                <div className="rp-stat-header">
                                                                     <span>Gross Earnings</span>
                                                                     <DollarSign size={16} className="text-brand" />
                                                                 </div>
@@ -439,9 +449,9 @@ export default function RunPayroll() {
                                                                     <thead className="text-xs text-muted uppercase bg-[#151515] sticky top-0">
                                                                         <tr>
                                                                             <th className="px-4 py-3">Employee</th>
-                                                                            <th className="px-4 py-3 text-right">Days Paid</th>
                                                                             <th className="px-4 py-3 text-right">Gross Pay</th>
                                                                             <th className="px-4 py-3 text-right text-red-400">LOP</th>
+                                                                            <th className="px-4 py-3 text-right text-amber-500">Statutory</th>
                                                                             <th className="px-4 py-3 text-right">Net Salary</th>
                                                                         </tr>
                                                                     </thead>
@@ -452,14 +462,11 @@ export default function RunPayroll() {
                                                                                     <div className="text-white">{emp.name}</div>
                                                                                     <div className="text-xs text-muted">{emp.designation}</div>
                                                                                 </td>
-                                                                                <td className="px-4 py-2 text-right font-mono text-muted">
-                                                                                    {emp.days_paid} <span className="text-[10px] opacity-50">/ {Number(emp.days_paid) + Number(emp.days_lop)}</span>
-                                                                                </td>
-                                                                                <td className="px-4 py-2 text-right font-mono text-brand">
-                                                                                    {formatCurrency(emp.gross_pay)}
-                                                                                </td>
                                                                                 <td className="px-4 py-2 text-right font-mono text-red-400">
                                                                                     {emp.lop_deduction > 0 ? `-${Math.round(emp.lop_deduction)}` : '-'}
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-right font-mono text-amber-500">
+                                                                                    {emp.total_deductions > emp.lop_deduction ? `-${Math.round(emp.total_deductions - emp.lop_deduction)}` : '-'}
                                                                                 </td>
                                                                                 <td className="px-4 py-2 text-right font-mono font-bold text-white">
                                                                                     {formatCurrency(emp.net_pay)}
@@ -601,6 +608,10 @@ export default function RunPayroll() {
                                                     <div className="rp-calc-row text-danger">
                                                         <span>Attendance Deductions</span>
                                                         <span>- {formatCurrency(existingPeriod.total_lop)}</span>
+                                                    </div>
+                                                    <div className="rp-calc-row" style={{ color: '#f59e0b' }}>
+                                                        <span>Statutory Deductions</span>
+                                                        <span>- {formatCurrency(existingPeriod.total_deductions - existingPeriod.total_lop)}</span>
                                                     </div>
                                                     <div className="rp-calc-row rp-calc-total">
                                                         <span>Net Disbursal</span>

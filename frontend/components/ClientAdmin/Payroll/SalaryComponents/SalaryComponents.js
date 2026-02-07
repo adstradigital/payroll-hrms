@@ -203,17 +203,31 @@ const ComponentForm = ({ component, allComponents, onClose, onSave }) => {
                             </div>
                         </div>
                         <div className="vault-input-group">
-                            <label className="vault-label">Logic Source</label>
+                            <label className="vault-label">Statutory Mapping</label>
                             <select
-                                value={formData.calculation_type} onChange={(e) => setFormData({ ...formData, calculation_type: e.target.value })}
+                                value={formData.statutory_type} onChange={(e) => setFormData({ ...formData, statutory_type: e.target.value })}
                                 className="vault-select"
                             >
-                                <option value="fixed">Nominal Sum (Fixed)</option>
-                                <option value="percentage">Ratio (% of Earning)</option>
-                                <option value="attendance_prorated">Attendance Prorated</option>
-                                <option value="per_day">Per Present Day (Daily)</option>
+                                <option value="">None (Custom Component)</option>
+                                <option value="pf">Provident Fund (PF)</option>
+                                <option value="esi">Employee State Insurance (ESI)</option>
+                                <option value="tds">Income Tax (TDS)</option>
+                                <option value="pt">Professional Tax (PT)</option>
                             </select>
                         </div>
+                    </div>
+
+                    <div className="vault-input-group">
+                        <label className="vault-label">Logic Source</label>
+                        <select
+                            value={formData.calculation_type} onChange={(e) => setFormData({ ...formData, calculation_type: e.target.value })}
+                            className="vault-select"
+                        >
+                            <option value="fixed">Nominal Sum (Fixed)</option>
+                            <option value="percentage">Ratio (% of Earning)</option>
+                            <option value="attendance_prorated">Attendance Prorated</option>
+                            <option value="per_day">Per Present Day (Daily)</option>
+                        </select>
                     </div>
 
                     {formData.calculation_type === 'percentage' && (

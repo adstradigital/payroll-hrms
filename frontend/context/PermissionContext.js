@@ -13,6 +13,7 @@ export function PermissionProvider({ children }) {
     const [isAdmin, setIsAdmin] = useState(user?.role === 'admin' || user?.is_admin === true || user?.is_superuser === true);
     const [loading, setLoading] = useState(true);
     const [designation, setDesignation] = useState(null);
+    const [hasTaxManagement, setHasTaxManagement] = useState(true); // Default to true
 
     // Fetch permissions from API
     const fetchPermissions = useCallback(async () => {
@@ -41,6 +42,17 @@ export function PermissionProvider({ children }) {
             setPermissionCodes(data.permission_codes || []);
             setDesignation(data.designation);
 
+            // Fetch organization settings for tax management
+            try {
+                const orgResponse = await axiosInstance.get('/account/organization/');
+                const enableTaxManagement = orgResponse.data?.organization?.enable_tax_management ?? true;
+                setHasTaxManagement(enableTaxManagement);
+                console.log('[PermissionContext] Tax Management enabled:', enableTaxManagement);
+            } catch (orgError) {
+                console.error('[PermissionContext] Failed to fetch organization settings:', orgError);
+                setHasTaxManagement(true); // Default to true on error
+            }
+
             if (data.permissions?.length > 0) {
                 console.log('[PermissionContext] 📋 User permissions:');
                 data.permissions.forEach(p => {
@@ -65,6 +77,7 @@ export function PermissionProvider({ children }) {
             setPermissions([]);
             setPermissionCodes([]);
             setIsAdmin(false);
+            setHasTaxManagement(true); // Reset to default
             setLoading(false);
         }
     }, [user, fetchPermissions]);
@@ -120,7 +133,10 @@ export function PermissionProvider({ children }) {
         // Legacy subscription checks
         hasHRMS: plan === 'hrms' || plan === 'both' || plan === 'enterprise',
         hasPayroll: plan === 'payroll' || plan === 'both' || plan === 'enterprise',
-        plan
+        plan,
+
+        // Feature toggles
+        hasTaxManagement
     };
 
     return (

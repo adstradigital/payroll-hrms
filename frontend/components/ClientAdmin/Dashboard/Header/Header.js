@@ -27,6 +27,7 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
     const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+    const [enableGlobalSearch, setEnableGlobalSearch] = useState(true);
     const companyDropdownRef = useRef(null);
     const languageDropdownRef = useRef(null);
 
@@ -37,7 +38,15 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
                 const response = await axiosInstance.get(CLIENTADMIN_ENDPOINTS.ORGANIZATION);
                 const org = response.data?.organization;
 
+                console.log('🔍 Organization data:', org);
+                console.log('🔍 enable_global_search value:', org?.enable_global_search);
+
                 if (org) {
+                    // Set global search setting
+                    const searchEnabled = org.enable_global_search ?? true;
+                    console.log('🔍 Setting enableGlobalSearch to:', searchEnabled);
+                    setEnableGlobalSearch(searchEnabled);
+
                     // Always set current org as selected
                     const currentCompany = {
                         id: org.id,
@@ -126,17 +135,19 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
                 </div>
             </div>
 
-            <div className="header__center">
-                {/* Centered Search */}
-                <div className="header__search">
-                    <Search size={16} className="header__search-icon" />
-                    <input
-                        type="text"
-                        placeholder={t('common.search')}
-                        className="header__search-input"
-                    />
+            {enableGlobalSearch && (
+                <div className="header__center">
+                    {/* Centered Search */}
+                    <div className="header__search">
+                        <Search size={16} className="header__search-icon" />
+                        <input
+                            type="text"
+                            placeholder={t('common.search')}
+                            className="header__search-input"
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="header__right">
                 {/* Company Selector - Always show organization name */}

@@ -17,6 +17,7 @@ import AttendanceSettings from './AttendanceSettings/AttendanceSettings';
 import HolidaySettings from './HolidaySettings/HolidaySettings';
 import WorkSchedulesSettings from './WorkSchedulesSettings/WorkSchedulesSettings';
 import OverTimeSettings from './OverTimeRule/OverTimeSettings';
+import TaxSettings from './TaxSettings/TaxSettings';
 
 import './Settings.css';
 
@@ -153,6 +154,8 @@ export default function Settings() {
                 return <OverTimeSettings />;
             case 'holidays':
                 return <HolidaySettings />;
+            case 'tax-settings':
+                return <TaxSettings />;
             default:
                 return <PlaceholderContent activeItem={activeItem} />;
         }

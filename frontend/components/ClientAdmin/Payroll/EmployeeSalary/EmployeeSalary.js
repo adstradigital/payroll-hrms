@@ -40,15 +40,25 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
     // Initial Data Fetch
     useEffect(() => {
         const fetchOptions = async () => {
+            setFetchingData(true);
             try {
-                const [empRes, structRes] = await Promise.all([
-                    getAllEmployees({ status: 'active' }),
-                    getSalaryStructures({ is_active: true })
-                ]);
-                setEmployees(empRes.data.results || empRes.data || []);
-                setStructures(structRes.data.results || structRes.data || []);
+                // Fetch Employees
+                try {
+                    const empRes = await getAllEmployees({ status: 'active' });
+                    setEmployees(empRes.data.results || empRes.data || []);
+                } catch (err) {
+                    console.error("Error fetching employees:", err);
+                }
+
+                // Fetch Structures
+                try {
+                    const structRes = await getSalaryStructures({ is_active: true });
+                    setStructures(structRes.data.results || structRes.data || []);
+                } catch (err) {
+                    console.error("Error fetching structures:", err);
+                }
             } catch (error) {
-                console.error("Error fetching options", error);
+                console.error("Critical error in fetchOptions:", error);
             } finally {
                 setFetchingData(false);
             }
@@ -246,6 +256,9 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
                                             required
                                         >
                                             <option value="">Search & Select Employee...</option>
+                                            {employees.length === 0 && !fetchingData && (
+                                                <option disabled>No active employees found</option>
+                                            )}
                                             {employees.map(emp => (
                                                 <option key={emp.id} value={emp.id}>{emp.full_name || 'No Name'} - {emp.employee_id}</option>
                                             ))}
@@ -262,6 +275,9 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
                                                 required
                                             >
                                                 <option value="">Select Compensation Structure...</option>
+                                                {structures.length === 0 && !fetchingData && (
+                                                    <option disabled>No active structures found</option>
+                                                )}
                                                 {structures.map(str => (
                                                     <option key={str.id} value={str.id}>{str.name}</option>
                                                 ))}
@@ -327,7 +343,7 @@ const SalaryAssignmentForm = ({ assignment, onClose, onSuccess }) => {
                                     <div className="breakdown-stack">
                                         <div className="form-section-header breakdown-header">
                                             <div className="flex-center-gap">
-                                                <div className="section-accent" style={{ background: '#3b82f6' }}></div>
+                                                <div className="section-accent" style={{ background: 'var(--comp-primary)' }}></div>
                                                 <h4 className="section-title">SECTION 2: COMPONENTS</h4>
                                             </div>
                                             <button type="button" onClick={handleReset} className="reset-calc-btn">

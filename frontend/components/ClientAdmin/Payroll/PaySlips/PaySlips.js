@@ -334,7 +334,7 @@ export default function PaySlips() {
                                         <div className="ps-paper-section">
                                             <h3 className="ps-section-title ps-title-earnings">Earnings</h3>
                                             <div className="ps-section-rows">
-                                                {selectedPayslip.components?.filter(c => c.component_type === 'earning').map(c => (
+                                                {selectedPayslip.components?.filter(c => c.component_type?.toLowerCase() === 'earning').map(c => (
                                                     <div key={c.id} className="ps-section-row">
                                                         <span>{c.component_name}</span>
                                                         <span className="font-bold">{formatCurrency(c.amount)}</span>
@@ -349,7 +349,7 @@ export default function PaySlips() {
                                         <div className="ps-paper-section">
                                             <h3 className="ps-section-title ps-title-deductions">Deductions</h3>
                                             <div className="ps-section-rows">
-                                                {selectedPayslip.components?.filter(c => c.component_type === 'deduction').map(c => (
+                                                {selectedPayslip.components?.filter(c => c.component_type?.toLowerCase() === 'deduction').map(c => (
                                                     <div key={c.id} className="ps-section-row">
                                                         <span>{c.component_name}</span>
                                                         <span className="font-bold">{formatCurrency(c.amount)}</span>

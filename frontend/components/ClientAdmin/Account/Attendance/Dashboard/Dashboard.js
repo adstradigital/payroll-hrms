@@ -1,437 +1,288 @@
-'use client';
+import React, { useState, useEffect } from 'react';
+import {
+    Users,
+    Clock,
+    Coffee,
+    Search,
+    Calendar,
+    MoreVertical,
+    ArrowUpRight,
+    CheckCircle2,
+    AlertCircle
+} from 'lucide-react';
 
-import { useState, useEffect } from 'react';
-import { Users, Clock, Coffee, Search, Calendar } from 'lucide-react';
-import './Dashboard.css';
-
+/**
+ * Modern Attendance Dashboard
+ * A high-fidelity UI for managing employee presence, overtime, and validations.
+ */
 export default function Dashboard() {
+    // --- State Management ---
     const [stats, setStats] = useState({
-        attendance_percentage: 0,
-        on_time: 0,
-        late_come: 0
+        attendance_percentage: 85,
+        on_time: 142,
+        late_come: 12,
+        total_employees: 160
     });
-    const [analyticsData, setAnalyticsData] = useState([]);
-    const [analyticsPeriod, setAnalyticsPeriod] = useState('Day');
-    const [offlineEmployees, setOfflineEmployees] = useState([]);
-    const [offlinePage, setOfflinePage] = useState(1);
-    const [offlineTotal, setOfflineTotal] = useState(0);
-    const [onBreak, setOnBreak] = useState([]);
-    const [overtimePending, setOvertimePending] = useState([]);
-    const [toValidate, setToValidate] = useState([]);
-    const [departmentOvertime, setDepartmentOvertime] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [analyticsData, setAnalyticsData] = useState([
+        { label: 'Mon', percentage: 78 },
+        { label: 'Tue', percentage: 82 },
+        { label: 'Wed', percentage: 95 },
+        { label: 'Thu', percentage: 88 },
+        { label: 'Fri', percentage: 70 },
+        { label: 'Sat', percentage: 45 },
+        { label: 'Sun', percentage: 20 },
+    ]);
+    const [analyticsPeriod, setAnalyticsPeriod] = useState('Week');
+    const [offlineEmployees, setOfflineEmployees] = useState([
+        { name: 'Sarah Connor', status: 'Offline', avatar: 'SC', dept: 'Engineering' },
+        { name: 'John Doe', status: 'Offline', avatar: 'JD', dept: 'HR' },
+        { name: 'Miles Dyson', status: 'Offline', avatar: 'MD', dept: 'Management' },
+    ]);
+    const [onBreak, setOnBreak] = useState([
+        { name: 'Ellen Ripley', break_start: '12:45 PM', avatar: 'ER' },
+        { name: 'Arthur Dallas', break_start: '01:15 PM', avatar: 'AD' }
+    ]);
+    const [toValidate, setToValidate] = useState([
+        { id: 1, employee: { name: 'James Cameron', id: 'EMP001', avatar: 'JC' }, date: '2026-02-05', check_in: '08:55 AM', work_type: 'Office', pending: '0.00', work: '8.50' },
+        { id: 2, employee: { name: 'Kathryn Bigelow', id: 'EMP002', avatar: 'KB' }, date: '2026-02-05', check_in: '09:15 AM', work_type: 'Remote', pending: '0.25', work: '7.75' },
+        { id: 3, employee: { name: 'Christopher Nolan', id: 'EMP003', avatar: 'CN' }, date: '2026-02-05', check_in: '08:30 AM', work_type: 'Office', pending: '0.00', work: '9.00' },
+    ]);
+    const [deptOvertime, setDeptOvertime] = useState([
+        { department: 'Engineering', overtime_hours: 45, color: '#6366f1' },
+        { department: 'Sales', overtime_hours: 30, color: '#8b5cf6' },
+        { department: 'HR', overtime_hours: 15, color: '#ec4899' },
+        { department: 'Finance', overtime_hours: 10, color: '#f59e0b' },
+    ]);
 
-    // Fetch dashboard statistics
-    useEffect(() => {
-        fetchDashboardStats();
-        fetchOfflineEmployees();
-        fetchOnBreak();
-        fetchOvertimePending();
-        fetchToValidate();
-        fetchAnalytics();
-        fetchDepartmentOvertime();
-    }, []);
+    // Mock Loading state
+    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        fetchAnalytics();
-    }, [analyticsPeriod]);
-
-    const fetchDashboardStats = async () => {
-        try {
-            const response = await fetch('/attendance/api/attendance/dashboard-stats/');
-            const data = await response.json();
-            setStats(data);
-        } catch (error) {
-            console.error('Error fetching dashboard stats:', error);
-        }
-    };
-
-    const fetchOfflineEmployees = async (page = 1) => {
-        try {
-            const response = await fetch(`/attendance/api/attendance/offline-employees/?page=${page}`);
-            const data = await response.json();
-            setOfflineEmployees(data.employees || []);
-            setOfflinePage(data.page);
-            setOfflineTotal(data.total_pages);
-        } catch (error) {
-            console.error('Error fetching offline employees:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchOnBreak = async () => {
-        try {
-            const response = await fetch('/attendance/api/attendance/on-break/');
-            const data = await response.json();
-            setOnBreak(data.employees || []);
-        } catch (error) {
-            console.error('Error fetching on-break employees:', error);
-        }
-    };
-
-    const fetchOvertimePending = async () => {
-        try {
-            const response = await fetch('/attendance/api/attendance/overtime-pending/');
-            const data = await response.json();
-            setOvertimePending(data.records || []);
-        } catch (error) {
-            console.error('Error fetching overtime pending:', error);
-        }
-    };
-
-    const fetchToValidate = async () => {
-        try {
-            const response = await fetch('/attendance/api/attendance/to-validate/');
-            const data = await response.json();
-            setToValidate(data.records || []);
-        } catch (error) {
-            console.error('Error fetching validation records:', error);
-        }
-    };
-
-    const fetchAnalytics = async () => {
-        try {
-            const response = await fetch(`/attendance/api/attendance/analytics/?period=${analyticsPeriod}`);
-            const data = await response.json();
-            setAnalyticsData(data.data || []);
-        } catch (error) {
-            console.error('Error fetching analytics:', error);
-        }
-    };
-
-    const fetchDepartmentOvertime = async () => {
-        try {
-            const response = await fetch('/attendance/api/attendance/department-overtime/');
-            const data = await response.json();
-            setDepartmentOvertime(data.data || []);
-        } catch (error) {
-            console.error('Error fetching department overtime:', error);
-        }
-    };
-
-    const handleValidate = async (attendanceId) => {
-        try {
-            const response = await fetch('/attendance/api/attendance/to-validate/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ attendance_id: attendanceId })
-            });
-            if (response.ok) {
-                fetchToValidate();
-            }
-        } catch (error) {
-            console.error('Error validating attendance:', error);
-        }
+    const handleValidate = (id) => {
+        setToValidate(prev => prev.filter(item => item.id !== id));
     };
 
     const maxPercentage = Math.max(...analyticsData.map(d => d.percentage), 100);
 
     return (
-        <div className="attendance-dashboard">
-            {/* Top Stats Cards */}
-            <div className="stats-grid stats-grid--3">
-                <div className="stat-card stat-card--gray">
-                    <div className="stat-card__label">Today's Attendances</div>
-                    <div className="stat-card__value">{stats.attendance_percentage}%</div>
-                </div>
-                <div className="stat-card stat-card--green">
-                    <div className="stat-card__label">On Time</div>
-                    <div className="stat-card__value">{stats.on_time}</div>
-                </div>
-                <div className="stat-card stat-card--red">
-                    <div className="stat-card__label">Late Come</div>
-                    <div className="stat-card__value">{stats.late_come}</div>
-                </div>
-            </div>
-
-            {/* Main Dashboard Grid */}
-            <div className="dashboard-main-grid">
-                {/* Attendance Analytics */}
-                <div className="att-card analytics-card">
-                    <div className="card-header">
-                        <div>
-                            <h3 className="card-title">Attendance Analytic</h3>
+        <div className="dashboard-wrapper">
+            {/* 1. Statistics Overview */}
+            <header className="stats-header">
+                <div className="stat-pill stat-pill--primary">
+                    <div className="pill-icon"><Users size={20} /></div>
+                    <div className="pill-content">
+                        <span className="pill-label">Total Attendance</span>
+                        <div className="pill-value-row">
+                            <span className="pill-value">{stats.attendance_percentage}%</span>
+                            <span className="pill-trend"><ArrowUpRight size={14} /> 12%</span>
                         </div>
-                        <select
-                            className="period-select"
-                            value={analyticsPeriod}
-                            onChange={(e) => setAnalyticsPeriod(e.target.value)}
-                        >
-                            <option value="Day">Day</option>
-                            <option value="Week">Week</option>
-                            <option value="Month">Month</option>
-                        </select>
                     </div>
-                    <div className="analytics-chart">
+                </div>
+                <div className="stat-pill stat-pill--success">
+                    <div className="pill-icon"><CheckCircle2 size={20} /></div>
+                    <div className="pill-content">
+                        <span className="pill-label">On Time</span>
+                        <div className="pill-value-row">
+                            <span className="pill-value">{stats.on_time}</span>
+                            <span className="pill-sub">Employees</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="stat-pill stat-pill--danger">
+                    <div className="pill-icon"><AlertCircle size={20} /></div>
+                    <div className="pill-content">
+                        <span className="pill-label">Late Arrivals</span>
+                        <div className="pill-value-row">
+                            <span className="pill-value">{stats.late_come}</span>
+                            <span className="pill-sub">Today</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="stat-pill stat-pill--info">
+                    <div className="pill-icon"><Clock size={20} /></div>
+                    <div className="pill-content">
+                        <span className="pill-label">Total Staff</span>
+                        <div className="pill-value-row">
+                            <span className="pill-value">{stats.total_employees}</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {/* 2. Main Analytics & Activity Section */}
+            <div className="layout-grid-top">
+                {/* Attendance Chart */}
+                <section className="glass-card analytics-box">
+                    <div className="card-top">
+                        <h3 className="card-heading">Attendance Analytics</h3>
+                        <div className="card-actions">
+                            <select
+                                className="styled-select"
+                                value={analyticsPeriod}
+                                onChange={(e) => setAnalyticsPeriod(e.target.value)}
+                            >
+                                <option>Day</option>
+                                <option>Week</option>
+                                <option>Month</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="chart-container">
                         {analyticsData.map((day, idx) => (
-                            <div key={idx} className="analytics-bar-wrapper">
-                                <div className="analytics-bar" style={{ height: `${(day.percentage / maxPercentage) * 100}%` }}>
-                                    <div className="tooltip">{day.percentage}%</div>
+                            <div key={idx} className="bar-group">
+                                <div className="bar-track">
+                                    <div
+                                        className="bar-fill"
+                                        style={{ height: `${(day.percentage / maxPercentage) * 100}%` }}
+                                    >
+                                        <span className="bar-tooltip">{day.percentage}%</span>
+                                    </div>
                                 </div>
-                                <div className="analytics-label">{day.label}</div>
+                                <span className="bar-label">{day.label}</span>
                             </div>
                         ))}
                     </div>
-                </div>
+                </section>
 
-                {/* Offline Employees */}
-                <div className="att-card offline-card">
-                    <div className="card-header">
-                        <h3 className="card-title">Offline Employees</h3>
+                {/* Offline List */}
+                <section className="glass-card activity-box">
+                    <div className="card-top">
+                        <h3 className="card-heading">Offline Employees</h3>
+                        <button className="text-btn">View All</button>
                     </div>
-                    <div className="offline-list">
+                    <div className="scroll-list">
                         {offlineEmployees.map((emp, idx) => (
-                            <div key={idx} className="offline-item">
-                                <div className="employee-avatar">{emp.avatar}</div>
-                                <div className="employee-info">
-                                    <div className="employee-name">{emp.name}</div>
-                                    <span className="employee-status">{emp.status}</span>
+                            <div key={idx} className="list-item">
+                                <div className="avatar-circle">{emp.avatar}</div>
+                                <div className="item-meta">
+                                    <span className="item-title">{emp.name}</span>
+                                    <span className="item-sub">{emp.dept}</span>
                                 </div>
-                                <button className="expand-btn">⋮</button>
+                                <span className="status-indicator status-indicator--offline">Away</span>
+                                <button className="icon-btn"><MoreVertical size={16} /></button>
                             </div>
                         ))}
                     </div>
-                    {offlineTotal > 1 && (
-                        <div className="pagination">
-                            <span>Page {offlinePage} of {offlineTotal}</span>
-                            <div className="pagination-btns">
-                                <button
-                                    onClick={() => fetchOfflineEmployees(offlinePage - 1)}
-                                    disabled={offlinePage === 1}
-                                >‹</button>
-                                <button
-                                    onClick={() => fetchOfflineEmployees(offlinePage + 1)}
-                                    disabled={offlinePage === offlineTotal}
-                                >›</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Enhanced Hours Chart */}
-                <div className="att-card hours-card">
-                    <div className="card-header">
-                        <h3 className="card-title">Hours Chart</h3>
-                        <select className="period-select">
-                            <option>January, 2026</option>
-                        </select>
-                    </div>
-                    <div className="hours-chart-wrapper">
-                        <div className="chart-legend">
-                            <span className="legend-item">
-                                <span className="legend-dot legend-dot--pink"></span>
-                                Pending Hours
-                            </span>
-                            <span className="legend-item">
-                                <span className="legend-dot legend-dot--cyan"></span>
-                                Worked Hours
-                            </span>
-                        </div>
-                        <div className="hours-chart-container">
-                            <div className="y-axis-labels">
-                                <span>50</span>
-                                <span>40</span>
-                                <span>30</span>
-                                <span>20</span>
-                                <span>10</span>
-                                <span>0</span>
-                            </div>
-                            <div className="hours-bars-new">
-                                {['Department', 'Sales', 'HR', 'Management', 'Finance', 'Legal', 'Marketing', 'Support', 'Operations', 'IT'].map((dept, idx) => {
-                                    const workedHeight = Math.random() * 30 + 10;
-                                    const pendingHeight = Math.random() * 20 + 5;
-                                    return (
-                                        <div key={idx} className="hour-bar-group-new">
-                                            <div className="hour-bar-stack">
-                                                <div
-                                                    className="bar-segment bar-segment--pink"
-                                                    style={{ height: `${pendingHeight}px` }}
-                                                    data-value={pendingHeight.toFixed(0)}
-                                                ></div>
-                                                <div
-                                                    className="bar-segment bar-segment--cyan"
-                                                    style={{ height: `${workedHeight}px` }}
-                                                    data-value={workedHeight.toFixed(0)}
-                                                ></div>
-                                            </div>
-                                            <div className="hour-label-new">{dept}</div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                </section>
             </div>
 
-            {/* Full-Width Attendance Validation Table */}
-            <div className="att-card validation-card-fullwidth">
-                <div className="card-header">
-                    <h3 className="card-title">Attendance To Validate</h3>
-                    <button className="validate-all-btn">Validate All</button>
+            {/* 3. Validation Table */}
+            <section className="glass-card table-section">
+                <div className="card-top">
+                    <div className="heading-group">
+                        <h3 className="card-heading">Pending Validations</h3>
+                        <span className="badge-count">{toValidate.length} Requests</span>
+                    </div>
+                    <button className="primary-btn">Bulk Validate</button>
                 </div>
-                <div className="validation-table-fullwidth-wrapper">
-                    <table className="validation-table-fullwidth">
+                <div className="responsive-table-container">
+                    <table className="modern-table">
                         <thead>
                             <tr>
                                 <th>Employee</th>
-                                <th>Date</th>
                                 <th>Check-In</th>
-                                <th>In Date</th>
-                                <th>Check-Out</th>
-                                <th>Out Date</th>
-                                <th>Shift</th>
                                 <th>Work Type</th>
-                                <th>Min Hour</th>
-                                <th>Pending Hour</th>
-                                <th>At Work</th>
-                                <th>Actions</th>
+                                <th>Hours (Worked)</th>
+                                <th>Status</th>
+                                <th className="text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {toValidate.slice(0, 6).map((record, idx) => {
-                                const minHour = '08:15';
-                                const pendingHour = (Math.random() * 8).toFixed(2);
-                                const atWork = (Math.random() * 8 + 1).toFixed(2);
-                                const checkOut = idx % 2 === 0 ? '09:11' : 'None';
-                                const outDate = idx % 2 === 0 ? '20/01/2026' : 'None';
-
-                                return (
-                                    <tr key={idx}>
-                                        <td>
-                                            <div className="employee-cell-full">
-                                                <div className="employee-avatar-md">{record.employee.avatar}</div>
-                                                <div>
-                                                    <div className="employee-name-md">{record.employee.name}</div>
-                                                    <div className="employee-id-md">({record.employee.employee_id})</div>
-                                                </div>
+                            {toValidate.map((row) => (
+                                <tr key={row.id}>
+                                    <td>
+                                        <div className="user-cell">
+                                            <div className="avatar-sm">{row.employee.avatar}</div>
+                                            <div className="user-cell-text">
+                                                <span className="name">{row.employee.name}</span>
+                                                <span className="id">{row.employee.id}</span>
                                             </div>
-                                        </td>
-                                        <td><span className="date-text">{record.date}</span></td>
-                                        <td><span className="time-text">{record.check_in}</span></td>
-                                        <td><span className="date-text">{record.in_date || record.date}</span></td>
-                                        <td><span className="time-text">{checkOut}</span></td>
-                                        <td><span className="date-text">{outDate}</span></td>
-                                        <td><span className="shift-badge-full">Regular Shift</span></td>
-                                        <td><span className="work-type-full">{idx % 3 === 0 ? 'Work From Office' : 'None'}</span></td>
-                                        <td><span className="hour-text">{minHour}</span></td>
-                                        <td><span className="hour-badge-full hour-badge--pending">{pendingHour}</span></td>
-                                        <td><span className="hour-badge-full hour-badge--work">{atWork}</span></td>
-                                        <td>
-                                            <button
-                                                className="validate-btn-full"
-                                                onClick={() => handleValidate(record.id)}
-                                            >
-                                                Validate
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div className="time-cell">
+                                            <span className="time">{row.check_in}</span>
+                                            <span className="date">{row.date}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span className={`tag tag--${row.work_type.toLowerCase()}`}>
+                                            {row.work_type}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div className="hours-group">
+                                            <span className="hrs-val">{row.work}h</span>
+                                            <div className="mini-progress"><div className="fill" style={{ width: '85%' }}></div></div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span className="status-pill-warning">Pending</span>
+                                    </td>
+                                    <td className="text-right">
+                                        <button
+                                            className="action-btn-success"
+                                            onClick={() => handleValidate(row.id)}
+                                        >
+                                            Approve
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
-            {/* Bottom Grid */}
-            <div className="dashboard-bottom-grid">
+            {/* 4. Bottom Grid */}
+            <div className="layout-grid-bottom">
                 {/* On Break */}
-                <div className="att-card on-break-card">
-                    <h3 className="card-title">On Break</h3>
-                    {onBreak.length === 0 ? (
-                        <div className="empty-state">
-                            <Coffee size={48} className="empty-icon" />
-                            <p>No employees are currently taking a break.</p>
-                        </div>
-                    ) : (
-                        <div className="break-list">
-                            {onBreak.map((emp, idx) => (
-                                <div key={idx} className="break-item">
-                                    <span>{emp.name}</span>
-                                    <span className="break-time">{emp.break_start}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Overtime To Approve */}
-                <div className="att-card overtime-card">
-                    <h3 className="card-title">Overtime To Approve</h3>
-                    {overtimePending.length === 0 ? (
-                        <div className="empty-state">
-                            <Search size={48} className="empty-icon" />
-                            <p className="empty-title">No Records found.</p>
-                            <p className="empty-subtitle">No overtime records pending validation.</p>
-                        </div>
-                    ) : (
-                        <div className="overtime-list">
-                            {overtimePending.map((record, idx) => (
-                                <div key={idx} className="overtime-item">
-                                    <span>{record.employee.name}</span>
-                                    <span>{record.overtime_hours}h</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Department Overtime Chart */}
-                <div className="att-card dept-overtime-card">
-                    <div className="card-header">
-                        <h3 className="card-title">Department Overtime Chart</h3>
-                        <select className="period-select">
-                            <option>Monthly</option>
-                            <option>Yearly</option>
-                        </select>
+                <section className="glass-card half-box">
+                    <div className="card-top">
+                        <h3 className="card-heading">Current Breaks</h3>
+                        <Coffee size={18} className="text-muted" />
                     </div>
-                    <div className="pie-chart-wrapper">
-                        {departmentOvertime.length > 0 ? (
-                            <>
-                                <svg viewBox="0 0 200 200" className="pie-chart">
-                                    {(() => {
-                                        const total = departmentOvertime.reduce((sum, d) => sum + d.overtime_hours, 0);
-                                        let currentAngle = 0;
-                                        return departmentOvertime.map((dept, idx) => {
-                                            const percentage = (dept.overtime_hours / total) * 100;
-                                            const angle = (percentage / 100) * 360;
-                                            const startAngle = currentAngle;
-                                            currentAngle += angle;
-
-                                            const x1 = 100 + 80 * Math.cos((startAngle - 90) * Math.PI / 180);
-                                            const y1 = 100 + 80 * Math.sin((startAngle - 90) * Math.PI / 180);
-                                            const x2 = 100 + 80 * Math.cos((currentAngle - 90) * Math.PI / 180);
-                                            const y2 = 100 + 80 * Math.sin((currentAngle - 90) * Math.PI / 180);
-                                            const largeArc = angle > 180 ? 1 : 0;
-
-                                            return (
-                                                <path
-                                                    key={idx}
-                                                    d={`M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                                                    fill={dept.color}
-                                                />
-                                            );
-                                        });
-                                    })()}
-                                </svg>
-                                <div className="pie-legend">
-                                    {departmentOvertime.map((dept, idx) => (
-                                        <div key={idx} className="legend-item">
-                                            <span className="legend-dot" style={{ backgroundColor: dept.color }}></span>
-                                            <span>{dept.department}</span>
-                                        </div>
-                                    ))}
+                    <div className="break-grid">
+                        {onBreak.map((b, i) => (
+                            <div key={i} className="break-card">
+                                <div className="avatar-sm">{b.avatar}</div>
+                                <div className="break-info">
+                                    <span className="name">{b.name}</span>
+                                    <span className="time">Since {b.break_start}</span>
                                 </div>
-                            </>
-
-                        ) : (
-                            <div className="empty-state">
-                                <p>No overtime data available</p>
                             </div>
-                        )}
+                        ))}
                     </div>
-                </div>
+                </section>
+
+                {/* Dept Overtime */}
+                <section className="glass-card half-box">
+                    <div className="card-top">
+                        <h3 className="card-heading">Overtime by Dept</h3>
+                        <select className="styled-select-sm"><option>Monthly</option></select>
+                    </div>
+                    <div className="viz-row">
+                        <div className="doughnut-viz">
+                            <svg viewBox="0 0 100 100" className="donut">
+                                <circle className="donut-hole" cx="50" cy="50" r="40" fill="transparent"></circle>
+                                <circle className="donut-ring" cx="50" cy="50" r="40" fill="transparent" stroke="#f3f4f6" strokeWidth="8"></circle>
+                                <circle className="donut-segment" cx="50" cy="50" r="40" fill="transparent" stroke="#6366f1" strokeWidth="8" strokeDasharray="70 30" strokeDashoffset="25"></circle>
+                            </svg>
+                            <div className="donut-text">
+                                <span className="val">100+</span>
+                                <span className="lab">Hours</span>
+                            </div>
+                        </div>
+                        <div className="viz-legend">
+                            {deptOvertime.map((d, i) => (
+                                <div key={i} className="legend-row">
+                                    <span className="dot" style={{ backgroundColor: d.color }}></span>
+                                    <span className="label">{d.department}</span>
+                                    <span className="value">{d.overtime_hours}h</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     );
