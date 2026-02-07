@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import uuid
 from apps.accounts.permissions import is_client_admin
+from apps.audit.utils import log_activity
 
 from .holiday_engine import get_indian_holidays
 
@@ -446,6 +447,15 @@ def check_in(request):
                 attendance.late_by_minutes = int(late_delta.total_seconds() / 60)
         
         attendance.save()
+        
+        log_activity(
+            user=request.user,
+            action_type='UPDATE',
+            module='ATTENDANCE',
+            description=f"Checked in at {timezone.localtime(attendance.check_in_time).strftime('%H:%M')}",
+            reference_id=str(attendance.id)
+        )
+        
         return Response(AttendanceSerializer(attendance).data, status=status.HTTP_200_OK)
 
     return safe_api(logic)
@@ -476,6 +486,14 @@ def check_out(request):
         if attendance.status not in ['half_day', 'on_leave']:
             attendance.status = 'present'
         attendance.save()
+        
+        log_activity(
+            user=request.user,
+            action_type='UPDATE',
+            module='ATTENDANCE',
+            description=f"Checked out at {timezone.localtime(attendance.check_out_time).strftime('%H:%M')}",
+            reference_id=str(attendance.id)
+        )
 
         return Response(AttendanceSerializer(attendance).data, status=status.HTTP_200_OK)
 
@@ -530,6 +548,14 @@ def regularize(request, pk):
             attendance.status = 'present'
 
         attendance.save() # This triggers model.calculate_hours()
+        
+        log_activity(
+            user=request.user,
+            action_type='UPDATE',
+            module='ATTENDANCE',
+            description=f"Attendance regularized for {attendance.date} (Reason: {attendance.regularization_reason})",
+            reference_id=str(attendance.id)
+        )
         
         return Response(AttendanceSerializer(attendance).data, status=status.HTTP_200_OK)
 
@@ -628,6 +654,13 @@ def bulk_mark(request):
                 defaults={'status': status_val, 'remarks': remarks}
             )
             ids.append(str(attendance.id))
+
+        log_activity(
+            user=request.user,
+            action_type='UPDATE',
+            module='ATTENDANCE',
+            description=f"Bulk attendance marked for {len(ids)} employees on {attendance_date}",
+        )
 
         return Response({
             'message': 'Bulk attendance marked successfully',

@@ -93,7 +93,15 @@ class GoalSerializer(serializers.ModelSerializer):
 class PerformanceReviewSerializer(serializers.ModelSerializer):
     employee = UserBasicSerializer(read_only=True)
     reviewer = UserBasicSerializer(read_only=True)
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), source='reviewer', write_only=True, required=False, allow_null=True
+    )
     review_period_name = serializers.CharField(source='review_period.name', read_only=True)
+    
+    # Employee details
+    department_name = serializers.SerializerMethodField()
+    designation_name = serializers.SerializerMethodField()
+    
     criteria_ratings = CriteriaRatingSerializer(many=True, read_only=True)
     goals = GoalSerializer(many=True, read_only=True)
     is_overdue = serializers.ReadOnlyField()
@@ -102,6 +110,16 @@ class PerformanceReviewSerializer(serializers.ModelSerializer):
         model = PerformanceReview
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at', 'reviewed_at', 'self_submitted_at']
+
+    def get_department_name(self, obj):
+        if hasattr(obj.employee, 'employee_profile') and obj.employee.employee_profile.department:
+            return obj.employee.employee_profile.department.name
+        return None
+
+    def get_designation_name(self, obj):
+        if hasattr(obj.employee, 'employee_profile') and obj.employee.employee_profile.designation:
+            return obj.employee.employee_profile.designation.name
+        return None
 
 
 class PerformanceReviewCreateSerializer(serializers.ModelSerializer):

@@ -252,6 +252,7 @@ export const updateGoalProgress = (id, progress) => axiosInstance.post(CLIENTADM
 
 export const getReviews = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REVIEWS, { params });
 export const getReviewById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REVIEW_DETAIL(id));
+export const updatePerformanceReview = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.REVIEW_DETAIL(id), data);
 export const createReviews = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_BULK_CREATE, data); 
 export const submitSelfAssessment = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_SUBMIT_SELF(id), data);
 export const submitManagerReview = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_SUBMIT_MANAGER(id), data);

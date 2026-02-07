@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied, ValidationError
-from ..models import PerformanceReview, ReviewPeriod
+from ..models import PerformanceReview, ReviewPeriod, Goal
 from ..validators import (
     validate_review_can_be_submitted,
     validate_self_assessment_complete,
@@ -10,6 +10,7 @@ from ..validators import (
 )
 from .notification_service import NotificationService
 from .rating_calculator import RatingCalculatorService
+from apps.audit.utils import log_activity
 
 
 def _is_admin_or_hr(user):
@@ -63,8 +64,35 @@ class ReviewWorkflowService:
         review.self_submitted_at = timezone.now()
         review.save()
         
+        # Update criteria self-ratings if provided
+        criteria_ratings_data = self_assessment_data.get('criteria_ratings', [])
+        if criteria_ratings_data:
+            for rating_data in criteria_ratings_data:
+                rating_id = rating_data.get('id')
+                self_score = rating_data.get('self_rating')
+                
+                if rating_id and self_score is not None:
+                    try:
+                        criteria_rating = CriteriaRating.objects.get(
+                            id=rating_id, 
+                            performance_review=review
+                        )
+                        criteria_rating.self_rating = self_score
+                        criteria_rating.save()
+                    except CriteriaRating.DoesNotExist:
+                        pass
+        
         # Send notification to manager
         NotificationService.notify_manager_review_pending(review)
+        
+        # Log activity
+        log_activity(
+            user=employee.user if employee.user else None,
+            action_type='UPDATE',
+            module='PERFORMANCE',
+            description=f"Self-assessment submitted for review {review.id}",
+            reference_id=str(review.id)
+        )
         
         return review
     
@@ -87,15 +115,41 @@ class ReviewWorkflowService:
         
         # Update review with manager feedback
         review.manager_feedback = manager_review_data.get('manager_feedback', '')
-        review.manager_rating = manager_review_data.get('manager_rating')
+        # Only use manual overall_rating if weighted calculation not possible
+        manual_rating = manager_review_data.get('overall_rating')
         review.strengths = manager_review_data.get('strengths', '')
         review.areas_for_improvement = manager_review_data.get('areas_for_improvement', '')
+        
+        # Update criteria manager-ratings if provided
+        criteria_ratings_data = manager_review_data.get('criteria_ratings', [])
+        if criteria_ratings_data:
+            for rating_data in criteria_ratings_data:
+                rating_id = rating_data.get('id')
+                manager_score = rating_data.get('manager_rating')
+                comment = rating_data.get('comments')
+                
+                if rating_id:
+                    try:
+                        criteria_rating = CriteriaRating.objects.get(
+                            id=rating_id, 
+                            performance_review=review
+                        )
+                        if manager_score is not None:
+                            criteria_rating.manager_rating = manager_score
+                        if comment is not None:
+                            criteria_rating.comments = comment
+                        criteria_rating.save()
+                    except CriteriaRating.DoesNotExist:
+                        pass
         
         # Calculate overall rating (can be weighted or simple average)
         if review.criteria_ratings.exists():
             review.overall_rating = RatingCalculatorService.calculate_weighted_rating(review)
+            # Fallback to manual rating if calculation result is None (e.g. no ratings given)
+            if review.overall_rating is None and manual_rating:
+                review.overall_rating = manual_rating
         else:
-            review.overall_rating = manager_review_data.get('overall_rating')
+            review.overall_rating = manual_rating
         
         # Determine rating category
         if review.overall_rating and review.review_period:
@@ -130,7 +184,11 @@ class ReviewWorkflowService:
             #     review.overall_rating = round(weighted_rating, 2)
         
         review.status = 'under_review'
+        
+        # Capture the actual reviewer and time
+        review.reviewer = manager
         review.reviewed_at = timezone.now()
+        
         review.save()
         
         # Send notification to employee
@@ -138,6 +196,28 @@ class ReviewWorkflowService:
         
         return review
     
+    @staticmethod
+    def update_goal_completion_score(review):
+        """
+        Recalculate and update the goal completion score for a review.
+        Score is the average of progress_percentage of all associated goals.
+        """
+        goals = Goal.objects.filter(
+            employee=review.employee,
+            review_period=review.review_period
+        ) # Should we filter by status!=cancelled? Probably yes.
+        
+        active_goals = goals.exclude(status='cancelled')
+        
+        if not active_goals.exists():
+            return
+            
+        total_progress = sum(goal.progress_percentage for goal in active_goals)
+        average_progress = total_progress / active_goals.count()
+        
+        review.goal_completion_score = round(average_progress, 2)
+        review.save(update_fields=['goal_completion_score'])
+        
     @staticmethod
     @transaction.atomic
     def approve_review(review_id, approver):
@@ -161,6 +241,15 @@ class ReviewWorkflowService:
         
         # Send notification to employee and manager
         NotificationService.notify_review_approved(review)
+        
+        # Log activity
+        log_activity(
+            user=approver,
+            action_type='APPROVE',
+            module='PERFORMANCE',
+            description=f"Performance review {review.id} approved",
+            reference_id=str(review.id)
+        )
         
         return review
     
@@ -186,6 +275,16 @@ class ReviewWorkflowService:
         # Send notification
         NotificationService.notify_review_rejected(review, rejection_reason)
         
+        # Log activity
+        log_activity(
+            user=rejector,
+            action_type='REJECT',
+            module='PERFORMANCE',
+            description=f"Performance review {review.id} rejected",
+            reference_id=str(review.id),
+            new_value={'reason': rejection_reason}
+        )
+        
         return review
     
     @staticmethod
@@ -203,16 +302,21 @@ class ReviewWorkflowService:
         if not _is_admin_or_hr(created_by):
             raise PermissionDenied("Only HR or Admin can create bulk reviews")
         
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
+        from apps.accounts.models import Employee
+        from ..models import PerformanceCriteria, CriteriaRating
         
-        employees = User.objects.filter(id__in=employee_ids)
+        # Query Employee model (with UUID ids), not User model
+        employees = Employee.objects.filter(id__in=employee_ids).select_related('user', 'reporting_manager')
+        
+        # Get active criteria to attach
+        active_criteria = list(PerformanceCriteria.objects.filter(is_active=True))
+        
         created_reviews = []
         
         for employee in employees:
             # Check if review already exists
             existing_review = PerformanceReview.objects.filter(
-                employee=employee,
+                employee=employee.user,
                 review_period=review_period
             ).first()
             
@@ -220,19 +324,42 @@ class ReviewWorkflowService:
                 continue
             
             # Get employee's manager as reviewer
-            reviewer = employee.manager if hasattr(employee, 'manager') else None
+            reviewer = None
+            if employee.reporting_manager and employee.reporting_manager.user:
+                reviewer = employee.reporting_manager.user
+            
+            # If manual reviewer ID is provided in context (futureproof), use it. 
+            # But for bulk creation, default to reporting manager is correct.
             
             review = PerformanceReview.objects.create(
-                employee=employee,
+                employee=employee.user,
                 reviewer=reviewer,
                 review_period=review_period,
                 status='pending'
             )
             
+            # Attach active criteria to review
+            for criteria in active_criteria:
+                CriteriaRating.objects.create(
+                    performance_review=review,
+                    criteria=criteria,
+                    self_rating=None,
+                    manager_rating=None
+                )
+            
             created_reviews.append(review)
             
             # Send notification to employee
             NotificationService.notify_review_period_started(review)
+        
+        # Log bulk creation
+        log_activity(
+            user=created_by,
+            action_type='CREATE',
+            module='PERFORMANCE',
+            description=f"Bulk created {len(created_reviews)} reviews for period '{review_period.name}'",
+            reference_id=str(review_period.id)
+        )
         
         return created_reviews
     

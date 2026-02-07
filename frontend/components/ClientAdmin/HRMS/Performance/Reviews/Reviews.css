@@ -272,6 +272,13 @@
     background: rgba(30, 30, 30, 0.4);
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    /* Hide scrollbar */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.reviews-table-container::-webkit-scrollbar {
+    display: none;
 }
 
 .reviews-table {

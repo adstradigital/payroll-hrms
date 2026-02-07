@@ -13,6 +13,7 @@ from .serializers import (
 )
 from apps.accounts.models import Employee, Organization
 from apps.accounts.utils import get_employee_or_none, get_employee_org_id
+from apps.audit.utils import log_activity
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +153,15 @@ def approve_document_request(request, pk):
                 company_id=org_id # Ensure organization is set
             )
         
+        
+        log_activity(
+            user=request.user,
+            action_type='APPROVE',
+            module='REQUESTS',
+            description=f"Approved document request: {doc_request.document_type} for {doc_request.employee.full_name}",
+            reference_id=str(doc_request.id)
+        )
+        
         return Response({'success': True, 'message': 'Request approved'})
     return logic()
 
@@ -172,6 +182,15 @@ def reject_document_request(request, pk):
         doc_request.rejection_reason = request.data.get('reason', '')
         doc_request.updated_by = request.user
         doc_request.save()
+        
+        log_activity(
+            user=request.user,
+            action_type='REJECT',
+            module='REQUESTS',
+            description=f"Rejected document request: {doc_request.document_type} for {doc_request.employee.full_name}",
+            reference_id=str(doc_request.id),
+            new_value={'reason': doc_request.rejection_reason}
+        )
         
         return Response({'success': True, 'message': 'Request rejected'})
     return logic()

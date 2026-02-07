@@ -795,6 +795,19 @@ def goal_detail(request, pk):
             serializer = GoalSerializer(instance, data=request.data, partial=partial)
             if serializer.is_valid():
                 serializer.save()
+                
+                # Update linked review progress
+                goal = serializer.instance
+                review = goal.performance_review
+                if not review and goal.employee and goal.review_period:
+                     review = PerformanceReview.objects.filter(
+                        employee=goal.employee,
+                        review_period=goal.review_period
+                    ).first()
+                    
+                if review:
+                    ReviewWorkflowService.update_goal_completion_score(review)
+                
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
@@ -831,6 +844,18 @@ def goal_update_progress(request, pk):
             )
             
         goal.save()
+        
+        # Update linked review progress
+        review = goal.performance_review
+        if not review and goal.employee and goal.review_period:
+             review = PerformanceReview.objects.filter(
+                employee=goal.employee,
+                review_period=goal.review_period
+            ).first()
+            
+        if review:
+            ReviewWorkflowService.update_goal_completion_score(review)
+            
         serializer = GoalSerializer(goal)
         return Response(serializer.data, status=status.HTTP_200_OK)
         
@@ -853,6 +878,17 @@ def claim_goal(request, pk):
         goal.employee = request.user
         goal.status = 'in_progress' # Automatically start when claimed? Or keep not_started?
         goal.save()
+        
+        # Update linked review progress
+        review = goal.performance_review
+        if not review and goal.employee and goal.review_period:
+             review = PerformanceReview.objects.filter(
+                employee=goal.employee,
+                review_period=goal.review_period
+            ).first()
+            
+        if review:
+            ReviewWorkflowService.update_goal_completion_score(review)
         
         serializer = GoalSerializer(goal)
         return Response(serializer.data, status=status.HTTP_200_OK)

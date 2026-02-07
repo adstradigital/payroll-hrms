@@ -11,6 +11,7 @@ from .serializers import (
     LeaveRequestSerializer, LeaveRequestApprovalSerializer
 )
 from apps.accounts.permissions import is_client_admin
+from apps.audit.utils import log_activity
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +172,15 @@ def leave_request_list_create(request):
                 leave_request = serializer.save()
                 balance, _ = LeaveBalance.objects.get_or_create(employee=leave_request.employee, leave_type=leave_request.leave_type, year=leave_request.start_date.year, defaults={'allocated': leave_request.leave_type.days_per_year})
                 balance.pending += leave_request.days_count; balance.save()
+                
+                log_activity(
+                    user=request.user,
+                    action_type='CREATE',
+                    module='LEAVE',
+                    description=f"Leave request submitted for {leave_request.days_count} days ({leave_request.leave_type.name})",
+                    reference_id=str(leave_request.id)
+                )
+                
                 return Response(serializer.data, status=201)
             return Response(serializer.errors, status=400)
     except Exception as e: return Response({'error': str(e)}, status=500)
@@ -212,9 +222,31 @@ def leave_request_process(request, pk):
                 if not approver:
                     approver = getattr(request.user, 'employee_profile', None)
                 
-                leave_request.approve(approver); return Response({'message': 'Leave approved successfully'})
+                leave_request.approve(approver)
+                
+                log_activity(
+                    user=request.user,
+                    action_type='APPROVE',
+                    module='LEAVE',
+                    description=f"Leave request {leave_request.id} approved",
+                    reference_id=str(leave_request.id)
+                )
+                
+                return Response({'message': 'Leave approved successfully'})
             else:
-                leave_request.reject(serializer.validated_data.get('rejection_reason', '')); return Response({'message': 'Leave rejected'})
+                reason = serializer.validated_data.get('rejection_reason', '')
+                leave_request.reject(reason)
+                
+                log_activity(
+                    user=request.user,
+                    action_type='REJECT',
+                    module='LEAVE',
+                    description=f"Leave request {leave_request.id} rejected",
+                    reference_id=str(leave_request.id),
+                    new_value={'reason': reason}
+                )
+                
+                return Response({'message': 'Leave rejected'})
         return Response(serializer.errors, status=400)
     except Exception as e: return Response({'error': str(e)}, status=500)
 
@@ -231,6 +263,15 @@ def leave_request_cancel(request, pk):
             if old_status == 'pending': balance.pending -= leave_request.days_count
             elif old_status == 'approved': balance.used -= leave_request.days_count
             balance.save()
+            
+            log_activity(
+                user=request.user,
+                action_type='UPDATE',
+                module='LEAVE',
+                description=f"Leave request {leave_request.id} cancelled",
+                reference_id=str(leave_request.id)
+            )
+            
             return Response({'message': 'Leave cancelled and balance restored'})
         except LeaveBalance.DoesNotExist: return Response({'message': 'Leave cancelled (no balance record found to restore)'})
     except Exception as e: return Response({'error': str(e)}, status=500)

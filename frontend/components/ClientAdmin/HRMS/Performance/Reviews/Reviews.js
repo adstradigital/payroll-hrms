@@ -1,11 +1,18 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { Search, Plus, Star, Calendar, TrendingUp, User, Filter, 
     Download, MoreVertical, ChevronDown, Eye, Edit, Trash2, Clock,
     CheckCircle, AlertCircle, XCircle
 } from 'lucide-react';
-import { getPerformanceReviews } from '../services/performanceService';
+import { 
+    getPerformanceReviews, 
+    getPerformanceReview,
+    updatePerformanceReview,
+    getReviewPeriods
+} from '../services/performanceService';
+import { getAllEmployees } from '../../../../../api/api_clientadmin';
 import './Reviews.css';
 
 export default function Reviews() {
@@ -19,6 +26,8 @@ export default function Reviews() {
     const [selectedReviews, setSelectedReviews] = useState([]);
     const [showFilters, setShowFilters] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
+    const [dropdownAnchor, setDropdownAnchor] = useState(null);
+    const [editingReview, setEditingReview] = useState(null);
 
     useEffect(() => {
         fetchReviews();
@@ -28,26 +37,18 @@ export default function Reviews() {
         setLoading(true);
         try {
             const response = await getPerformanceReviews();
-            // Handle both paginated and non-paginated responses
             const data = response?.results || response || [];
-            
-            // Transform data to match component structure if necessary
-            // Assuming backend returns fields like: employee_name, reviewer_name, etc.
-            // If backend fields match mock fields, no map is needed. 
-            // Here I'll map them for safety based on typical Django DRF snake_case to JS convenience if needed, 
-            // but for now I'll assume keys might need adjustment or are direct.
-            // Let's assume standard backend response and map it to our UI model.
             
             const mappedReviews = data.map(r => ({
                 id: r.id,
-                employee: r.employee_name || r.employee?.user?.get_full_name || 'Unknown',
-                reviewer: r.manager_name || r.manager?.user?.get_full_name || 'Unknown',
-                department: r.employee?.department?.name || 'Unassigned',
-                period: r.review_period?.name || 'N/A',
-                rating: r.final_rating || null,
+                employee: r.employee?.full_name || r.employee_name || 'Unknown',
+                reviewer: r.reviewer?.full_name || r.reviewer_name || 'Not Assigned',
+                department: r.department_name || r.employee?.department?.name || 'Unassigned',
+                period: r.review_period?.name || r.review_period_name || 'N/A',
+                rating: r.overall_rating || r.rating || null,
                 status: r.status,
-                date: r.due_date || r.created_at?.split('T')[0],
-                progress: r.progress || 0 // Assuming backend calculates this or we derive it
+                date: r.created_at?.split('T')[0] || r.date,
+                progress: r.goal_completion_score || 0
             }));
 
             setReviews(mappedReviews);
@@ -58,7 +59,6 @@ export default function Reviews() {
         }
     };
 
-    // Calculate statistics
     const stats = useMemo(() => {
         const completed = reviews.filter(r => r.status === 'completed').length;
         const pending = reviews.filter(r => r.status === 'pending').length;
@@ -71,7 +71,6 @@ export default function Reviews() {
         return { completed, pending, inProgress, avgRating: avgRating.toFixed(1) };
     }, [reviews]);
 
-    // Filter and sort reviews
     const filteredReviews = useMemo(() => {
         let filtered = reviews.filter(review => {
             const matchesSearch = review.employee.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -81,7 +80,6 @@ export default function Reviews() {
             return matchesSearch && matchesStatus && matchesDepartment;
         });
 
-        // Sort
         filtered.sort((a, b) => {
             let comparison = 0;
             switch (sortBy) {
@@ -137,9 +135,17 @@ export default function Reviews() {
         }
     };
 
+    const handleEditClick = (review) => {
+        setEditingReview(review);
+        setActiveDropdown(null);
+    };
+
+    const closeEditModal = () => {
+        setEditingReview(null);
+    };
+
     return (
         <div className="reviews-container">
-            {/* Header with Stats */}
             <div className="reviews-header">
                 <div>
                     <h1 className="reviews-title">Performance Reviews</h1>
@@ -147,36 +153,28 @@ export default function Reviews() {
                 </div>
                 <div className="stats-grid">
                     <div className="stat-card stat-card--primary">
-                        <div className="stat-card__icon">
-                            <Star size={20} />
-                        </div>
+                        <div className="stat-card__icon"><Star size={20} /></div>
                         <div className="stat-card__content">
                             <div className="stat-card__value">{stats.avgRating}</div>
                             <div className="stat-card__label">Avg Rating</div>
                         </div>
                     </div>
                     <div className="stat-card stat-card--success">
-                        <div className="stat-card__icon">
-                            <TrendingUp size={20} />
-                        </div>
+                        <div className="stat-card__icon"><TrendingUp size={20} /></div>
                         <div className="stat-card__content">
                             <div className="stat-card__value">{stats.completed}</div>
                             <div className="stat-card__label">Completed</div>
                         </div>
                     </div>
                     <div className="stat-card stat-card--warning">
-                        <div className="stat-card__icon">
-                            <Clock size={20} />
-                        </div>
+                        <div className="stat-card__icon"><Clock size={20} /></div>
                         <div className="stat-card__content">
                             <div className="stat-card__value">{stats.inProgress}</div>
                             <div className="stat-card__label">In Progress</div>
                         </div>
                     </div>
                     <div className="stat-card stat-card--secondary">
-                        <div className="stat-card__icon">
-                            <Calendar size={20} />
-                        </div>
+                        <div className="stat-card__icon"><Calendar size={20} /></div>
                         <div className="stat-card__content">
                             <div className="stat-card__value">{stats.pending}</div>
                             <div className="stat-card__label">Pending</div>
@@ -185,57 +183,34 @@ export default function Reviews() {
                 </div>
             </div>
 
-            {/* Toolbar */}
             <div className="reviews-toolbar">
                 <div className="reviews-toolbar__left">
                     <div className="reviews-search">
                         <Search size={18} className="reviews-search__icon" />
                         <input
                             type="text"
-                            placeholder="Search by employee or reviewer..."
+                            placeholder="Search by employee..."
                             className="reviews-search__input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <button
-                        className={`btn btn-outline ${showFilters ? 'btn-outline--active' : ''}`}
-                        onClick={() => setShowFilters(!showFilters)}
-                    >
-                        <Filter size={18} />
-                        Filters
-                        {(filterStatus !== 'all' || filterDepartment !== 'all') && (
-                            <span className="filter-badge">
-                                {(filterStatus !== 'all' ? 1 : 0) + (filterDepartment !== 'all' ? 1 : 0)}
-                            </span>
-                        )}
+                    <button className={`btn btn-outline ${showFilters ? 'btn-outline--active' : ''}`} onClick={() => setShowFilters(!showFilters)}>
+                        <Filter size={18} /> Filters
                     </button>
                 </div>
                 <div className="reviews-toolbar__right">
-                    <button className="btn btn-outline">
-                        <Download size={18} />
-                        Export
-                    </button>
-                    <button 
-                        className="btn btn-primary"
-                        onClick={() => setActiveDropdown('create_modal')}
-                    >
-                        <Plus size={18} />
-                        New Review
+                    <button className="btn btn-primary" onClick={() => setActiveDropdown('create_modal')}>
+                        <Plus size={18} /> New Review
                     </button>
                 </div>
             </div>
 
-            {/* Filters Panel */}
             {showFilters && (
                 <div className="filters-panel">
                     <div className="filter-group">
                         <label className="filter-label">Status</label>
-                        <select
-                            className="filter-select"
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
+                        <select className="filter-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                             <option value="all">All Statuses</option>
                             <option value="completed">Completed</option>
                             <option value="in_progress">In Progress</option>
@@ -244,11 +219,7 @@ export default function Reviews() {
                     </div>
                     <div className="filter-group">
                         <label className="filter-label">Department</label>
-                        <select
-                            className="filter-select"
-                            value={filterDepartment}
-                            onChange={(e) => setFilterDepartment(e.target.value)}
-                        >
+                        <select className="filter-select" value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)}>
                             <option value="all">All Departments</option>
                             {departments.map(dept => (
                                 <option key={dept} value={dept}>{dept}</option>
@@ -257,87 +228,46 @@ export default function Reviews() {
                     </div>
                     <div className="filter-group">
                         <label className="filter-label">Sort By</label>
-                        <select
-                            className="filter-select"
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                        >
+                        <select className="filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                             <option value="date">Date</option>
                             <option value="rating">Rating</option>
                             <option value="employee">Employee</option>
                         </select>
                     </div>
-                    <button
-                        className="btn btn-text"
-                        onClick={() => {
-                            setFilterStatus('all');
-                            setFilterDepartment('all');
-                            setSortBy('date');
-                            setSortOrder('desc');
-                        }}
-                    >
-                        Clear All
-                    </button>
+                    <button className="btn btn-text" onClick={() => { setFilterStatus('all'); setFilterDepartment('all'); setSortBy('date'); setSortOrder('desc'); }}>Clear All</button>
                 </div>
             )}
 
-            {/* Selection Actions */}
             {selectedReviews.length > 0 && (
                 <div className="selection-bar">
-                    <span className="selection-bar__count">
-                        {selectedReviews.length} selected
-                    </span>
+                    <span className="selection-bar__count">{selectedReviews.length} selected</span>
                     <div className="selection-bar__actions">
                         <button className="btn btn-sm btn-outline">Export Selected</button>
-                        <button className="btn btn-sm btn-outline btn-outline--danger">
-                            <Trash2 size={16} />
-                            Delete
-                        </button>
+                        <button className="btn btn-sm btn-outline btn-outline--danger"><Trash2 size={16} /> Delete</button>
                     </div>
                 </div>
             )}
 
-            {/* Table */}
             <div className="reviews-table-container">
                 <table className="reviews-table">
                     <thead>
                         <tr>
                             <th className="th-checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedReviews.length === filteredReviews.length && filteredReviews.length > 0}
-                                    onChange={toggleSelectAll}
-                                    className="checkbox"
-                                />
+                                <input type="checkbox" checked={selectedReviews.length === filteredReviews.length && filteredReviews.length > 0} onChange={toggleSelectAll} className="checkbox" />
                             </th>
                             <th onClick={() => handleSort('employee')} className="th-sortable">
-                                <div className="th-content">
-                                    Employee
-                                    {sortBy === 'employee' && (
-                                        <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />
-                                    )}
-                                </div>
+                                <div className="th-content">Employee {sortBy === 'employee' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
                             </th>
                             <th>Reviewer</th>
                             <th>Department</th>
                             <th>Period</th>
                             <th onClick={() => handleSort('rating')} className="th-sortable">
-                                <div className="th-content">
-                                    Rating
-                                    {sortBy === 'rating' && (
-                                        <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />
-                                    )}
-                                </div>
+                                <div className="th-content">Rating {sortBy === 'rating' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
                             </th>
                             <th>Progress</th>
                             <th>Status</th>
                             <th onClick={() => handleSort('date')} className="th-sortable">
-                                <div className="th-content">
-                                    Due Date
-                                    {sortBy === 'date' && (
-                                        <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />
-                                    )}
-                                </div>
+                                <div className="th-content">Due Date {sortBy === 'date' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
                             </th>
                             <th></th>
                         </tr>
@@ -346,94 +276,50 @@ export default function Reviews() {
                         {filteredReviews.map(review => {
                             const statusBadge = getStatusBadge(review.status);
                             return (
-                                <tr
-                                    key={review.id}
-                                    className={selectedReviews.includes(review.id) ? 'tr-selected' : ''}
-                                >
+                                <tr key={review.id} className={selectedReviews.includes(review.id) ? 'tr-selected' : ''}>
                                     <td>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedReviews.includes(review.id)}
-                                            onChange={() => toggleReviewSelection(review.id)}
-                                            className="checkbox"
-                                        />
+                                        <input type="checkbox" checked={selectedReviews.includes(review.id)} onChange={() => toggleReviewSelection(review.id)} className="checkbox" />
                                     </td>
                                     <td>
                                         <div className="employee-cell">
-                                            <div className="employee-avatar">
-                                                {review.employee.split(' ').map(n => n[0]).join('')}
-                                            </div>
-                                            <div className="employee-info">
-                                                <div className="employee-name">{review.employee}</div>
-                                            </div>
+                                            <div className="employee-avatar">{review.employee.split(' ').map(n => n[0]).join('')}</div>
+                                            <div className="employee-info"><div className="employee-name">{review.employee}</div></div>
                                         </div>
                                     </td>
                                     <td className="text-secondary">{review.reviewer}</td>
-                                    <td>
-                                        <span className="department-badge">{review.department}</span>
-                                    </td>
+                                    <td><span className="department-badge">{review.department}</span></td>
                                     <td className="text-secondary">{review.period}</td>
                                     <td>
                                         {review.rating ? (
                                             <div className="rating-cell">
                                                 <div className="stars">
                                                     {[...Array(5)].map((_, i) => (
-                                                        <Star
-                                                            key={i}
-                                                            size={14}
-                                                            className={i < Math.floor(review.rating) ? 'star--filled' : 'star--empty'}
-                                                        />
+                                                        <Star key={i} size={14} className={i < Math.floor(review.rating) ? 'star--filled' : 'star--empty'} />
                                                     ))}
                                                 </div>
                                                 <span className="rating-value">{review.rating}</span>
                                             </div>
-                                        ) : (
-                                            <span className="text-muted">--</span>
-                                        )}
+                                        ) : <span className="text-muted">--</span>}
                                     </td>
                                     <td>
                                         <div className="progress-cell">
                                             <div className="progress-bar">
-                                                <div
-                                                    className="progress-bar__fill"
-                                                    style={{ width: `${review.progress}%` }}
-                                                ></div>
+                                                <div className="progress-bar__fill" style={{ width: `${review.progress}%` }}></div>
                                             </div>
                                             <span className="progress-text">{review.progress}%</span>
                                         </div>
                                     </td>
-                                    <td>
-                                        <span className={`badge ${statusBadge.class}`}>
-                                            <statusBadge.icon size={12} />
-                                            {statusBadge.label}
-                                        </span>
-                                    </td>
+                                    <td><span className={`badge ${statusBadge.class}`}><statusBadge.icon size={12} /> {statusBadge.label}</span></td>
                                     <td className="text-secondary">{review.date}</td>
                                     <td>
                                         <div className="dropdown">
-                                            <button
-                                                className="btn-icon"
-                                                onClick={() => setActiveDropdown(activeDropdown === review.id ? null : review.id)}
-                                            >
+                                            <button className="btn-icon" onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (activeDropdown === review.id) { setActiveDropdown(null); setDropdownAnchor(null); }
+                                                else { setActiveDropdown(review.id); setDropdownAnchor(e.currentTarget); }
+                                            }}>
                                                 <MoreVertical size={18} />
                                             </button>
-                                            {activeDropdown === review.id && (
-                                                <div className="dropdown-menu">
-                                                    <button className="dropdown-item">
-                                                        <Eye size={16} />
-                                                        View Details
-                                                    </button>
-                                                    <button className="dropdown-item">
-                                                        <Edit size={16} />
-                                                        Edit
-                                                    </button>
-                                                    <div className="dropdown-divider"></div>
-                                                    <button className="dropdown-item dropdown-item--danger">
-                                                        <Trash2 size={16} />
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -443,33 +329,259 @@ export default function Reviews() {
                 </table>
             </div>
 
-            {/* Empty State */}
             {filteredReviews.length === 0 && (
                 <div className="empty-state">
-                    <div className="empty-state__icon">
-                        <Search size={48} />
-                    </div>
+                    <div className="empty-state__icon"><Search size={48} /></div>
                     <h3 className="empty-state__title">No reviews found</h3>
-                    <p className="empty-state__description">
-                        Try adjusting your search or filters
-                    </p>
+                    <p className="empty-state__description">Try adjusting your search or filters</p>
                 </div>
             )}
 
-            {/* Create Review Modal */}
             <CreateReviewModal 
                 isOpen={activeDropdown === 'create_modal'} 
                 onClose={() => setActiveDropdown(null)}
-                onSuccess={() => {
-                    setActiveDropdown(null);
-                    fetchReviews();
-                }}
+                onSuccess={() => { setActiveDropdown(null); fetchReviews(); }}
             />
+
+            {activeDropdown && activeDropdown !== 'create_modal' && dropdownAnchor && (
+                <DropdownPortal
+                    anchor={dropdownAnchor}
+                    onClose={() => { setActiveDropdown(null); setDropdownAnchor(null); }}
+                >
+                    {(() => {
+                        const review = reviews.find(r => r.id === activeDropdown);
+                        if (!review) return null;
+                        return (
+                            <>
+                                <button className="dropdown-item"><Eye size={16} /> View Details</button>
+                                <button className="dropdown-item" onClick={() => handleEditClick(review)}><Edit size={16} /> Edit</button>
+                                <div className="dropdown-divider"></div>
+                                <button className="dropdown-item dropdown-item--danger"><Trash2 size={16} /> Delete</button>
+                            </>
+                        );
+                    })()}
+                </DropdownPortal>
+            )}
+
+            {editingReview && (
+                <EditReviewModal
+                    review={editingReview}
+                    isOpen={!!editingReview}
+                    onClose={closeEditModal}
+                    onSuccess={() => { closeEditModal(); fetchReviews(); }}
+                />
+            )}
         </div>
     );
 }
 
-// Create Review Modal Component
+function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
+    const [employees, setEmployees] = useState([]);
+    const [formData, setFormData] = useState({ reviewer_id: '', status: '' });
+    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+    const [isAutoReviewer, setIsAutoReviewer] = useState(false);
+    const [reportingManagerId, setReportingManagerId] = useState(null);
+
+    useEffect(() => {
+        if (isOpen && review) {
+            loadData();
+            setFormData({ reviewer_id: '', status: review.status || 'pending' });
+            setIsAutoReviewer(false);
+            setReportingManagerId(null);
+        }
+    }, [isOpen, review]);
+
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const [empRes, reviewDetail] = await Promise.all([
+                getAllEmployees({ page_size: 1000 }),
+                getPerformanceReview(review.id)
+            ]);
+            
+            const empList = empRes.data?.results || empRes.data || [];
+            setEmployees(empList);
+            
+            if (reviewDetail) {
+                let reviewerId = typeof reviewDetail.reviewer === 'object' ? reviewDetail.reviewer.id : reviewDetail.reviewer;
+                
+                let managerUserId = null;
+
+                // Find reporting manager's USER ID
+                if (reviewDetail.employee) {
+                    const subjectUserId = typeof reviewDetail.employee === 'object' ? reviewDetail.employee.id : reviewDetail.employee;
+                    // Find employee record by User ID
+                    const subjectEmployee = empList.find(e => e.user === subjectUserId); 
+                    
+                    if (subjectEmployee?.reporting_manager) {
+                        // subjectEmployee.reporting_manager is an Employee UUID
+                        const managerEmployee = empList.find(e => e.id === subjectEmployee.reporting_manager);
+                        if (managerEmployee) {
+                            managerUserId = managerEmployee.user; // User ID
+                        }
+                    }
+                }
+                setReportingManagerId(managerUserId);
+
+                // Determine effective reviewer and auto-toggle state
+                let effectiveReviewerId = reviewerId;
+                let auto = false;
+
+                if (managerUserId) {
+                    // If no reviewer set, or current reviewer IS the manager -> Auto
+                    if (!effectiveReviewerId || effectiveReviewerId === managerUserId) {
+                        effectiveReviewerId = managerUserId;
+                        auto = true;
+                    }
+                }
+
+                setFormData({ 
+                    reviewer_id: effectiveReviewerId || '', 
+                    status: reviewDetail.status 
+                });
+                setIsAutoReviewer(auto);
+            }
+        } catch (err) {
+            console.error("Failed to load edit data:", err);
+            setError("Failed to load review details.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAutoToggle = (e) => {
+        const checked = e.target.checked;
+        setIsAutoReviewer(checked);
+        if (checked && reportingManagerId) {
+            setFormData(prev => ({ ...prev, reviewer_id: reportingManagerId }));
+        } else if (!checked) {
+             // When switching to manual, keep current ID but allow edit
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        setError(null);
+        try {
+            await updatePerformanceReview(review.id, {
+                reviewer_id: formData.reviewer_id || null, 
+                status: formData.status
+            });
+            onSuccess();
+        } catch (err) {
+            console.error("Update failed:", err);
+            setError("Failed to update review.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h2>Edit Review</h2>
+                    <button className="modal-close" onClick={onClose}><XCircle size={24} /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="modal-body">
+                        {error && <div className="error-message">{error}</div>}
+                        {loading ? <div className="loading-spinner">Loading...</div> : (
+                            <>
+                                <div className="form-group">
+                                    <label>Employee</label>
+                                    <input type="text" value={review.employee} disabled className="form-input disabled" />
+                                </div>
+                                <div className="form-group">
+                                    <label>Period</label>
+                                    <input type="text" value={review.period} disabled className="form-input disabled" />
+                                </div>
+                                <div className="form-group">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <label style={{ margin: 0 }}>Reviewer</label>
+                                        {reportingManagerId && (
+                                            <div className="form-check" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="manualOverride" 
+                                                    checked={!isAutoReviewer} 
+                                                    onChange={(e) => {
+                                                        const isManual = e.target.checked;
+                                                        setIsAutoReviewer(!isManual);
+                                                        if (!isManual && reportingManagerId) {
+                                                            setFormData(prev => ({ ...prev, reviewer_id: reportingManagerId }));
+                                                        } else if (isManual) {
+                                                            setFormData(prev => ({ ...prev, reviewer_id: '' }));
+                                                        }
+                                                    }}
+                                                    style={{ width: 'auto', margin: 0 }}
+                                                />
+                                                <label htmlFor="manualOverride" style={{ margin: 0, cursor: 'pointer' }}>
+                                                    Manual override
+                                                </label>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {isAutoReviewer && reportingManagerId ? (
+                                        <div style={{ 
+                                            padding: '0.75rem', 
+                                            background: 'rgba(255, 255, 255, 0.05)', 
+                                            borderRadius: '6px', 
+                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            color: 'var(--rv-text-primary)'
+                                        }}>
+                                            <CheckCircle size={16} color="var(--rv-color-success)" />
+                                            <span>
+                                                Reviewer: <strong>{employees.find(e => e.user === reportingManagerId)?.first_name} {employees.find(e => e.user === reportingManagerId)?.last_name}</strong> <span style={{opacity: 0.7, fontSize: '0.9em'}}>(Auto from reporting manager)</span>
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <select 
+                                            value={formData.reviewer_id} 
+                                            onChange={e => setFormData({...formData, reviewer_id: e.target.value})}
+                                            className="form-select"
+                                        >
+                                            <option value="">-- No Reviewer --</option>
+                                            {employees.map(emp => (
+                                                <option key={emp.id} value={emp.user}>
+                                                    {emp.first_name} {emp.last_name} ({emp.employee_id})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+                                <div className="form-group">
+                                    <label>Status</label>
+                                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="form-select">
+                                        <option value="pending">Pending</option>
+                                        <option value="self_submitted">Self Assessment Submitted</option>
+                                        <option value="under_review">Under Manager Review</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="rejected">Rejected</option>
+                                    </select>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <div className="modal-footer">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="btn btn-primary" disabled={submitting || loading}>{submitting ? 'Saving...' : 'Save Changes'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 function CreateReviewModal({ isOpen, onClose, onSuccess }) {
     const [periods, setPeriods] = useState([]);
     const [employees, setEmployees] = useState([]);
@@ -480,11 +592,9 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
-    // Initial data fetch
     useEffect(() => {
         if (isOpen) {
             loadInitialData();
-            // Reset form
             setFormData({ review_period: '', employee_ids: [] });
             setError(null);
         }
@@ -492,20 +602,18 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
 
     const loadInitialData = async () => {
         try {
-            // Import from performanceService for consistency
             const { getReviewPeriods } = require('../services/performanceService');
             const { getAllEmployees } = require('../../../../../api/api_clientadmin');
             
             const [periodsRes, employeesRes] = await Promise.all([
                 getReviewPeriods(),
-                getAllEmployees({ page_size: 1000 }) // Fetch all for selection
+                getAllEmployees({ page_size: 1000 }) 
             ]);
 
             const periodList = periodsRes?.results || periodsRes || [];
             const activePeriods = periodList.filter(p => p.is_active);
             setPeriods(activePeriods);
             
-            // Set default period if available
             if (activePeriods.length > 0) {
                 setFormData(prev => ({ ...prev, review_period: activePeriods[0].id }));
             }
@@ -531,7 +639,6 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
 
         try {
             const { bulkCreateReviews } = require('../services/performanceService');
-            
             await bulkCreateReviews(formData.review_period, formData.employee_ids);
             onSuccess();
         } catch (err) {
@@ -568,9 +675,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
             <div className="modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>Start New Review</h2>
-                    <button className="modal-close" onClick={onClose}>
-                        <XCircle size={24} />
-                    </button>
+                    <button className="modal-close" onClick={onClose}><XCircle size={24} /></button>
                 </div>
                 
                 <form onSubmit={handleSubmit}>
@@ -602,9 +707,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                             >
                                 <option value="" disabled>Select a period</option>
                                 {periods.map(p => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.name}
-                                    </option>
+                                    <option key={p.id} value={p.id}>{p.name}</option>
                                 ))}
                             </select>
                             {periods.length === 0 && (
@@ -617,37 +720,22 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                         <div className="form-group">
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                 <label className="form-label">Select Employees</label>
-                                <button 
-                                    type="button" 
-                                    className="btn-text" 
-                                    style={{ fontSize: '0.75rem', padding: 0 }}
-                                    onClick={toggleAllEmployees}
-                                >
+                                <button type="button" className="btn-text" style={{ fontSize: '0.75rem', padding: 0 }} onClick={toggleAllEmployees}>
                                     {formData.employee_ids.length === employees.length ? 'Deselect All' : 'Select All'}
                                 </button>
                             </div>
                             <div className="multi-select-container">
                                 {employees.length === 0 ? (
-                                    <p style={{ padding: '0.5rem', color: 'var(--rv-color-mist)', textAlign: 'center' }}>
-                                        Loading employees...
-                                    </p>
+                                    <p style={{ padding: '0.5rem', color: 'var(--rv-color-mist)', textAlign: 'center' }}>Loading employees...</p>
                                 ) : (
                                     employees.map(emp => (
                                         <label key={emp.id} className="multi-select-option">
-                                            <input 
-                                                type="checkbox"
-                                                checked={formData.employee_ids.includes(emp.id)}
-                                                onChange={() => toggleEmployee(emp.id)}
-                                            />
+                                            <input type="checkbox" checked={formData.employee_ids.includes(emp.id)} onChange={() => toggleEmployee(emp.id)} />
                                             <span style={{ color: 'white' }}>
                                                 {emp.full_name || 'Unknown'} 
-                                                <span style={{ color: 'var(--rv-color-mist)', marginLeft: '0.5rem' }}>
-                                                    ({emp.employee_id})
-                                                </span>
+                                                <span style={{ color: 'var(--rv-color-mist)', marginLeft: '0.5rem' }}>({emp.employee_id})</span>
                                             </span>
-                                            <span style={{ color: 'var(--rv-color-mist)', fontSize: '0.75rem', marginLeft: 'auto' }}>
-                                                {emp.department?.name}
-                                            </span>
+                                            <span style={{ color: 'var(--rv-color-mist)', fontSize: '0.75rem', marginLeft: 'auto' }}>{emp.department?.name}</span>
                                         </label>
                                     ))
                                 )}
@@ -659,15 +747,64 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                     </div>
 
                     <div className="modal-footer">
-                        <button type="button" className="btn btn-outline" onClick={onClose} disabled={submitting}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={submitting}>
-                            {submitting ? 'Creating...' : 'Create Reviews'}
-                        </button>
+                        <button type="button" className="btn btn-outline" onClick={onClose} disabled={submitting}>Cancel</button>
+                        <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Creating...' : 'Create Reviews'}</button>
                     </div>
                 </form>
             </div>
         </div>
+    );
+}
+
+function DropdownPortal({ anchor, onClose, children }) {
+    const [style, setStyle] = useState({});
+    const menuRef = useRef(null);
+
+    useLayoutEffect(() => {
+        if (anchor) {
+            const updatePosition = () => {
+                const rect = anchor.getBoundingClientRect();
+                const menuWidth = 160; 
+                setStyle({
+                    position: 'fixed',
+                    top: `${rect.bottom + 5}px`,
+                    left: `${rect.right - menuWidth}px`,
+                    right: 'auto',
+                    zIndex: 1000,
+                    margin: 0
+                });
+            };
+            updatePosition();
+            window.addEventListener('scroll', updatePosition, true);
+            window.addEventListener('resize', updatePosition);
+            return () => {
+                window.removeEventListener('scroll', updatePosition, true);
+                window.removeEventListener('resize', updatePosition);
+            };
+        }
+    }, [anchor]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target) && !anchor.contains(event.target)) {
+                onClose();
+            }
+        };
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [anchor, onClose]);
+
+    return createPortal(
+        <div ref={menuRef} className="dropdown-menu" style={style} onClick={(e) => e.stopPropagation()}>
+            {children}
+        </div>,
+        document.body
     );
 }
