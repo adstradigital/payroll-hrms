@@ -38,14 +38,14 @@ urlpatterns = [
     # Employee Salaries
     path('employee-salaries/', employee_salary_list_create, name='employee-salary-list'),
     path('employee-salaries/<uuid:pk>/', employee_salary_detail, name='employee-salary-detail'),
-    path('employee-salaries/current/', employee_salary_current, name='employee-salary-current'),
-    path('employee-salaries/stats/', employee_salary_stats, name='employee-salary-stats'),
+    path('employee-salaries/current/', get_current_salary, name='employee-salary-current'),
+    path('employee-salaries/stats/', get_salary_stats, name='employee-salary-stats'),
     
     # Payroll Periods
     path('periods/', payroll_period_list_create, name='payroll-period-list'),
     path('periods/<uuid:pk>/', payroll_period_detail, name='payroll-period-detail'),
-    path('periods/generate/', payroll_period_generate, name='payroll-period-generate'),
-    path('periods/<uuid:pk>/mark-paid/', payroll_period_mark_paid, name='payroll-period-mark-paid'),
+    path('periods/generate/', generate_payroll, name='payroll-period-generate'),
+    path('periods/<uuid:pk>/mark-paid/', mark_payroll_paid, name='payroll-period-mark-paid'),
     
     # PaySlips
     path('payslips/', payslip_list_create, name='payslip-list'),

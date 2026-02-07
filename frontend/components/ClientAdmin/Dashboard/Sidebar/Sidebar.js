@@ -8,7 +8,7 @@ import {
     Wallet, FileText, Settings, ChevronDown,
     ChevronRight, LogOut, Bell, User, CheckCircle2,
     X, Loader, AlertCircle, HelpCircle, Upload, Activity,
-    Box, Package
+    Box, Package, TrendingUp
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -89,6 +89,24 @@ const menuItems = [
             { id: 'leave-balance', label: 'Leave Balance', translationKey: 'common.leaveBalance', path: '/dashboard/leave/balance' },
             { id: 'leave-reports-sub', label: 'Reports', translationKey: 'common.reports', path: '/dashboard/leave/reports', permission: 'reports.view_reports' },
             { id: 'leave-settings', label: 'Settings', translationKey: 'common.settings', path: '/dashboard/leave/settings', adminOnly: true },
+        ]
+    },
+    {
+        id: 'performance',
+        label: 'Performance',
+        module: 'HRMS',
+        icon: TrendingUp,
+        path: '/dashboard/performance',
+        permission: ['performance.view', 'performance.view_performance'],
+        children: [
+            { id: 'perf-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/performance' },
+            { id: 'perf-periods', label: 'Review Periods', path: '/dashboard/performance/periods' },
+            { id: 'perf-objectives', label: 'Objectives', path: '/dashboard/performance/objectives' },
+            { id: 'perf-key-results', label: 'Key Results', path: '/dashboard/performance/key-results' },
+            { id: 'perf-reviews', label: 'Reviews', path: '/dashboard/performance/reviews' },
+            { id: 'perf-ratings', label: 'Ratings', path: '/dashboard/performance/ratings', adminOnly: true },
+            { id: 'perf-bonus', label: 'Bonus Points', path: '/dashboard/performance/bonus-points', adminOnly: true },
+            { id: 'perf-templates', label: 'Templates', path: '/dashboard/performance/templates', adminOnly: true },
         ]
     },
     {
