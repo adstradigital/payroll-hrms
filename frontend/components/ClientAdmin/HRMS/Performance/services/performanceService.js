@@ -78,8 +78,20 @@ export const closeReviewPeriod = async (id) => {
     });
 };
 
+export const reopenReviewPeriod = async (id) => {
+    return authFetch(`${PERFORMANCE_BASE}/review-periods/${id}/reopen/`, {
+        method: 'POST'
+    });
+};
+
 export const getReviewPeriodProgress = async (id) => {
     return authFetch(`${PERFORMANCE_BASE}/review-periods/${id}/progress/`);
+};
+
+export const runReviewPeriodAutomations = async (id) => {
+    return authFetch(`${PERFORMANCE_BASE}/review-periods/${id}/run_automations/`, {
+        method: 'POST'
+    });
 };
 
 export const sendReviewReminders = async (id) => {
@@ -143,6 +155,11 @@ export const rejectReview = async (id, rejectionReason) => {
         method: 'POST',
         body: JSON.stringify({ rejection_reason: rejectionReason })
     });
+};
+
+// Get employee goals for a specific review (used by managers during review)
+export const getReviewGoals = async (reviewId) => {
+    return authFetch(`${PERFORMANCE_BASE}/reviews/${reviewId}/goals/`);
 };
 
 export const bulkCreateReviews = async (reviewPeriodId, employeeIds) => {

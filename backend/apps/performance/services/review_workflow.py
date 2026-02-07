@@ -12,6 +12,27 @@ from .notification_service import NotificationService
 from .rating_calculator import RatingCalculatorService
 
 
+def _is_admin_or_hr(user):
+    """
+    Check if user has admin or HR privileges.
+    Uses Django's is_superuser/is_staff and Employee.is_admin fields.
+    """
+    if user.is_superuser or user.is_staff:
+        return True
+    # Check if user has employee profile with is_admin flag
+    if hasattr(user, 'employee_profile') and user.employee_profile:
+        return user.employee_profile.is_admin
+    return False
+
+
+def _is_manager(user):
+    """
+    Check if user is a manager (has subordinates).
+    """
+    if hasattr(user, 'employee_profile') and user.employee_profile:
+        return user.employee_profile.subordinates.filter(status='active').exists()
+    return False
+
 class ReviewWorkflowService:
     """
     Service for managing performance review workflow and state transitions
@@ -88,6 +109,26 @@ class ReviewWorkflowService:
                     rating_scale
                 )
         
+        # Calculate goal completion score
+        from ..models import Goal
+        from django.db.models import Avg
+        
+        goals = Goal.objects.filter(
+            employee=review.employee,
+            review_period=review.review_period
+        )
+        
+        if goals.exists():
+            avg_progress = goals.aggregate(avg=Avg('progress_percentage'))['avg']
+            review.goal_completion_score = round(avg_progress or 0, 2)
+            
+            # Optional: Weight overall rating with goal completion (30% goals, 70% manager rating)
+            # Uncomment below to enable weighted rating
+            # if review.overall_rating and review.goal_completion_score:
+            #     goal_rating = (review.goal_completion_score / 100) * 5  # Convert % to 5-point scale
+            #     weighted_rating = (float(review.overall_rating) * 0.7) + (goal_rating * 0.3)
+            #     review.overall_rating = round(weighted_rating, 2)
+        
         review.status = 'under_review'
         review.reviewed_at = timezone.now()
         review.save()
@@ -109,7 +150,7 @@ class ReviewWorkflowService:
             raise ValidationError("Performance review not found")
         
         # Validate permissions (only HR/Admin can approve)
-        if approver.role not in ['admin', 'hr']:
+        if not _is_admin_or_hr(approver):
             raise PermissionDenied("Only HR or Admin can approve reviews")
         
         # Validate review is complete
@@ -135,7 +176,7 @@ class ReviewWorkflowService:
             raise ValidationError("Performance review not found")
         
         # Validate permissions
-        if rejector.role not in ['admin', 'hr', 'manager']:
+        if not (_is_admin_or_hr(rejector) or _is_manager(rejector)):
             raise PermissionDenied("You don't have permission to reject reviews")
         
         review.status = 'rejected'
@@ -159,7 +200,7 @@ class ReviewWorkflowService:
             raise ValidationError("Review period not found")
         
         # Validate permissions
-        if created_by.role not in ['admin', 'hr']:
+        if not _is_admin_or_hr(created_by):
             raise PermissionDenied("Only HR or Admin can create bulk reviews")
         
         from django.contrib.auth import get_user_model
@@ -198,35 +239,78 @@ class ReviewWorkflowService:
     @staticmethod
     def get_review_progress(review_period):
         """
-        Get progress statistics for a review period
+        Get detailed progress statistics for a review period
         """
+        from django.db.models import Avg
+        
         total_reviews = review_period.reviews.count()
         
         if total_reviews == 0:
             return {
-                'total': 0,
+                'total_reviews': 0,
                 'pending': 0,
-                'self_submitted': 0,
-                'under_review': 0,
+                'self_completed': 0,
+                'manager_completed': 0,
                 'completed': 0,
                 'rejected': 0,
-                'completion_percentage': 0
+                'avg_rating': 0,
+                'bonus_ready': 0,
+                'completion_percentage': 0,
+                'status_flow': {
+                    'draft': review_period.status == 'draft',
+                    'active': review_period.status == 'active',
+                    'reviewing': False,
+                    'completed': review_period.status == 'completed',
+                    'closed': review_period.status == 'closed'
+                }
             }
         
-        status_counts = {
-            'pending': review_period.reviews.filter(status='pending').count(),
-            'self_submitted': review_period.reviews.filter(status='self_submitted').count(),
-            'under_review': review_period.reviews.filter(status='under_review').count(),
-            'completed': review_period.reviews.filter(status='completed').count(),
-            'rejected': review_period.reviews.filter(status='rejected').count(),
-        }
+        # Count by status
+        pending = review_period.reviews.filter(status='pending').count()
+        self_submitted = review_period.reviews.filter(status='self_submitted').count()
+        under_review = review_period.reviews.filter(status='under_review').count()
+        completed = review_period.reviews.filter(status='completed').count()
+        rejected = review_period.reviews.filter(status='rejected').count()
         
-        completion_percentage = (status_counts['completed'] / total_reviews) * 100
+        # Self completed = self_submitted + under_review + completed
+        self_completed = self_submitted + under_review + completed
+        
+        # Manager completed = under_review + completed (manager has reviewed)
+        manager_completed = under_review + completed
+        
+        # Average rating of completed reviews
+        avg_rating_result = review_period.reviews.filter(
+            status='completed',
+            overall_rating__isnull=False
+        ).aggregate(avg=Avg('overall_rating'))
+        avg_rating = round(avg_rating_result['avg'] or 0, 1)
+        
+        # Bonus ready = completed reviews (can calculate bonus)
+        bonus_ready = completed
+        
+        # Completion percentage
+        completion_percentage = round((completed / total_reviews) * 100, 2)
+        
+        # Determine if we're in reviewing phase (some self-assessments submitted)
+        is_reviewing = self_submitted > 0 or under_review > 0
         
         return {
-            'total': total_reviews,
-            **status_counts,
-            'completion_percentage': round(completion_percentage, 2)
+            'total_reviews': total_reviews,
+            'pending': pending,
+            'self_completed': self_completed,
+            'manager_completed': manager_completed,
+            'completed': completed,
+            'rejected': rejected,
+            'avg_rating': avg_rating,
+            'bonus_ready': bonus_ready,
+            'completion_percentage': completion_percentage,
+            'status_flow': {
+                'draft': review_period.status == 'draft',
+                'active': review_period.status == 'active' and not is_reviewing,
+                'reviewing': review_period.status == 'active' and is_reviewing,
+                'completed': review_period.status == 'completed',
+            'closed': review_period.status == 'closed'
+            }
         }
     
     @staticmethod
@@ -258,7 +342,7 @@ class ReviewWorkflowService:
             raise ValidationError("Review period not found")
         
         # Validate permissions
-        if closed_by.role not in ['admin', 'hr']:
+        if not _is_admin_or_hr(closed_by):
             raise PermissionDenied("Only HR or Admin can close review periods")
         
         review_period.status = 'completed'

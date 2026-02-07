@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { 
     Search, Plus, Calendar, Edit2, Trash2, 
     Play, StopCircle, CheckCircle, Clock, XCircle,
-    TrendingUp, AlertCircle, Copy, CalendarDays, ListFilter
+    TrendingUp, AlertCircle, Copy, CalendarDays, ListFilter, RotateCcw, Eye
 } from 'lucide-react';
 
 import { 
@@ -14,8 +14,11 @@ import {
     updateReviewPeriod, 
     deleteReviewPeriod, 
     activateReviewPeriod, 
-    closeReviewPeriod 
+    closeReviewPeriod,
+    reopenReviewPeriod 
 } from '../services/performanceService';
+
+import ProgressPanel from './ProgressPanel/ProgressPanel';
 
 // --- COMPONENT ---
 
@@ -29,6 +32,8 @@ export default function ReviewPeriods() {
     const [selectedPeriods, setSelectedPeriods] = useState([]);
     const [filterStatus, setFilterStatus] = useState('all');
     const [filterType, setFilterType] = useState('all');
+    const [showProgressPanel, setShowProgressPanel] = useState(false);
+    const [progressPeriod, setProgressPeriod] = useState(null);
     
     const [formData, setFormData] = useState({
         name: '',
@@ -122,6 +127,18 @@ export default function ReviewPeriods() {
                 loadPeriods();
             } catch (error) {
                 console.error('Failed to close period:', error);
+            }
+        }
+    };
+
+    const handleReopen = async (id) => {
+        if (confirm('Are you sure you want to reopen this period?')) {
+            try {
+                await reopenReviewPeriod(id);
+                loadPeriods();
+            } catch (error) {
+                console.error('Failed to reopen period:', error);
+                alert(error.message || 'Failed to reopen period');
             }
         }
     };
@@ -347,6 +364,9 @@ export default function ReviewPeriods() {
                         )}
 
                         <div className="timeline-card__actions">
+                            <button className="btn-icon btn-icon--primary" onClick={() => { setProgressPeriod(period); setShowProgressPanel(true); }} title="View Progress">
+                                <Eye size={16} />
+                            </button>
                             <button className="btn-icon" onClick={() => handleEdit(period)} title="Edit">
                                 <Edit2 size={16} />
                             </button>
@@ -361,6 +381,11 @@ export default function ReviewPeriods() {
                             {period.status === 'active' && (
                                 <button className="btn-icon btn-icon--warning" onClick={() => handleClose(period.id)} title="Close">
                                     <StopCircle size={16} />
+                                </button>
+                            )}
+                            {period.status === 'completed' && (
+                                <button className="btn-icon btn-icon--info" onClick={() => handleReopen(period.id)} title="Reopen">
+                                    <RotateCcw size={16} />
                                 </button>
                             )}
                             <button className="btn-icon btn-icon--danger" onClick={() => handleDelete(period.id)} title="Delete">
@@ -447,6 +472,13 @@ export default function ReviewPeriods() {
                                 </td>
                                 <td>
                                     <div className="period-actions">
+                                        <button 
+                                            className="btn-icon btn-icon--primary"
+                                            onClick={() => { setProgressPeriod(period); setShowProgressPanel(true); }}
+                                            title="View Progress"
+                                        >
+                                            <Eye size={16} />
+                                        </button>
                                         {period.status === 'draft' && (
                                             <button 
                                                 className="btn-icon btn-icon--success"
@@ -463,6 +495,15 @@ export default function ReviewPeriods() {
                                                 title="Close"
                                             >
                                                 <StopCircle size={16} />
+                                            </button>
+                                        )}
+                                        {period.status === 'completed' && (
+                                            <button 
+                                                className="btn-icon btn-icon--info"
+                                                onClick={() => handleReopen(period.id)}
+                                                title="Reopen"
+                                            >
+                                                <RotateCcw size={16} />
                                             </button>
                                         )}
                                         <button 
@@ -755,6 +796,14 @@ export default function ReviewPeriods() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Progress Panel */}
+            {showProgressPanel && progressPeriod && (
+                <ProgressPanel 
+                    period={progressPeriod} 
+                    onClose={() => { setShowProgressPanel(false); setProgressPeriod(null); }}
+                />
             )}
         </div>
     );

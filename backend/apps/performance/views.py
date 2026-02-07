@@ -123,14 +123,31 @@ def review_period_detail(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsAdminOrHR])
 def review_period_activate(request, pk):
-    """Activate a review period"""
+    """Activate a review period and optionally auto-create reviews"""
     def logic():
+        from .services.automation_service import AutomationService
+        
         review_period = get_object_or_404(ReviewPeriod, pk=pk)
         review_period.status = 'active'
         review_period.save()
         
+        # Auto-create reviews if requested
+        auto_create = request.data.get('auto_create_reviews', False)
+        auto_result = None
+        
+        if auto_create:
+            auto_result = AutomationService.auto_create_reviews_for_period(
+                pk, 
+                created_by=request.user
+            )
+        
         serializer = ReviewPeriodSerializer(review_period)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        response_data = serializer.data
+        
+        if auto_result:
+            response_data['automation'] = auto_result
+        
+        return Response(response_data, status=status.HTTP_200_OK)
         
     return safe_api(logic)
 
@@ -147,6 +164,30 @@ def review_period_close(request, pk):
         return Response({
             'message': 'Review period closed successfully',
             'incomplete_reviews': result['incomplete_count']
+        }, status=status.HTTP_200_OK)
+        
+    return safe_api(logic)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminOrHR])
+def review_period_reopen(request, pk):
+    """Reopen a closed review period"""
+    def logic():
+        review_period = get_object_or_404(ReviewPeriod, pk=pk)
+        
+        if review_period.status != 'completed':
+            return Response({
+                'error': 'Only completed review periods can be reopened'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        review_period.status = 'active'
+        review_period.save()
+        
+        serializer = ReviewPeriodSerializer(review_period)
+        return Response({
+            'message': 'Review period reopened successfully',
+            'review_period': serializer.data
         }, status=status.HTTP_200_OK)
         
     return safe_api(logic)
@@ -173,6 +214,26 @@ def review_period_reminders(request, pk):
         count = ReviewWorkflowService.send_reminder_notifications(review_period)
         return Response({
             'message': f'Reminders sent to {count} employees'
+        }, status=status.HTTP_200_OK)
+        
+    return safe_api(logic)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminOrHR])
+def review_period_run_automations(request, pk):
+    """Run all automations for a review period (reminders, bonus calc, auto-close)"""
+    def logic():
+        from .services.automation_service import AutomationService
+        
+        review_period = get_object_or_404(ReviewPeriod, pk=pk)
+        results = AutomationService.run_all_automations(pk, user=request.user)
+        
+        return Response({
+            'message': 'Automations executed successfully',
+            'period_id': str(pk),
+            'period_name': review_period.name,
+            'results': results
         }, status=status.HTTP_200_OK)
         
     return safe_api(logic)
@@ -258,6 +319,43 @@ def performance_review_detail(request, pk):
                 status=status.HTTP_204_NO_CONTENT
             )
             
+    return safe_api(logic)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def review_goals(request, pk):
+    """Get employee's goals for a specific review - used by managers during review"""
+    def logic():
+        review = get_object_or_404(PerformanceReview, pk=pk)
+        
+        # Get goals for this employee in this review period
+        goals = Goal.objects.filter(
+            employee=review.employee,
+            review_period=review.review_period
+        ).select_related('claimed_by')
+        
+        serializer = GoalSerializer(goals, many=True)
+        
+        # Calculate summary stats
+        total_goals = goals.count()
+        completed_goals = goals.filter(status='completed').count()
+        avg_progress = 0
+        
+        if total_goals > 0:
+            from django.db.models import Avg
+            avg_result = goals.aggregate(avg=Avg('progress_percentage'))
+            avg_progress = round(avg_result['avg'] or 0, 2)
+        
+        return Response({
+            'goals': serializer.data,
+            'summary': {
+                'total_goals': total_goals,
+                'completed_goals': completed_goals,
+                'avg_progress': avg_progress
+            }
+        }, status=status.HTTP_200_OK)
+        
     return safe_api(logic)
 
 

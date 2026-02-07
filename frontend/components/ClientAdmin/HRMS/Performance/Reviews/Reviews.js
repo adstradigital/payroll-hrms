@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { 
-    Search, Plus, Star, Calendar, TrendingUp, User, Filter, 
+import { Search, Plus, Star, Calendar, TrendingUp, User, Filter, 
     Download, MoreVertical, ChevronDown, Eye, Edit, Trash2, Clock,
     CheckCircle, AlertCircle, XCircle
 } from 'lucide-react';
-import { getReviews } from '../../../../../api/api_clientadmin';
+import { getPerformanceReviews } from '../services/performanceService';
 import './Reviews.css';
 
 export default function Reviews() {
@@ -28,9 +27,9 @@ export default function Reviews() {
     const fetchReviews = async () => {
         setLoading(true);
         try {
-            const response = await getReviews();
+            const response = await getPerformanceReviews();
             // Handle both paginated and non-paginated responses
-            const data = response.data.results || response.data;
+            const data = response?.results || response || [];
             
             // Transform data to match component structure if necessary
             // Assuming backend returns fields like: employee_name, reviewer_name, etc.
@@ -493,16 +492,16 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
 
     const loadInitialData = async () => {
         try {
-            // Import dynamically or pass as props to avoid circular deps if needed, 
-            // but importing directly here is fine as per project structure
-            const { getReviewPeriods, getAllEmployees } = require('../../../../../api/api_clientadmin');
+            // Import from performanceService for consistency
+            const { getReviewPeriods } = require('../services/performanceService');
+            const { getAllEmployees } = require('../../../../../api/api_clientadmin');
             
             const [periodsRes, employeesRes] = await Promise.all([
                 getReviewPeriods(),
                 getAllEmployees({ page_size: 1000 }) // Fetch all for selection
             ]);
 
-            const periodList = periodsRes.data.results || periodsRes.data;
+            const periodList = periodsRes?.results || periodsRes || [];
             const activePeriods = periodList.filter(p => p.is_active);
             setPeriods(activePeriods);
             
@@ -511,7 +510,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                 setFormData(prev => ({ ...prev, review_period: activePeriods[0].id }));
             }
 
-            const empList = employeesRes.data.results || employeesRes.data;
+            const empList = employeesRes.data?.results || employeesRes.data || [];
             setEmployees(empList);
 
         } catch (err) {
@@ -531,19 +530,13 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
         setError(null);
 
         try {
-            const { createReviews } = require('../../../../../api/api_clientadmin');
+            const { bulkCreateReviews } = require('../services/performanceService');
             
-            // Map state keys to backend expected keys
-            const payload = {
-                review_period_id: formData.review_period,
-                employee_ids: formData.employee_ids
-            };
-            
-            await createReviews(payload);
+            await bulkCreateReviews(formData.review_period, formData.employee_ids);
             onSuccess();
         } catch (err) {
             console.error('Create failed:', err);
-            setError(err.response?.data?.detail || 'Failed to create reviews. Please try again.');
+            setError(err.message || 'Failed to create reviews. Please try again.');
         } finally {
             setSubmitting(false);
         }
