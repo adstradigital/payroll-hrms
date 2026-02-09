@@ -81,6 +81,15 @@ def asset_list_create(request):
             if serializer.is_valid():
                 asset = serializer.save(company=company, created_by=request.user)
                 AssetHistory.objects.create(asset=asset, action="New Asset Added", user=request.user, history_type='addition', details=f"Asset added to inventory. Status: {asset.status}")
+                
+                log_activity(
+                    user=request.user,
+                    action_type='CREATE',
+                    module='ASSET',
+                    description=f"Asset added: {asset.name} ({asset.asset_id})",
+                    reference_id=str(asset.id)
+                )
+                
                 return Response(serializer.data, status=201)
             return Response(serializer.errors, status=400)
     except Exception as e: return Response({'error': str(e)}, status=500)
@@ -110,6 +119,15 @@ def asset_allocate(request, pk):
         if not employee_id: return Response({"error": "employee_id is required"}, status=400)
         asset.assigned_to_id = employee_id; asset.status = 'allocated'; asset.save()
         AssetHistory.objects.create(asset=asset, action="Asset Allocated", user=request.user, history_type='assignment', details=f"Allocated to employee {employee_id}")
+        
+        log_activity(
+            user=request.user,
+            action_type='UPDATE',
+            module='ASSET',
+            description=f"Asset {asset.name} allocated to employee {employee_id}",
+            reference_id=str(asset.id)
+        )
+        
         return Response(AssetSerializer(asset).data)
     except Exception as e: return Response({'error': str(e)}, status=500)
 
@@ -121,6 +139,15 @@ def asset_deallocate(request, pk):
         asset = get_object_or_404(Asset, pk=pk, company=company)
         asset.assigned_to = None; asset.status = 'available'; asset.save()
         AssetHistory.objects.create(asset=asset, action="Asset Deallocated", user=request.user, history_type='check-in', details="Asset returned to inventory")
+        
+        log_activity(
+            user=request.user,
+            action_type='UPDATE',
+            module='ASSET',
+            description=f"Asset {asset.name} deallocated",
+            reference_id=str(asset.id)
+        )
+        
         return Response(AssetSerializer(asset).data)
     except Exception as e: return Response({'error': str(e)}, status=500)
 

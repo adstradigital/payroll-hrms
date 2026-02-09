@@ -81,6 +81,14 @@ def salary_component_list_create(request):
             serializer = SalaryComponentSerializer(data=data)
             if serializer.is_valid():
                 serializer.save(company=company, percentage_of=percentage_of_obj)
+                
+                log_activity(
+                    user=request.user,
+                    action_type='CREATE',
+                    module='PAYROLL',
+                    description=f"Created salary component: {serializer.data.get('name')}"
+                )
+                
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
@@ -146,6 +154,14 @@ def salary_structure_list_create(request):
             if serializer.is_valid():
                 try:
                     serializer.save(company=company)
+                    
+                    log_activity(
+                        user=request.user,
+                        action_type='CREATE',
+                        module='PAYROLL',
+                        description=f"Created salary structure: {serializer.data.get('name')}"
+                    )
+                    
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
                 except IntegrityError:
                     return Response({"name": ["A salary structure with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST)
@@ -503,6 +519,14 @@ def payroll_period_generate(request):
             period.processed_at = timezone.now()
             period.save()
             
+            log_activity(
+                user=request.user,
+                action_type='CREATE',
+                module='PAYROLL',
+                description=f"Generated payroll for {payslips_created} employees for {period.name}",
+                reference_id=str(period.id)
+            )
+            
             if preview:
                 transaction.savepoint_rollback(sid)
                 return Response({
@@ -561,6 +585,14 @@ def payroll_period_mark_paid(request, pk):
 
             period.status = 'paid'
             period.save()
+            
+            log_activity(
+                user=request.user,
+                action_type='UPDATE',
+                module='PAYROLL',
+                description=f"Marked payroll period {period.name} as PAID",
+                reference_id=str(period.id)
+            )
             
         return Response({'message': 'Payroll marked as paid'})
     except Exception as e: return Response({'error': str(e)}, status=500)

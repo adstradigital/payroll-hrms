@@ -96,6 +96,8 @@ class PerformanceReview(BaseModel):
     overall_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
                                         validators=[MinValueValidator(0), MaxValueValidator(5)])
     rating_category = models.CharField(max_length=50, blank=True, null=True)  # Excellent, Good, etc.
+    goal_completion_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                        help_text="Average goal completion percentage from objectives")
     
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

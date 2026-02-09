@@ -2,9 +2,10 @@ from django.urls import path
 from .views import (
     performance_dashboard, performance_reports,
     review_period_list, review_period_detail, review_period_activate,
-    review_period_close, review_period_progress, review_period_reminders,
+    review_period_close, review_period_reopen, review_period_progress, review_period_reminders,
+    review_period_run_automations,
     performance_review_list, performance_review_detail, submit_self_assessment,
-    submit_manager_review, approve_review, reject_review, bulk_create_reviews,
+    submit_manager_review, approve_review, reject_review, bulk_create_reviews, review_goals,
     rating_scale_list, rating_scale_detail,
     rating_category_list, rating_category_detail,
     performance_criteria_list, performance_criteria_detail,
@@ -22,8 +23,10 @@ urlpatterns = [
     path('review-periods/<uuid:pk>/', review_period_detail, name='review-period-detail'),
     path('review-periods/<uuid:pk>/activate/', review_period_activate, name='review-period-activate'),
     path('review-periods/<uuid:pk>/close/', review_period_close, name='review-period-close'),
+    path('review-periods/<uuid:pk>/reopen/', review_period_reopen, name='review-period-reopen'),
     path('review-periods/<uuid:pk>/progress/', review_period_progress, name='review-period-progress'),
-    path('review-periods/<uuid:pk>/send_reminders/', review_period_reminders, name='review-period-reminders'), # Matching frontend expectation or previous naming
+    path('review-periods/<uuid:pk>/send_reminders/', review_period_reminders, name='review-period-reminders'),
+    path('review-periods/<uuid:pk>/run_automations/', review_period_run_automations, name='review-period-run-automations'),
     
     # Performance Reviews
     path('reviews/', performance_review_list, name='performance-review-list'),
@@ -33,6 +36,7 @@ urlpatterns = [
     path('reviews/<uuid:pk>/submit_manager_review/', submit_manager_review, name='performance-review-manager-submit'),
     path('reviews/<uuid:pk>/approve/', approve_review, name='performance-review-approve'),
     path('reviews/<uuid:pk>/reject/', reject_review, name='performance-review-reject'),
+    path('reviews/<uuid:pk>/goals/', review_goals, name='performance-review-goals'),
     
     # Ratings
     path('rating-scales/', rating_scale_list, name='rating-scale-list'),

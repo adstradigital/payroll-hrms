@@ -508,7 +508,7 @@ export default function Templates() {
                                             min="0"
                                             max="100"
                                             value={formData.weightage}
-                                            onChange={(e) => setFormData({...formData, weightage: parseFloat(e.target.value) || 0})}
+                                            onChange={(e) => setFormData({...formData, weightage: e.target.value === '' ? '' : parseFloat(e.target.value)})}
                                             required
                                         />
                                         <span className="form-hint">

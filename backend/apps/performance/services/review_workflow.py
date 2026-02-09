@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied, ValidationError
-from ..models import PerformanceReview, ReviewPeriod
+from ..models import PerformanceReview, ReviewPeriod, Goal
 from ..validators import (
     validate_review_can_be_submitted,
     validate_self_assessment_complete,
@@ -10,7 +10,29 @@ from ..validators import (
 )
 from .notification_service import NotificationService
 from .rating_calculator import RatingCalculatorService
+from apps.audit.utils import log_activity
 
+
+def _is_admin_or_hr(user):
+    """
+    Check if user has admin or HR privileges.
+    Uses Django's is_superuser/is_staff and Employee.is_admin fields.
+    """
+    if user.is_superuser or user.is_staff:
+        return True
+    # Check if user has employee profile with is_admin flag
+    if hasattr(user, 'employee_profile') and user.employee_profile:
+        return user.employee_profile.is_admin
+    return False
+
+
+def _is_manager(user):
+    """
+    Check if user is a manager (has subordinates).
+    """
+    if hasattr(user, 'employee_profile') and user.employee_profile:
+        return user.employee_profile.subordinates.filter(status='active').exists()
+    return False
 
 class ReviewWorkflowService:
     """
@@ -42,8 +64,35 @@ class ReviewWorkflowService:
         review.self_submitted_at = timezone.now()
         review.save()
         
+        # Update criteria self-ratings if provided
+        criteria_ratings_data = self_assessment_data.get('criteria_ratings', [])
+        if criteria_ratings_data:
+            for rating_data in criteria_ratings_data:
+                rating_id = rating_data.get('id')
+                self_score = rating_data.get('self_rating')
+                
+                if rating_id and self_score is not None:
+                    try:
+                        criteria_rating = CriteriaRating.objects.get(
+                            id=rating_id, 
+                            performance_review=review
+                        )
+                        criteria_rating.self_rating = self_score
+                        criteria_rating.save()
+                    except CriteriaRating.DoesNotExist:
+                        pass
+        
         # Send notification to manager
         NotificationService.notify_manager_review_pending(review)
+        
+        # Log activity
+        log_activity(
+            user=employee.user if employee.user else None,
+            action_type='UPDATE',
+            module='PERFORMANCE',
+            description=f"Self-assessment submitted for review {review.id}",
+            reference_id=str(review.id)
+        )
         
         return review
     
@@ -66,15 +115,41 @@ class ReviewWorkflowService:
         
         # Update review with manager feedback
         review.manager_feedback = manager_review_data.get('manager_feedback', '')
-        review.manager_rating = manager_review_data.get('manager_rating')
+        # Only use manual overall_rating if weighted calculation not possible
+        manual_rating = manager_review_data.get('overall_rating')
         review.strengths = manager_review_data.get('strengths', '')
         review.areas_for_improvement = manager_review_data.get('areas_for_improvement', '')
+        
+        # Update criteria manager-ratings if provided
+        criteria_ratings_data = manager_review_data.get('criteria_ratings', [])
+        if criteria_ratings_data:
+            for rating_data in criteria_ratings_data:
+                rating_id = rating_data.get('id')
+                manager_score = rating_data.get('manager_rating')
+                comment = rating_data.get('comments')
+                
+                if rating_id:
+                    try:
+                        criteria_rating = CriteriaRating.objects.get(
+                            id=rating_id, 
+                            performance_review=review
+                        )
+                        if manager_score is not None:
+                            criteria_rating.manager_rating = manager_score
+                        if comment is not None:
+                            criteria_rating.comments = comment
+                        criteria_rating.save()
+                    except CriteriaRating.DoesNotExist:
+                        pass
         
         # Calculate overall rating (can be weighted or simple average)
         if review.criteria_ratings.exists():
             review.overall_rating = RatingCalculatorService.calculate_weighted_rating(review)
+            # Fallback to manual rating if calculation result is None (e.g. no ratings given)
+            if review.overall_rating is None and manual_rating:
+                review.overall_rating = manual_rating
         else:
-            review.overall_rating = manager_review_data.get('overall_rating')
+            review.overall_rating = manual_rating
         
         # Determine rating category
         if review.overall_rating and review.review_period:
@@ -88,8 +163,32 @@ class ReviewWorkflowService:
                     rating_scale
                 )
         
+        # Calculate goal completion score
+        from ..models import Goal
+        from django.db.models import Avg
+        
+        goals = Goal.objects.filter(
+            employee=review.employee,
+            review_period=review.review_period
+        )
+        
+        if goals.exists():
+            avg_progress = goals.aggregate(avg=Avg('progress_percentage'))['avg']
+            review.goal_completion_score = round(avg_progress or 0, 2)
+            
+            # Optional: Weight overall rating with goal completion (30% goals, 70% manager rating)
+            # Uncomment below to enable weighted rating
+            # if review.overall_rating and review.goal_completion_score:
+            #     goal_rating = (review.goal_completion_score / 100) * 5  # Convert % to 5-point scale
+            #     weighted_rating = (float(review.overall_rating) * 0.7) + (goal_rating * 0.3)
+            #     review.overall_rating = round(weighted_rating, 2)
+        
         review.status = 'under_review'
+        
+        # Capture the actual reviewer and time
+        review.reviewer = manager
         review.reviewed_at = timezone.now()
+        
         review.save()
         
         # Send notification to employee
@@ -97,6 +196,28 @@ class ReviewWorkflowService:
         
         return review
     
+    @staticmethod
+    def update_goal_completion_score(review):
+        """
+        Recalculate and update the goal completion score for a review.
+        Score is the average of progress_percentage of all associated goals.
+        """
+        goals = Goal.objects.filter(
+            employee=review.employee,
+            review_period=review.review_period
+        ) # Should we filter by status!=cancelled? Probably yes.
+        
+        active_goals = goals.exclude(status='cancelled')
+        
+        if not active_goals.exists():
+            return
+            
+        total_progress = sum(goal.progress_percentage for goal in active_goals)
+        average_progress = total_progress / active_goals.count()
+        
+        review.goal_completion_score = round(average_progress, 2)
+        review.save(update_fields=['goal_completion_score'])
+        
     @staticmethod
     @transaction.atomic
     def approve_review(review_id, approver):
@@ -109,7 +230,7 @@ class ReviewWorkflowService:
             raise ValidationError("Performance review not found")
         
         # Validate permissions (only HR/Admin can approve)
-        if approver.role not in ['admin', 'hr']:
+        if not _is_admin_or_hr(approver):
             raise PermissionDenied("Only HR or Admin can approve reviews")
         
         # Validate review is complete
@@ -120,6 +241,15 @@ class ReviewWorkflowService:
         
         # Send notification to employee and manager
         NotificationService.notify_review_approved(review)
+        
+        # Log activity
+        log_activity(
+            user=approver,
+            action_type='APPROVE',
+            module='PERFORMANCE',
+            description=f"Performance review {review.id} approved",
+            reference_id=str(review.id)
+        )
         
         return review
     
@@ -135,7 +265,7 @@ class ReviewWorkflowService:
             raise ValidationError("Performance review not found")
         
         # Validate permissions
-        if rejector.role not in ['admin', 'hr', 'manager']:
+        if not (_is_admin_or_hr(rejector) or _is_manager(rejector)):
             raise PermissionDenied("You don't have permission to reject reviews")
         
         review.status = 'rejected'
@@ -144,6 +274,16 @@ class ReviewWorkflowService:
         
         # Send notification
         NotificationService.notify_review_rejected(review, rejection_reason)
+        
+        # Log activity
+        log_activity(
+            user=rejector,
+            action_type='REJECT',
+            module='PERFORMANCE',
+            description=f"Performance review {review.id} rejected",
+            reference_id=str(review.id),
+            new_value={'reason': rejection_reason}
+        )
         
         return review
     
@@ -159,19 +299,24 @@ class ReviewWorkflowService:
             raise ValidationError("Review period not found")
         
         # Validate permissions
-        if created_by.role not in ['admin', 'hr']:
+        if not _is_admin_or_hr(created_by):
             raise PermissionDenied("Only HR or Admin can create bulk reviews")
         
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
+        from apps.accounts.models import Employee
+        from ..models import PerformanceCriteria, CriteriaRating
         
-        employees = User.objects.filter(id__in=employee_ids)
+        # Query Employee model (with UUID ids), not User model
+        employees = Employee.objects.filter(id__in=employee_ids).select_related('user', 'reporting_manager')
+        
+        # Get active criteria to attach
+        active_criteria = list(PerformanceCriteria.objects.filter(is_active=True))
+        
         created_reviews = []
         
         for employee in employees:
             # Check if review already exists
             existing_review = PerformanceReview.objects.filter(
-                employee=employee,
+                employee=employee.user,
                 review_period=review_period
             ).first()
             
@@ -179,54 +324,120 @@ class ReviewWorkflowService:
                 continue
             
             # Get employee's manager as reviewer
-            reviewer = employee.manager if hasattr(employee, 'manager') else None
+            reviewer = None
+            if employee.reporting_manager and employee.reporting_manager.user:
+                reviewer = employee.reporting_manager.user
+            
+            # If manual reviewer ID is provided in context (futureproof), use it. 
+            # But for bulk creation, default to reporting manager is correct.
             
             review = PerformanceReview.objects.create(
-                employee=employee,
+                employee=employee.user,
                 reviewer=reviewer,
                 review_period=review_period,
                 status='pending'
             )
+            
+            # Attach active criteria to review
+            for criteria in active_criteria:
+                CriteriaRating.objects.create(
+                    performance_review=review,
+                    criteria=criteria,
+                    self_rating=None,
+                    manager_rating=None
+                )
             
             created_reviews.append(review)
             
             # Send notification to employee
             NotificationService.notify_review_period_started(review)
         
+        # Log bulk creation
+        log_activity(
+            user=created_by,
+            action_type='CREATE',
+            module='PERFORMANCE',
+            description=f"Bulk created {len(created_reviews)} reviews for period '{review_period.name}'",
+            reference_id=str(review_period.id)
+        )
+        
         return created_reviews
     
     @staticmethod
     def get_review_progress(review_period):
         """
-        Get progress statistics for a review period
+        Get detailed progress statistics for a review period
         """
+        from django.db.models import Avg
+        
         total_reviews = review_period.reviews.count()
         
         if total_reviews == 0:
             return {
-                'total': 0,
+                'total_reviews': 0,
                 'pending': 0,
-                'self_submitted': 0,
-                'under_review': 0,
+                'self_completed': 0,
+                'manager_completed': 0,
                 'completed': 0,
                 'rejected': 0,
-                'completion_percentage': 0
+                'avg_rating': 0,
+                'bonus_ready': 0,
+                'completion_percentage': 0,
+                'status_flow': {
+                    'draft': review_period.status == 'draft',
+                    'active': review_period.status == 'active',
+                    'reviewing': False,
+                    'completed': review_period.status == 'completed',
+                    'closed': review_period.status == 'closed'
+                }
             }
         
-        status_counts = {
-            'pending': review_period.reviews.filter(status='pending').count(),
-            'self_submitted': review_period.reviews.filter(status='self_submitted').count(),
-            'under_review': review_period.reviews.filter(status='under_review').count(),
-            'completed': review_period.reviews.filter(status='completed').count(),
-            'rejected': review_period.reviews.filter(status='rejected').count(),
-        }
+        # Count by status
+        pending = review_period.reviews.filter(status='pending').count()
+        self_submitted = review_period.reviews.filter(status='self_submitted').count()
+        under_review = review_period.reviews.filter(status='under_review').count()
+        completed = review_period.reviews.filter(status='completed').count()
+        rejected = review_period.reviews.filter(status='rejected').count()
         
-        completion_percentage = (status_counts['completed'] / total_reviews) * 100
+        # Self completed = self_submitted + under_review + completed
+        self_completed = self_submitted + under_review + completed
+        
+        # Manager completed = under_review + completed (manager has reviewed)
+        manager_completed = under_review + completed
+        
+        # Average rating of completed reviews
+        avg_rating_result = review_period.reviews.filter(
+            status='completed',
+            overall_rating__isnull=False
+        ).aggregate(avg=Avg('overall_rating'))
+        avg_rating = round(avg_rating_result['avg'] or 0, 1)
+        
+        # Bonus ready = completed reviews (can calculate bonus)
+        bonus_ready = completed
+        
+        # Completion percentage
+        completion_percentage = round((completed / total_reviews) * 100, 2)
+        
+        # Determine if we're in reviewing phase (some self-assessments submitted)
+        is_reviewing = self_submitted > 0 or under_review > 0
         
         return {
-            'total': total_reviews,
-            **status_counts,
-            'completion_percentage': round(completion_percentage, 2)
+            'total_reviews': total_reviews,
+            'pending': pending,
+            'self_completed': self_completed,
+            'manager_completed': manager_completed,
+            'completed': completed,
+            'rejected': rejected,
+            'avg_rating': avg_rating,
+            'bonus_ready': bonus_ready,
+            'completion_percentage': completion_percentage,
+            'status_flow': {
+                'draft': review_period.status == 'draft',
+                'active': review_period.status == 'active' and not is_reviewing,
+                'reviewing': review_period.status == 'active' and is_reviewing,
+                'completed': review_period.status == 'completed',
+            'closed': review_period.status == 'closed'
+            }
         }
     
     @staticmethod
@@ -258,7 +469,7 @@ class ReviewWorkflowService:
             raise ValidationError("Review period not found")
         
         # Validate permissions
-        if closed_by.role not in ['admin', 'hr']:
+        if not _is_admin_or_hr(closed_by):
             raise PermissionDenied("Only HR or Admin can close review periods")
         
         review_period.status = 'completed'

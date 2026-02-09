@@ -2,51 +2,17 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Plus, Star, Edit2, Trash2, Settings, X, AlertCircle, Check, ChevronDown, Filter, Copy, Eye, EyeOff } from 'lucide-react';
+import {
+    getRatingScales,
+    createRatingScale,
+    updateRatingScale,
+    deleteRatingScale,
+    getRatingCategories,
+    createRatingCategory,
+    updateRatingCategory,
+    deleteRatingCategory
+} from '../services/performanceService';
 import './Rating.css';
-
-// --- MOCK SERVICE IMPLEMENTATION ---
-
-let mockScales = [
-    { id: '1', name: 'Standard 5-Point', min_value: 1, max_value: 5, description: 'Standard rating scale from 1 (Poor) to 5 (Excellent).', is_active: true },
-    { id: '2', name: 'eNPS Scale', min_value: 0, max_value: 10, description: 'Employee Net Promoter Score scale.', is_active: true },
-    { id: '3', name: '3-Point Simple', min_value: 1, max_value: 3, description: 'Below, Meets, Exceeds expectations.', is_active: false },
-];
-
-let mockCategories = [
-    { id: 'c1', name: 'Core Values', rating_scale: '1', min_score: 3, max_score: 5, description: 'Alignment with company core values and culture.', color_code: '#D4AF37' },
-    { id: 'c2', name: 'Technical Skills', rating_scale: '1', min_score: 1, max_score: 5, description: 'Proficiency in required technical areas for the role.', color_code: '#3b82f6' },
-    { id: 'c3', name: 'Leadership', rating_scale: '2', min_score: 8, max_score: 10, description: 'Ability to lead, mentor, and inspire others.', color_code: '#10b981' },
-];
-
-const getRatingScales = async () => new Promise(r => setTimeout(() => r([...mockScales]), 500));
-const createRatingScale = async (data) => new Promise(r => {
-    const newItem = { ...data, id: Math.random().toString(36).substr(2, 9) };
-    mockScales.push(newItem);
-    setTimeout(() => r(newItem), 500);
-});
-const updateRatingScale = async (id, data) => new Promise(r => {
-    mockScales = mockScales.map(s => s.id === id ? { ...s, ...data } : s);
-    setTimeout(() => r(data), 500);
-});
-const deleteRatingScale = async (id) => new Promise(r => {
-    mockScales = mockScales.filter(s => s.id !== id);
-    setTimeout(() => r(true), 500);
-});
-
-const getRatingCategories = async () => new Promise(r => setTimeout(() => r([...mockCategories]), 500));
-const createRatingCategory = async (data) => new Promise(r => {
-    const newItem = { ...data, id: Math.random().toString(36).substr(2, 9) };
-    mockCategories.push(newItem);
-    setTimeout(() => r(newItem), 500);
-});
-const updateRatingCategory = async (id, data) => new Promise(r => {
-    mockCategories = mockCategories.map(c => c.id === id ? { ...c, ...data } : c);
-    setTimeout(() => r(data), 500);
-});
-const deleteRatingCategory = async (id) => new Promise(r => {
-    mockCategories = mockCategories.filter(c => c.id !== id);
-    setTimeout(() => r(true), 500);
-});
 
 // Toast Notification Component
 const Toast = ({ message, type = 'success', onClose }) => (
@@ -296,15 +262,20 @@ export default function Ratings() {
         setLoading(true);
         try {
             if (activeTab === 'scales') {
-                const data = await getRatingScales();
-                setScales(data || []);
+                const response = await getRatingScales();
+                // Handle both paginated and non-paginated responses
+                const data = response?.results || response || [];
+                setScales(Array.isArray(data) ? data : []);
             } else {
-                const [categoriesData, scalesData] = await Promise.all([
+                const [categoriesResponse, scalesResponse] = await Promise.all([
                     getRatingCategories(),
                     getRatingScales()
                 ]);
-                setCategories(categoriesData || []);
-                setScales(scalesData || []);
+                // Handle both paginated and non-paginated responses
+                const categoriesData = categoriesResponse?.results || categoriesResponse || [];
+                const scalesData = scalesResponse?.results || scalesResponse || [];
+                setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+                setScales(Array.isArray(scalesData) ? scalesData : []);
             }
         } catch (error) {
             showToast('Failed to load data', 'error');

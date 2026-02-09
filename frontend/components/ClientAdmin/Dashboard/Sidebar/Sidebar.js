@@ -103,10 +103,10 @@ const menuItems = [
             { id: 'perf-periods', label: 'Review Periods', path: '/dashboard/performance/periods' },
             { id: 'perf-objectives', label: 'Objectives', path: '/dashboard/performance/objectives' },
             { id: 'perf-key-results', label: 'Key Results', path: '/dashboard/performance/key-results' },
-            { id: 'perf-reviews', label: 'Reviews', path: '/dashboard/performance/reviews' },
-            { id: 'perf-ratings', label: 'Ratings', path: '/dashboard/performance/ratings', adminOnly: true },
-            { id: 'perf-bonus', label: 'Bonus Points', path: '/dashboard/performance/bonus-points', adminOnly: true },
             { id: 'perf-templates', label: 'Templates', path: '/dashboard/performance/templates', adminOnly: true },
+            { id: 'perf-ratings', label: 'Ratings', path: '/dashboard/performance/ratings', adminOnly: true },
+            { id: 'perf-reviews', label: 'Reviews', path: '/dashboard/performance/reviews' },
+            { id: 'perf-bonus', label: 'Bonus Points', path: '/dashboard/performance/bonus-points', adminOnly: true },
         ]
     },
     {
