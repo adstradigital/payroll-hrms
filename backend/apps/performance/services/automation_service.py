@@ -2,6 +2,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from datetime import timedelta
+from decimal import Decimal
 from ..models import PerformanceReview, ReviewPeriod, BonusMapping, PerformanceCriteria, CriteriaRating
 
 
@@ -169,7 +170,16 @@ class AutomationService:
         # Get bonus mappings
         bonus_mappings = BonusMapping.objects.filter(is_active=True).order_by('-min_rating')
         
+        # Import AdhocPayment here to avoid potential circular imports at top level if any
+        try:
+            from apps.payroll.models import AdhocPayment, SalaryComponent
+        except ImportError:
+             # Fallback if payroll app is not ready or accessible
+             return {'error': 'Payroll app not accessible'}
+        
         calculated = []
+        payments_created = 0
+        
         for review in completed_reviews:
             rating = float(review.overall_rating)
             bonus_percentage = 0
@@ -180,15 +190,63 @@ class AutomationService:
                     bonus_percentage = float(mapping.bonus_percentage)
                     break
             
-            calculated.append({
-                'employee_id': str(review.employee.id),
-                'employee_name': review.employee.get_full_name() if hasattr(review.employee, 'get_full_name') else str(review.employee),
-                'rating': rating,
-                'bonus_percentage': bonus_percentage
-            })
+            if bonus_percentage > 0:
+                # Calculate bonus amount
+                # Assuming bonus is % of CURRENT Basic Salary
+                # We need to fetch employee's current salary
+                try:
+                    from apps.payroll.models import EmployeeSalary
+                    
+                    # Get Employee profile from User
+                    # PerformanceReview.employee is a User object
+                    # EmployeeSalary.employee is an Employee object
+                    employee_profile = getattr(review.employee, 'employee_profile', None)
+                    
+                    if employee_profile:
+                        current_salary = EmployeeSalary.objects.filter(
+                            employee=employee_profile,
+                            is_current=True
+                        ).first()
+                        
+                        if current_salary:
+                            bonus_amount = (current_salary.basic_salary * sum([Decimal(bonus_percentage)/100])).quantize(Decimal('0.01'))
+                            
+                            # Create Adhoc Payment
+                            payment_name = f"Performance Bonus - {review_period.name}"
+                            
+                            # Check for duplicates
+                            exists = AdhocPayment.objects.filter(
+                                employee=employee_profile,
+                                name=payment_name,
+                                status__in=['pending', 'processed']
+                            ).exists()
+                            
+                            if not exists:
+                                AdhocPayment.objects.create(
+                                    company=employee_profile.company,
+                                    employee=employee_profile,
+                                    name=payment_name,
+                                    amount=bonus_amount,
+                                    notes=f"Auto-generated from Review: {review.id} (Rating: {rating})"
+                                )
+                                payments_created += 1
+                                
+                                calculated.append({
+                                    'employee_id': str(employee_profile.id),
+                                    'employee_name': employee_profile.full_name,
+                                    'rating': rating,
+                                    'bonus_percentage': bonus_percentage,
+                                    'amount': str(bonus_amount)
+                                })
+                    else:
+                        print(f"Skipping bonus: No employee profile for user {review.employee}")
+
+                except Exception as e:
+                    print(f"Error calculating bonus for {review.employee}: {e}")
         
         return {
             'calculated_count': len(calculated),
+            'payments_created': payments_created,
             'bonus_details': calculated
         }
     

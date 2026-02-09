@@ -1,15 +1,6 @@
-.dashboard {
-    display: grid;
-    grid-template-columns: var(--sidebar-width) 1fr;
-    width: 100vw;
-    height: 100vh;
-    background: var(--bg-primary);
-    overflow: hidden;
-}
-
 /* Sidebar override inside Dashboard to ensure grid compliance */
 .sidebar {
-    grid-column: 1;
+    /* grid-column: 1; -> Moved to globals.css */
     width: var(--sidebar-width);
     height: 100vh;
     background: var(--bg-sidebar);
@@ -17,16 +8,6 @@
     display: flex;
     flex-direction: column;
     z-index: var(--z-sticky);
-}
-
-.dashboard__main {
-    grid-column: 2;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    height: 100vh;
-    overflow: hidden;
-    background: var(--bg-primary);
 }
 
 .dashboard__content {

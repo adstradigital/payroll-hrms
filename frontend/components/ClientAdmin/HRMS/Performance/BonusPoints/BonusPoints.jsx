@@ -4,24 +4,44 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { 
     Search, Plus, Gift, Edit2, Trash2, TrendingUp, 
     Filter, Download, Upload, BarChart3, Clock,
-    ChevronDown, X, AlertCircle, CheckCircle2, LayoutGrid, List
+    ChevronDown, X, AlertCircle, CheckCircle2, LayoutGrid, List,
+    Star, Play, Calculator
 } from 'lucide-react';
 import { 
     getBonusMappings, createBonusMapping, updateBonusMapping, deleteBonusMapping,
-    getRatingScales
+    getRatingScales, calculateBonus
 } from '../services/performanceService';
 import './BonusPoints.css';
 
 // Toast component
 const Toast = ({ message, type, onClose }) => (
-    <div className="bonus-toast">
+    <div className="toast">
         {type === 'success' ? <CheckCircle2 size={20} color="#4ade80" /> : <AlertCircle size={20} color="#ef4444" />}
         <span>{message}</span>
-        <button onClick={onClose}>
+        <button className="modal-close" onClick={onClose}>
             <X size={16} />
         </button>
     </div>
 );
+
+// Star display component
+const StarRating = ({ rating, max = 5, size = 16, color = "#D4AF37" }) => {
+    return (
+        <div className="star-container">
+            {[...Array(max)].map((_, i) => (
+                <Star 
+                    key={i} 
+                    size={size} 
+                    fill={i < Math.floor(rating) ? color : "none"} 
+                    stroke={color}
+                    strokeWidth={1.5}
+                    className={i < Math.floor(rating) ? "text-gold" : "text-gray"}
+                />
+            ))}
+            <span className="star-text">({rating})</span>
+        </div>
+    );
+};
 
 // Custom Hook for LocalStorage
 const useLocalStorage = (key, initialValue) => {
@@ -63,7 +83,14 @@ export default function BonusPoints() {
     const [toast, setToast] = useState(null);
     const [viewMode, setViewMode] = useLocalStorage('bonusViewMode', 'grid');
     const [selectedMappings, setSelectedMappings] = useState(new Set());
+    const [showFilters, setShowFilters] = useState(true);
     
+    // Test Calculator State
+    const [showTestModal, setShowTestModal] = useState(false);
+    const [testData, setTestData] = useState({ rating: 0, employee_level: '' });
+    const [testResult, setTestResult] = useState(null);
+    const [testLoading, setTestLoading] = useState(false);
+
     // File input ref for import (currently front-end only / future backend)
     const fileInputRef = useRef(null);
     
@@ -170,6 +197,21 @@ export default function BonusPoints() {
         }
     };
 
+    const handleTestCalculation = async (e) => {
+        e.preventDefault();
+        setTestLoading(true);
+        setTestResult(null);
+        try {
+            const result = await calculateBonus(testData.rating, testData.employee_level);
+            setTestResult(result);
+        } catch (error) {
+            console.error("Calculation failed:", error);
+            showToast('Calculation failed', 'error');
+        } finally {
+            setTestLoading(false);
+        }
+    };
+
     const resetForm = () => {
         setEditingMapping(null);
         setFormData({
@@ -227,196 +269,271 @@ export default function BonusPoints() {
     }
 
     return (
-        <div className="bonus-points-wrapper">
+        <div className="bonus-container">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-            <div className="bonus-container">
-                {/* Header */}
-                <div className="bonus-header-section">
-                    <div className="bonus-title-group">
-                        <h2><Gift size={28} color="#D4AF37" /> Bonus Point Mappings</h2>
-                        <p>Configure performance ratings and bonus structures for your organization.</p>
-                    </div>
-                    <div className="header-actions">
-                        <button className="bonus-btn bonus-btn-outline" onClick={handleExport} style={{marginRight: '0.5rem'}}>
-                            <Download size={18} /> Export
-                        </button>
-                        <button className="bonus-btn bonus-btn-gold" onClick={() => { resetForm(); setShowModal(true); }}>
-                            <Plus size={18} /> Add Mapping
-                        </button>
-                    </div>
+            {/* Header & Stats */}
+            <div className="bonus-header">
+                <div style={{marginBottom: '1.5rem'}}>
+                    <h1 className="bonus-title">Bonus Point Mappings</h1>
+                    <p className="bonus-subtitle">Configure performance ratings and bonus structures for your organization.</p>
                 </div>
 
-                {/* Stats */}
-                <div className="bonus-stats-grid">
-                    <div className="bonus-stat-card">
-                        <span className="bonus-stat-label">Total Mappings</span>
-                        <span className="bonus-stat-value">{statistics.total}</span>
+                <div className="stats-grid">
+                    <div className="stat-card stat-card--secondary">
+                        <div className="stat-card__icon"><List size={20} /></div>
+                        <div className="stat-card__content">
+                            <div className="stat-card__value">{statistics.total}</div>
+                            <div className="stat-card__label">Total Mappings</div>
+                        </div>
                     </div>
-                    <div className="bonus-stat-card">
-                        <span className="bonus-stat-label">Active Rules</span>
-                        <span className="bonus-stat-value green">{statistics.active}</span>
+                    <div className="stat-card stat-card--success">
+                        <div className="stat-card__icon"><CheckCircle2 size={20} /></div>
+                        <div className="stat-card__content">
+                            <div className="stat-card__value">{statistics.active}</div>
+                            <div className="stat-card__label">Active Rules</div>
+                        </div>
                     </div>
-                    <div className="bonus-stat-card">
-                        <span className="bonus-stat-label">Avg Bonus</span>
-                        <span className="bonus-stat-value gold">{statistics.avgBonus.toFixed(1)}%</span>
+                    <div className="stat-card stat-card--primary">
+                        <div className="stat-card__icon"><Gift size={20} /></div>
+                        <div className="stat-card__content">
+                            <div className="stat-card__value">{statistics.avgBonus.toFixed(1)}%</div>
+                            <div className="stat-card__label">Avg Bonus</div>
+                        </div>
                     </div>
-                    <div className="bonus-stat-card">
-                        <span className="bonus-stat-label">Max Bonus</span>
-                        <span className="bonus-stat-value gold">{statistics.maxBonus}%</span>
+                    <div className="stat-card stat-card--primary">
+                        <div className="stat-card__icon"><TrendingUp size={20} /></div>
+                        <div className="stat-card__content">
+                            <div className="stat-card__value">{statistics.maxBonus}%</div>
+                            <div className="stat-card__label">Max Bonus</div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Filters & Toolbar */}
-                <div className="bonus-filters-bar">
-                    <div className="bonus-search-wrapper">
-                        <Search size={18} />
+            {/* Toolbar */}
+            <div className="bonus-toolbar">
+                <div className="bonus-toolbar__left">
+                    <div className="bonus-search">
+                        <Search size={18} className="bonus-search__icon" />
                         <input 
                             type="text" 
-                            className="bonus-search-input" 
+                            className="bonus-search__input" 
                             placeholder="Search mappings..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    
-                    <div className="bonus-control-group">
-                        <select className="bonus-custom-select" value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)}>
+                    <button className={`btn btn-outline ${showFilters ? 'btn-outline--active' : ''}`} onClick={() => setShowFilters(!showFilters)}>
+                        <Filter size={18} /> Filters
+                    </button>
+                    <div className="bonus-view-toggle ml-2" style={{display: 'flex', gap: '0.5rem'}}>
+                        <button className={`btn-icon ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>
+                            <LayoutGrid size={18} />
+                        </button>
+                        <button className={`btn-icon ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
+                            <List size={18} />
+                        </button>
+                    </div>
+                </div>
+                
+                <div className="bonus-toolbar__right">
+                    <button className="btn btn-outline" onClick={() => setShowTestModal(true)}>
+                        <Calculator size={18} /> Test Calculator
+                    </button>
+                    <button className="btn btn-outline" onClick={handleExport}>
+                        <Download size={18} /> Export
+                    </button>
+                    <button className="btn btn-primary" onClick={() => { resetForm(); setShowModal(true); }}>
+                        <Plus size={18} /> Add Mapping
+                    </button>
+                </div>
+            </div>
+
+            {/* Filters Panel */}
+            {showFilters && (
+                <div className="filters-panel">
+                    <div className="filter-group">
+                        <label className="filter-label">Level</label>
+                        <select className="filter-select" value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)}>
                             <option value="all">All Levels</option>
                             <option value="Senior">Senior</option>
                             <option value="Mid">Mid</option>
                             <option value="Junior">Junior</option>
                             <option value="Manager">Manager</option>
                         </select>
-                        
-                        <select className="bonus-custom-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                    </div>
+                    <div className="filter-group">
+                        <label className="filter-label">Sort By</label>
+                        <select className="filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                             <option value="name">Name</option>
                             <option value="bonus_percentage">Bonus %</option>
                         </select>
-
-                        <div className="bonus-view-toggle">
-                            <button className={`bonus-btn-icon ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>
-                                <LayoutGrid size={18} />
-                            </button>
-                            <button className={`bonus-btn-icon ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
-                                <List size={18} />
-                            </button>
-                        </div>
                     </div>
                 </div>
+            )}
 
-                {/* Content */}
-                {loading ? (
-                    <div className="bonus-empty-state">
-                        <p>Loading data...</p>
-                    </div>
-                ) : (
-                    <div className={viewMode === 'grid' ? 'bonus-grid-view' : 'bonus-list-view'}>
-                        {processedMappings.length > 0 ? processedMappings.map(mapping => (
-                            <div key={mapping.id} className={`bonus-card ${selectedMappings.has(mapping.id) ? 'selected' : ''}`}>
-                                <div className="bonus-card-header">
-                                    <div className="bonus-card-title-group">
-                                        <input 
-                                            type="checkbox" 
-                                            className="bonus-custom-checkbox"
-                                            checked={selectedMappings.has(mapping.id)}
-                                            onChange={() => toggleSelection(mapping.id)}
-                                        />
-                                        <div>
-                                            <h4 className="bonus-card-title">{mapping.name}</h4>
-                                            <span className={`bonus-status-badge ${mapping.is_active ? 'bonus-status-active' : 'bonus-status-inactive'}`}>
-                                                {mapping.is_active ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </div>
+            {/* Content */}
+            {loading ? (
+                <div className="empty-state">
+                    <p>Loading data...</p>
+                </div>
+            ) : (
+                <div className={viewMode === 'grid' ? 'bonus-grid' : 'bonus-list'}>
+                    {processedMappings.length > 0 ? processedMappings.map(mapping => (
+                        <div key={mapping.id} className="bonus-card">
+                            <div className="bonus-card-header">
+                                <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
+                                    <div>
+                                        <h4 className="bonus-card-title">{mapping.name}</h4>
+                                        <span className={`badge ${mapping.is_active ? 'badge-active' : 'badge-inactive'}`}>
+                                            {mapping.is_active ? 'Active' : 'Inactive'}
+                                        </span>
                                     </div>
-                                    {/* Action Dot Menu could go here */}
                                 </div>
-                                
-                                <div className="bonus-card-body">
-                                    <div className="bonus-percentage-display">
-                                        {parseFloat(mapping.bonus_percentage)}%
-                                        <TrendingUp size={24} color="#D4AF37" />
+                                <div className="bonus-percentage">
+                                    {parseFloat(mapping.bonus_percentage)}%
+                                </div>
+                            </div>
+                            
+                            <div className="bonus-card-body">
+                                <div className="bonus-info-row">
+                                    <span className="bonus-info-label">Rating Trigger</span>
+                                    <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end'}}>
+                                        <span className="bonus-info-val mb-1">{parseFloat(mapping.min_rating)} - {parseFloat(mapping.max_rating)}</span>
+                                        <StarRating rating={mapping.min_rating} max={5} size={12} />
                                     </div>
-                                    
+                                </div>
+                                {mapping.applies_to_level && (
                                     <div className="bonus-info-row">
-                                        <span className="bonus-info-label">Rating Range</span>
-                                        <span className="bonus-info-val">{parseFloat(mapping.min_rating)} - {parseFloat(mapping.max_rating)}</span>
+                                        <span className="bonus-info-label">Level</span>
+                                        <span className="bonus-info-val">{mapping.applies_to_level}</span>
                                     </div>
-                                    {mapping.applies_to_level && (
-                                        <div className="bonus-info-row">
-                                            <span className="bonus-info-label">Level</span>
-                                            <span className="bonus-info-val">{mapping.applies_to_level}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="bonus-card-actions">
-                                    <button className="bonus-btn-icon" onClick={() => handleEdit(mapping)}><Edit2 size={16} /></button>
-                                    <button className="bonus-btn-icon" onClick={() => handleDelete(mapping.id)}><Trash2 size={16} /></button>
-                                </div>
+                                )}
                             </div>
-                        )) : (
-                            <div className="bonus-empty-state">
-                                <p>No mappings found matching your criteria.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
 
-            {/* Modal */}
+                            <div className="bonus-card-actions">
+                                <button className="btn-icon" onClick={() => handleEdit(mapping)}><Edit2 size={16} /></button>
+                                <button className="btn-icon" onClick={() => handleDelete(mapping.id)}><Trash2 size={16} /></button>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="empty-state">
+                            <div className="empty-state__icon"><Gift size={48} /></div>
+                            <h3 className="empty-state__title">No mappings found</h3>
+                            <p>Try adjusting your search or filters.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Edit/Create Modal */}
             {showModal && (
-                <div className="bonus-modal-backdrop" onClick={() => setShowModal(false)}>
-                    <div className="bonus-modal-content" onClick={e => e.stopPropagation()}>
-                        <div className="bonus-modal-header">
+                <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
                             <h2>{editingMapping ? 'Edit Mapping' : 'New Mapping'}</h2>
-                            <button className="bonus-btn-icon" onClick={() => setShowModal(false)}><X size={24} /></button>
+                            <button className="modal-close" onClick={() => setShowModal(false)}><X size={24} /></button>
                         </div>
                         <form onSubmit={handleSubmit}>
-                            <div className="bonus-modal-body">
-                                <div className="bonus-form-group">
-                                    <label>Mapping Name</label>
-                                    <input required type="text" className="bonus-form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Executive Bonus" />
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <label className="form-label">Mapping Name</label>
+                                    <input required type="text" className="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Executive Bonus" />
                                 </div>
-                                <div className="bonus-form-group">
-                                    <label>Rating Scale</label>
-                                    <select className="bonus-form-input" value={formData.rating_scale} onChange={e => setFormData({...formData, rating_scale: e.target.value})}>
+                                <div className="form-group">
+                                    <label className="form-label">Rating Scale</label>
+                                    <select className="form-select" value={formData.rating_scale} onChange={e => setFormData({...formData, rating_scale: e.target.value})}>
                                         <option value="">Select Scale...</option>
                                         {scales.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
                                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
-                                    <div className="bonus-form-group">
-                                        <label>Min Rating</label>
-                                        <input type="number" step="0.1" className="bonus-form-input" value={formData.min_rating} onChange={e => setFormData({...formData, min_rating: parseFloat(e.target.value)})} />
+                                    <div className="form-group">
+                                        <label className="form-label">Min Rating</label>
+                                        <input type="number" step="0.1" className="form-input" value={formData.min_rating} onChange={e => setFormData({...formData, min_rating: parseFloat(e.target.value)})} />
                                     </div>
-                                    <div className="bonus-form-group">
-                                        <label>Max Rating</label>
-                                        <input type="number" step="0.1" className="bonus-form-input" value={formData.max_rating} onChange={e => setFormData({...formData, max_rating: parseFloat(e.target.value)})} />
+                                    <div className="form-group">
+                                        <label className="form-label">Max Rating</label>
+                                        <input type="number" step="0.1" className="form-input" value={formData.max_rating} onChange={e => setFormData({...formData, max_rating: parseFloat(e.target.value)})} />
                                     </div>
                                 </div>
-                                <div className="bonus-form-group">
-                                    <label>Bonus Percentage</label>
-                                    <input type="number" step="0.5" className="bonus-form-input" value={formData.bonus_percentage} onChange={e => setFormData({...formData, bonus_percentage: parseFloat(e.target.value)})} />
+                                <div className="form-group">
+                                    <label className="form-label">Bonus Percentage</label>
+                                    <input type="number" step="0.5" className="form-input" value={formData.bonus_percentage} onChange={e => setFormData({...formData, bonus_percentage: parseFloat(e.target.value)})} />
                                 </div>
-                                <div className="bonus-form-group">
-                                    <label>Notes</label>
-                                    <textarea className="bonus-form-input" rows="3" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+                                <div className="form-group">
+                                    <label className="form-label">Notes</label>
+                                    <textarea className="form-textarea" rows="3" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
                                 </div>
-                                <div className="bonus-form-group" style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                                <div className="form-group" style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
                                     <input 
                                         type="checkbox" 
-                                        className="bonus-custom-checkbox" 
-                                        style={{width: '1rem', height: '1rem'}}
+                                        style={{width: '1rem', height: '1rem', accentColor: 'var(--rv-color-gold)'}}
                                         checked={formData.is_active} 
                                         onChange={e => setFormData({...formData, is_active: e.target.checked})} 
                                     />
-                                    <label style={{marginBottom: 0}}>Is Active</label>
+                                    <label style={{marginBottom: 0, color: 'white'}}>Is Active</label>
                                 </div>
                             </div>
-                            <div className="bonus-modal-footer">
-                                <button type="button" className="bonus-btn bonus-btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
-                                <button type="submit" className="bonus-btn bonus-btn-gold">Save Mapping</button>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Save Mapping</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Test Calculator Modal */}
+            {showTestModal && (
+                <div className="modal-overlay" onClick={() => setShowTestModal(false)}>
+                    <div className="modal" style={{maxWidth: '400px'}} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2><Calculator size={20} style={{marginRight: '8px', verticalAlign: 'middle'}}/>Test Calculator</h2>
+                            <button className="modal-close" onClick={() => setShowTestModal(false)}><X size={24} /></button>
+                        </div>
+                        <form onSubmit={handleTestCalculation}>
+                            <div className="modal-body">
+                                <p className="text-sm text-gray-500 mb-4" style={{color: 'var(--rv-color-mist)'}}>Simulate a rating to see which bonus rule applies.</p>
+                                <div className="form-group">
+                                    <label className="form-label">Rating (0-5)</label>
+                                    <input required type="number" step="0.1" min="0" max="5" className="form-input" 
+                                        value={testData.rating} 
+                                        onChange={e => setTestData({...testData, rating: parseFloat(e.target.value)})} 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Employee Level (Optional)</label>
+                                    <select className="form-select" 
+                                        value={testData.employee_level} 
+                                        onChange={e => setTestData({...testData, employee_level: e.target.value})}
+                                    >
+                                        <option value="">Any Level</option>
+                                        <option value="Senior">Senior</option>
+                                        <option value="Mid">Mid</option>
+                                        <option value="Junior">Junior</option>
+                                        <option value="Manager">Manager</option>
+                                    </select>
+                                </div>
+
+                                {testResult && (
+                                    <div className="test-result-box">
+                                        <div className="result-label">Result</div>
+                                        <div className="result-value">
+                                            {testResult.bonus_percentage}% Bonus
+                                        </div>
+                                        <div className="result-sub">
+                                            Based on Rating: {testResult.rating}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-outline" onClick={() => setShowTestModal(false)}>Close</button>
+                                <button type="submit" className="btn btn-primary" disabled={testLoading}>
+                                    {testLoading ? 'Calculating...' : 'Calculate'}
+                                </button>
                             </div>
                         </form>
                     </div>
