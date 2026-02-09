@@ -125,6 +125,8 @@ const menuItems = [
             { id: 'payslips', label: 'Payslips', translationKey: 'common.payslips', path: '/dashboard/payroll/payslips' },
             { id: 'encashments', label: 'Encashments & Reimbursements', translationKey: 'common.encashments', path: '/dashboard/payroll/encashments-reimbursements', permission: 'payroll.manage' },
             { id: 'tax', label: 'Tax Management', translationKey: 'common.tax', path: '/dashboard/payroll/tax', permission: 'payroll.manage' },
+            { id: 'advance-salary', label: 'Advance Salary', path: '/dashboard/payroll/advance-salary' },
+            { id: 'advance-approvals', label: 'Advance Approvals', path: '/dashboard/payroll/advance-approvals', adminOnly: true },
             { id: 'loans', label: 'Loans & EMI', translationKey: 'common.loans', path: '/dashboard/payroll/loans', permission: 'payroll.manage' },
             { id: 'loan-approvals', label: 'Loan Approvals', path: '/dashboard/payroll/loan-approvals', adminOnly: true },
             { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
@@ -436,6 +438,8 @@ export default function Sidebar() {
         try {
             const token = localStorage.getItem('accessToken');
 
+            const employeeId = localStorage.getItem('employeeId');
+
             // Clock out with work report
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/check-out/`, {
                 method: 'POST',
@@ -444,6 +448,7 @@ export default function Sidebar() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
+                    employee: employeeId,
                     work_report: {
                         tasks_completed: workReport.tasks,
                         notes: workReport.notes
@@ -455,6 +460,10 @@ export default function Sidebar() {
                 setShowWorkReportModal(false);
                 setWorkReport({ tasks: '', notes: '' });
                 logout();
+            } else {
+                const errorData = await response.json();
+                console.error('Checkout failed:', errorData);
+                alert('Checkout failed: ' + (errorData.error || errorData.detail || 'Unknown error. Please try again or contact support.'));
             }
         } catch (err) {
             console.error('Error submitting report:', err);

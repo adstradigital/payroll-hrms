@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import {
     getLoans, createLoan, updateLoan, deleteLoan,
-    getAllEmployees, generateLoanSchedule
+    getAllEmployees, generateLoanSchedule, getMyProfile
 } from '@/api/api_clientadmin';
 import './Loans.css';
 
@@ -43,16 +43,44 @@ export default function Loans() {
 
     // Auto-select logged-in employee
     useEffect(() => {
-        if (employees.length > 0) {
+        const detectEmployee = async () => {
+            // 1. Try LocalStorage
             const storedEmpId = localStorage.getItem('employeeId');
             if (storedEmpId) {
                 setFormData(prev => ({ ...prev, employee: storedEmpId }));
-            } else if (user?.email) {
-                const found = employees.find(e => e.email === user.email);
+                return;
+            }
+
+            // 2. Try API (My Profile) - Source of Truth
+            try {
+                const response = await getMyProfile();
+                if (response.data && response.data.id) {
+                    console.log('Detected Employee ID from API:', response.data.id);
+                    setFormData(prev => ({ ...prev, employee: response.data.id }));
+                    localStorage.setItem('employeeId', response.data.id); // Save for future
+                    return;
+                }
+            } catch (err) {
+                console.warn('Auto-detect API failed:', err);
+            }
+
+            // 3. Fallback: List Matching
+            if (employees.length > 0 && user) {
+                // Try email match
+                let found = employees.find(e => e.email === user.email);
+                // Try name match fallback
+                if (!found && user.name) {
+                    found = employees.find(e => e.full_name?.toLowerCase() === user.name.toLowerCase());
+                }
+
                 if (found) {
                     setFormData(prev => ({ ...prev, employee: found.id }));
                 }
             }
+        };
+
+        if (!formData.employee) {
+            detectEmployee();
         }
     }, [employees, user]);
 
@@ -86,6 +114,7 @@ export default function Loans() {
         }
 
         setActionLoading(true);
+        console.log('Submitting Loan Request:', formData);
         try {
             await createLoan(formData);
             setIsModalOpen(false);
@@ -93,9 +122,10 @@ export default function Loans() {
             fetchData();
         } catch (err) {
             console.error('Failed to create loan:', err);
+            console.error('Error Response Data:', err.response?.data);
             const errorData = err.response?.data;
-            const errorMessage = errorData?.error || (typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData)) || 'Unknown error';
-            alert('Error creating loan: ' + errorMessage);
+            const errorMessage = errorData?.error || (typeof errorData === 'object' ? JSON.stringify(errorData, null, 2) : String(errorData)) || 'Unknown error';
+            alert('Error creating loan:\n' + errorMessage);
         } finally {
             setActionLoading(false);
         }
@@ -332,9 +362,23 @@ export default function Loans() {
                                     <div className="form-column">
                                         <div className="form-group">
                                             <label>Employee</label>
-                                            <div className="premium-input" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'default' }}>
-                                                {employees.find(e => e.id === formData.employee)?.full_name || user?.name || 'Current Employee'}
-                                            </div>
+                                            {!formData.employee ? (
+                                                <select
+                                                    className="premium-select"
+                                                    required
+                                                    value={formData.employee}
+                                                    onChange={e => setFormData({ ...formData, employee: e.target.value })}
+                                                >
+                                                    <option value="">Select Employee</option>
+                                                    {Array.isArray(employees) && employees.map(emp => (
+                                                        <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_id})</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="premium-input" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'default' }}>
+                                                    {employees.find(e => e.id === formData.employee)?.full_name || user?.name || 'Current Employee'}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="form-group">
                                             <label>Loan Type</label>

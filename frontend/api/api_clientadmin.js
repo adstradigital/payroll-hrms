@@ -115,6 +115,8 @@ export const downloadPayslip = (id) => axiosInstance.get(`${CLIENTADMIN_ENDPOINT
 });
 export const getPayslipDashboardStats = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_DASHBOARD_STATS, { params });
 export const getMyPayslips = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_MY_PAYSLIPS);
+export const addPayslipComponent = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYSLIPS}${id}/add-component/`, data);
+export const removePayslipComponent = (id, componentId) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.PAYSLIPS}${id}/components/${componentId}/`);
 
 // Tax Management
 export const getTaxSlabs = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.TAX_SLABS, { params });
@@ -160,6 +162,14 @@ export const createLoan = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOA
 export const updateLoan = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.LOAN_DETAIL(id), data);
 export const deleteLoan = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.LOAN_DETAIL(id));
 export const generateLoanSchedule = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOAN_GENERATE_SCHEDULE(id));
+
+// Advance Salary
+export const getAdvances = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ADVANCES, { params });
+export const getAdvanceById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ADVANCE_DETAIL(id));
+export const createAdvance = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ADVANCES, data);
+export const updateAdvance = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ADVANCE_DETAIL(id), data);
+export const deleteAdvance = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ADVANCE_DETAIL(id));
+export const getAdvanceStats = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ADVANCE_STATS);
 
 // Payroll Settings
 export const getPayrollSettings = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_SETTINGS);
@@ -253,7 +263,7 @@ export const updateGoalProgress = (id, progress) => axiosInstance.post(CLIENTADM
 export const getReviews = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REVIEWS, { params });
 export const getReviewById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REVIEW_DETAIL(id));
 export const updatePerformanceReview = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.REVIEW_DETAIL(id), data);
-export const createReviews = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_BULK_CREATE, data); 
+export const createReviews = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_BULK_CREATE, data);
 export const submitSelfAssessment = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_SUBMIT_SELF(id), data);
 export const submitManagerReview = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_SUBMIT_MANAGER(id), data);
 export const approveReview = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_APPROVE(id));
