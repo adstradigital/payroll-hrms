@@ -169,6 +169,11 @@ class PayrollPeriod(BaseModel):
     total_deductions = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     total_net = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     
+    # Granular Totals
+    total_lop = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_statutory = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_advance_recovery = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    
     processed_by = models.ForeignKey(
         Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_payrolls'
     )
@@ -212,8 +217,10 @@ class PaySlip(BaseModel):
     total_deductions = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     net_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
-    # LOP/Overtime adjustments
+    # Granular deductions
     lop_deduction = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    statutory_deductions = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    advance_recovery = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     overtime_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     # Payment details
@@ -264,7 +271,8 @@ class PaySlip(BaseModel):
         proration_ratio = paid_days / working_days_val if working_days_val > 0 else Decimal(0)
         
         # Clean up existing calculated components to regenerate them
-        self.components.all().delete()
+        # Only delete components that are NOT manual
+        self.components.filter(is_manual=False).delete()
         # Detach any EMIs linked to this payslip (they will be re-attached if still valid)
         EMI.objects.filter(payslip=self).update(payslip=None)
         
@@ -291,6 +299,9 @@ class PaySlip(BaseModel):
                     defaults={'amount': final_basic}
                 )
             
+        statutory_deductions_val = Decimal(0)
+        advance_recovery_val = Decimal(0)
+        
         for comp in components:
             calc_type = comp.component.calculation_type
             base_amount = comp.amount
@@ -314,7 +325,7 @@ class PaySlip(BaseModel):
             else:
                 # Default to fixed if unknown or formula (for now)
                 final_amount = base_amount
-
+ 
             # Round to 2 decimal places
             final_amount = final_amount.quantize(Decimal('0.01'))
             
@@ -322,7 +333,8 @@ class PaySlip(BaseModel):
             PaySlipComponent.objects.create(
                 payslip=self,
                 component=comp.component,
-                amount=final_amount
+                amount=final_amount,
+                is_manual=False
             )
             
             # Add to totals
@@ -330,6 +342,18 @@ class PaySlip(BaseModel):
                 total_earnings += final_amount
             else:
                 total_deductions += final_amount
+                if comp.component.is_statutory:
+                    statutory_deductions_val += final_amount
+        
+        # Add Manual Components to totals
+        manual_components = self.components.filter(is_manual=True)
+        for mc in manual_components:
+            if mc.component.component_type == 'earning':
+                total_earnings += mc.amount
+            else:
+                total_deductions += mc.amount
+                if mc.component.is_statutory:
+                    statutory_deductions_val += mc.amount
                 
         # 4. Update Totals
         self.gross_earnings = total_earnings + self.overtime_amount
@@ -345,7 +369,7 @@ class PaySlip(BaseModel):
                 potential_earnings += comp.amount
                 
         self.lop_deduction = (potential_earnings - total_earnings).quantize(Decimal('0.01'))
-
+ 
         # 5. Handle Statutory Deductions based on settings
         settings = PayrollSettings.objects.filter(company=self.employee.company).first()
         if settings:
@@ -359,9 +383,10 @@ class PaySlip(BaseModel):
                     
                     pf_emp_amount = (pf_base * settings.pf_contribution_rate_employee / 100).quantize(Decimal('0.01'))
                     if pf_emp_amount > 0:
-                        PaySlipComponent.objects.create(payslip=self, component=pf_component, amount=pf_emp_amount)
+                        PaySlipComponent.objects.create(payslip=self, component=pf_component, amount=pf_emp_amount, is_manual=False)
                         self.total_deductions += pf_emp_amount
-
+                        statutory_deductions_val += pf_emp_amount
+ 
             # ESI Calculation
             if settings.esi_enabled:
                 esi_component = SalaryComponent.objects.filter(company=self.employee.company, statutory_type='esi', is_active=True).first()
@@ -370,15 +395,17 @@ class PaySlip(BaseModel):
                     if self.gross_earnings <= settings.esi_wage_ceiling:
                         esi_emp_amount = (self.gross_earnings * settings.esi_contribution_rate_employee / 100).quantize(Decimal('0.01'))
                         if esi_emp_amount > 0:
-                            PaySlipComponent.objects.create(payslip=self, component=esi_component, amount=esi_emp_amount)
+                            PaySlipComponent.objects.create(payslip=self, component=esi_component, amount=esi_emp_amount, is_manual=False)
                             self.total_deductions += esi_emp_amount
-
+                            statutory_deductions_val += esi_emp_amount
+ 
             # TDS logic (existing but refactored to use fetched settings)
             if not settings.enable_auto_tds:
                 tds_comps = self.components.filter(component__statutory_type='tds')
                 for tc in tds_comps:
                     if tc.component.component_type == 'deduction':
                         self.total_deductions -= tc.amount
+                        statutory_deductions_val -= tc.amount # Safe subtract
                 tds_comps.delete()
         
         # 5. Process Loan EMIs
@@ -389,33 +416,64 @@ class PaySlip(BaseModel):
             status='unpaid',
             payslip__isnull=True
         )
+        
+        # Aggregate by type to avoid duplicates and distinguish Advance
+        emi_aggregates = {} # code -> {'amount': ..., 'name': ..., 'emis': []}
+        
         for emi in unpaid_emis:
+            is_advance = emi.loan.loan_type in ['advance', 'Salary Advance']
+            
+            comp_code = 'SALARY_ADVANCE' if is_advance else 'LOAN_EMI'
+            comp_name = 'Salary Advance Recovery' if is_advance else 'Loan EMI'
+            
+            if comp_code not in emi_aggregates:
+                emi_aggregates[comp_code] = {
+                    'amount': Decimal(0),
+                    'name': comp_name,
+                    'emis': []
+                }
+            
+            emi_aggregates[comp_code]['amount'] += emi.amount
+            emi_aggregates[comp_code]['emis'].append(emi)
+            
+        for code, data in emi_aggregates.items():
+            amount = data['amount']
+            
+            # Get or Create Component
             loan_component = SalaryComponent.objects.filter(
                 company=self.employee.company, 
-                code='LOAN_EMI'
+                code=code
             ).first()
+            
             if not loan_component:
                 loan_component = SalaryComponent.objects.create(
                     company=self.employee.company,
-                    name='Loan EMI',
-                    code='LOAN_EMI',
+                    name=data['name'],
+                    code=code,
                     component_type='deduction',
                     statutory_type='other'
                 )
             
-            # Check if already added to avoid duplicates if rerun
             if not self.components.filter(component=loan_component).exists():
                 PaySlipComponent.objects.create(
                     payslip=self,
                     component=loan_component,
-                    amount=emi.amount
+                    amount=amount,
+                    is_manual=False
                 )
-                self.total_deductions += emi.amount
+                self.total_deductions += amount
                 
-                # Link to payslip but don't mark as paid yet
-                emi.payslip = self
-                emi.save()
-
+                if code == 'SALARY_ADVANCE':
+                    advance_recovery_val += amount
+                
+                for emi in data['emis']:
+                    emi.payslip = self
+                    emi.save()
+ 
+        # Update granular fields
+        self.statutory_deductions = statutory_deductions_val
+        self.advance_recovery = advance_recovery_val
+        
         # Final Net Salary Update
         self.net_salary = self.gross_earnings - self.total_deductions
 
@@ -426,6 +484,7 @@ class PaySlipComponent(BaseModel):
     payslip = models.ForeignKey(PaySlip, on_delete=models.CASCADE, related_name='components')
     component = models.ForeignKey(SalaryComponent, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_manual = models.BooleanField(default=False)
     
     class Meta:
         unique_together = ['payslip', 'component']
@@ -472,7 +531,7 @@ class Loan(BaseModel):
         super().save(*args, **kwargs)
 
     def generate_emis(self):
-        """Generates EMI schedule starting from next month of disbursement"""
+        """Generates EMI schedule"""
         if self.status not in ['approved', 'disbursed']:
             return
         
@@ -481,11 +540,25 @@ class Loan(BaseModel):
             
         emi_amount = (self.total_payable / self.tenure_months).quantize(Decimal('0.01'))
         
-        # Start from next month of disbursement
+        # Determine Start Date
         start_date = self.disbursement_date or self.created_at.date()
         
         curr_month = start_date.month
         curr_year = start_date.year
+        
+        # Logic: 
+        # Standard Loans -> Recovery starts Next Month
+        # Salary Advance -> Recovery starts Same Month (usually)
+        
+        is_advance = self.loan_type in ['advance', 'Salary Advance']
+        
+        if is_advance:
+            # We want the first loop to result in curr_month. 
+            # Since the loop does `curr_month += 1`, we decrement it once here.
+            curr_month -= 1
+            if curr_month == 0:
+                curr_month = 12
+                curr_year -= 1
         
         for i in range(self.tenure_months):
             curr_month += 1

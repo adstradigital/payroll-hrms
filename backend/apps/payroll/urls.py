@@ -9,7 +9,9 @@ from .views import (
     tax_slab_list_create, tax_slab_detail, 
     tax_declaration_list_create, tax_declaration_detail, tax_dashboard_stats,
     payroll_settings_detail,
-    loan_list_create, loan_detail, loan_generate_schedule
+    loan_list_create, loan_detail, loan_generate_schedule,
+    payslip_add_component, payslip_remove_component,
+    advance_salary_list_create, advance_salary_detail, advance_salary_stats
 )
 from .payroll_generation import generate_payroll_advanced, get_payroll_reports
 
@@ -54,6 +56,8 @@ urlpatterns = [
     path('payslips/dashboard-stats/', payslip_dashboard_stats, name='payslip-dashboard-stats'),
     path('payslips/<uuid:pk>/download/', payslip_download, name='payslip-download'),
     path('payslips/<uuid:pk>/recalculate/', payslip_recalculate, name='payslip-recalculate'),
+    path('payslips/<uuid:pk>/add-component/', payslip_add_component, name='payslip-add-component'),
+    path('payslips/<uuid:pk>/components/<uuid:component_id>/', payslip_remove_component, name='payslip-remove-component'),
     
     # Loans & Advances
     path('loans/', loan_list_create, name='loan-list'),
@@ -63,4 +67,9 @@ urlpatterns = [
     # Payroll generation and reports
     path('generate/', generate_payroll_advanced, name='generate-payroll'),
     path('reports/', get_payroll_reports, name='payroll-reports'),
+
+    # Advance Salary (Dedicated Endpoints)
+    path('advances/', advance_salary_list_create, name='advance-salary-list'),
+    path('advances/<uuid:pk>/', advance_salary_detail, name='advance-salary-detail'),
+    path('advances/dashboard/stats/', advance_salary_stats, name='advance-salary-stats'),
 ]

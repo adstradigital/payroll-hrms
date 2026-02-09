@@ -16,7 +16,8 @@ from apps.attendance.models import Attendance
 from apps.leave.models import LeaveRequest
 from .models import (
     PayrollPeriod, PaySlip, PaySlipComponent,
-    EmployeeSalary, EmployeeSalaryComponent, SalaryComponent
+    EmployeeSalary, EmployeeSalaryComponent, SalaryComponent,
+    EMI
 )
 
 logger = logging.getLogger(__name__)
@@ -32,99 +33,109 @@ def generate_payroll_advanced(request):
     Advanced payroll generation with automatic calculations
     POST /payroll/generate/
     """
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request):
-        try:
-            company_id = request.data.get('company_id')
-            month = request.data.get('month')
-            year = request.data.get('year')
-            
-            if not all([month, year]):
-                return Response(
-                    {'error': 'month and year are required'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Infer company_id if not provided
-            if not company_id:
-                user = request.user
-                if hasattr(user, 'employee_profile') and user.employee_profile:
-                    company_id = user.employee_profile.company_id
-                elif hasattr(user, 'organization') and user.organization:
-                    company_id = user.organization.id
-            
-            if not company_id:
-                return Response(
-                     {'error': 'company_id is required or could not be determined from user context'},
-                     status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Create payroll period dates
-            start_date = date(int(year), int(month), 1)
-            end_date = date(int(year), int(month), monthrange(int(year), int(month))[1])
-            
-            # Get all active employees
-            employees = Employee.objects.filter(
-                company_id=company_id,
-                status='active'
-            ).select_related('department', 'designation')
-            
-            if not employees.exists():
-                return Response(
-                    {'error': 'No active employees found'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            payroll_data = []
-            total_gross = Decimal(0)
-            total_deductions = Decimal(0)
-            total_net = Decimal(0)
-            errors = []
-            
-            for employee in employees:
-                try:
-                    # Calculate employee payroll
-                    payroll_detail = self._calculate_employee_payroll(
-                        employee, start_date, end_date
-                    )
-                    payroll_data.append(payroll_detail)
-                    
-                    total_gross += payroll_detail['gross_salary']
-                    total_deductions += payroll_detail['total_deductions']
-                    total_net += payroll_detail['net_salary']
-                    
-                except Exception as e:
-                    logger.error(f"Error calculating payroll for {employee}: {str(e)}")
-                    errors.append({
-                        'employee_id': str(employee.id),
-                        'employee_name': str(employee),
-                        'error': str(e)
-                    })
-            
-            response_data = {
-                'success': True,
-                'month': month,
-                'year': year,
-                'employees_processed': len(payroll_data),
-                'summary': {
-                    'total_gross': float(total_gross),
-                    'total_deductions': float(total_deductions),
-                    'total_net': float(total_net)
-                },
-                'payroll_data': payroll_data,
-                'errors': errors
-            }
-            
-            return Response(response_data, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f"Error in payroll generation: {str(e)}")
+    try:
+        company_id = request.data.get('company_id')
+        month = request.data.get('month')
+        year = request.data.get('year')
+        
+        if not all([month, year]):
             return Response(
-                {'error': 'Failed to generate payroll', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {'error': 'month and year are required'},
+                status=status.HTTP_400_BAD_REQUEST
             )
-    
+        
+        # Infer company_id if not provided
+        if not company_id:
+            user = request.user
+            if hasattr(user, 'employee_profile') and user.employee_profile:
+                company_id = user.employee_profile.company_id
+            elif hasattr(user, 'organization') and user.organization:
+                company_id = user.organization.id
+        
+        if not company_id:
+            return Response(
+                 {'error': 'company_id is required or could not be determined from user context'},
+                 status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create payroll period dates
+        start_date = date(int(year), int(month), 1)
+        end_date = date(int(year), int(month), monthrange(int(year), int(month))[1])
+        
+        # Get all active employees
+        employees = Employee.objects.filter(
+            company_id=company_id,
+            status='active'
+        ).select_related('department', 'designation')
+        
+        if not employees.exists():
+            return Response(
+                {'error': 'No active employees found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        payroll_data = []
+        total_gross = Decimal(0)
+        total_deductions = Decimal(0)
+        total_net = Decimal(0)
+        total_lop = Decimal(0)
+        total_statutory = Decimal(0)
+        total_advance = Decimal(0)
+        errors = []
+        
+        # Helper for calculation
+        calc_engine = PayrollCalculationEngine()
+        
+        for employee in employees:
+            try:
+                # Calculate employee payroll
+                payroll_detail = calc_engine._calculate_employee_payroll(
+                    employee, start_date, end_date
+                )
+                payroll_data.append(payroll_detail)
+                
+                total_gross += Decimal(str(payroll_detail['gross_earnings']))
+                total_deductions += Decimal(str(payroll_detail['total_deductions']))
+                total_net += Decimal(str(payroll_detail['net_salary']))
+                total_lop += Decimal(str(payroll_detail['lop_deduction']))
+                total_statutory += Decimal(str(payroll_detail['statutory_deductions']))
+                total_advance += Decimal(str(payroll_detail['advance_recovery']))
+                
+            except Exception as e:
+                logger.error(f"Error calculating payroll for {employee}: {str(e)}")
+                errors.append({
+                    'employee_id': str(employee.id),
+                    'employee_name': str(employee),
+                    'error': str(e)
+                })
+        
+        response_data = {
+            'success': True,
+            'month': month,
+            'year': year,
+            'employees_processed': len(payroll_data),
+            'summary': {
+                'total_gross': float(total_gross),
+                'total_deductions': float(total_deductions),
+                'total_net': float(total_net),
+                'total_lop': float(total_lop),
+                'total_statutory': float(total_statutory),
+                'total_advance_recovery': float(total_advance)
+            },
+            'payroll_data': payroll_data,
+            'errors': errors
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error in payroll generation: {str(e)}")
+        return Response(
+            {'error': 'Failed to generate payroll', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+class PayrollCalculationEngine:
     def _calculate_employee_payroll(self, employee, start_date, end_date):
         """Calculate complete payroll for an employee"""
         try:
@@ -183,6 +194,9 @@ def generate_payroll_advanced(request):
             deductions = []
             total_earnings = prorated_basic
             total_deductions = Decimal(0)
+            statutory_deductions = Decimal(0)
+            advance_recovery = Decimal(0)
+            lop_deduction = Decimal(0)
             
             try:
                 salary_components = EmployeeSalaryComponent.objects.filter(
@@ -201,25 +215,27 @@ def generate_payroll_advanced(request):
                         earnings.append({
                             'name': comp.component.name,
                             'code': comp.component.code,
-                            'amount': float(comp_amount),
+                            'amount': float(comp_amount.quantize(Decimal('0.01'))),
                             'calc_type': comp.component.calculation_type
                         })
                         total_earnings += comp_amount
                     else:
+                        amount_val = comp_amount.quantize(Decimal('0.01'))
                         deductions.append({
                             'name': comp.component.name,
                             'code': comp.component.code,
-                            'amount': float(comp_amount),
+                            'amount': float(amount_val),
                             'calc_type': comp.component.calculation_type
                         })
                         total_deductions += comp_amount
+                        if comp.component.is_statutory:
+                            statutory_deductions += comp_amount
             except Exception:
                 pass
             
-            lop_deduction = Decimal(0)
             if lop_days > 0:
                 per_day_salary = basic_salary / Decimal(working_days)
-                lop_deduction = per_day_salary * Decimal(lop_days) 
+                lop_deduction = (per_day_salary * Decimal(lop_days)).quantize(Decimal('0.01'))
                 deductions.append({
                     'name': 'Loss of Pay',
                     'code': 'LOP',
@@ -231,12 +247,39 @@ def generate_payroll_advanced(request):
                 earnings.append({
                     'name': 'Overtime Pay',
                     'code': 'OT',
-                    'amount': float(overtime_amount),
+                    'amount': float(overtime_amount.quantize(Decimal('0.01'))),
                     'calc_type': 'attendance_based'
                 })
                 total_earnings += overtime_amount
 
-            gross_earnings = total_earnings
+            # Process Loan/Advance EMIs (Preview)
+            current_month_emis = EMI.objects.filter(
+                loan__employee=employee,
+                month=end_date.month,
+                year=end_date.year,
+                status='unpaid'
+            )
+            
+            for emi in current_month_emis:
+                is_advance = emi.loan.loan_type in ['advance', 'Salary Advance']
+                comp_name = 'Salary Advance Recovery' if is_advance else 'Loan EMI'
+                comp_code = 'SALARY_ADVANCE' if is_advance else 'LOAN_EMI'
+                
+                deductions.append({
+                    'name': comp_name,
+                    'code': comp_code,
+                    'amount': float(emi.amount.quantize(Decimal('0.01'))),
+                    'calc_type': 'fixed'
+                })
+                total_deductions += emi.amount
+                if is_advance:
+                    advance_recovery += emi.amount
+                else:
+                    # Loan EMI is often considered other deduction, but let's check
+                    pass
+
+            gross_earnings = total_earnings.quantize(Decimal('0.01'))
+            total_deductions = total_deductions.quantize(Decimal('0.01'))
             net_salary = gross_earnings - total_deductions
             
             return {
@@ -253,11 +296,18 @@ def generate_payroll_advanced(request):
                 },
                 'earnings': earnings,
                 'deductions': deductions,
-                'basic_salary': float(prorated_basic),
+                'basic_salary': float(prorated_basic.quantize(Decimal('0.01'))),
                 'gross_earnings': float(gross_earnings),
                 'total_deductions': float(total_deductions),
-                'net_salary': float(net_salary)
+                'net_salary': float(net_salary.quantize(Decimal('0.01'))),
+                'lop_deduction': float(lop_deduction),
+                'statutory_deductions': float(statutory_deductions.quantize(Decimal('0.01'))),
+                'advance_recovery': float(advance_recovery.quantize(Decimal('0.01')))
             }
+            
+        except Exception as e:
+            logger.error(f"Error calculating payroll for employee: {str(e)}")
+            raise
             
         except Exception as e:
             logger.error(f"Error calculating payroll for employee: {str(e)}")

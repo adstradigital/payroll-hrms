@@ -158,6 +158,9 @@ export default function RunPayroll() {
                 total_net: res.data.total_net,
                 total_gross: res.data.total_gross || "0",
                 total_lop: res.data.total_lop || "0",
+                total_statutory: res.data.total_statutory || "0",
+                total_advance_recovery: res.data.total_advance_recovery || "0",
+                total_deductions: res.data.total_deductions || "0",
                 total_employees: res.data.total_employees,
                 status: 'Completed'
             });
@@ -422,19 +425,19 @@ export default function RunPayroll() {
                                                                     <ShieldCheck size={16} className="text-amber-500" />
                                                                 </div>
                                                                 <div className="rp-stat-value text-amber-500">
-                                                                    {previewData ? formatCurrency(previewData.summary.total_deductions - (previewData.summary.total_lop || 0)) : '--'}
+                                                                    {previewData ? formatCurrency(previewData.summary.total_statutory) : '--'}
                                                                 </div>
                                                                 <div className="rp-stat-meta">PF, ESI & Taxes</div>
                                                             </div>
                                                             <div className="rp-stat-box">
                                                                 <div className="rp-stat-header">
-                                                                    <span>Gross Earnings</span>
-                                                                    <DollarSign size={16} className="text-brand" />
+                                                                    <span>Advance Recovery</span>
+                                                                    <ArrowRight size={16} className="text-blue-400" />
                                                                 </div>
-                                                                <div className="rp-stat-value">
-                                                                    {previewData ? formatCurrency(previewData.summary.total_gross) : '--'}
+                                                                <div className="rp-stat-value text-blue-400">
+                                                                    {previewData ? formatCurrency(previewData.summary.total_advance_recovery) : '--'}
                                                                 </div>
-                                                                <div className="rp-stat-meta">Before Deductions</div>
+                                                                <div className="rp-stat-meta">Salary Advances</div>
                                                             </div>
                                                         </div>
 
@@ -452,6 +455,7 @@ export default function RunPayroll() {
                                                                             <th className="px-4 py-3 text-right">Gross Pay</th>
                                                                             <th className="px-4 py-3 text-right text-red-400">LOP</th>
                                                                             <th className="px-4 py-3 text-right text-amber-500">Statutory</th>
+                                                                            <th className="px-4 py-3 text-right text-blue-400">Advance</th>
                                                                             <th className="px-4 py-3 text-right">Net Salary</th>
                                                                         </tr>
                                                                     </thead>
@@ -462,11 +466,17 @@ export default function RunPayroll() {
                                                                                     <div className="text-white">{emp.name}</div>
                                                                                     <div className="text-xs text-muted">{emp.designation}</div>
                                                                                 </td>
+                                                                                <td className="px-4 py-2 text-right font-mono text-white">
+                                                                                    {formatCurrency(emp.gross_pay)}
+                                                                                </td>
                                                                                 <td className="px-4 py-2 text-right font-mono text-red-400">
                                                                                     {emp.lop_deduction > 0 ? `-${Math.round(emp.lop_deduction)}` : '-'}
                                                                                 </td>
                                                                                 <td className="px-4 py-2 text-right font-mono text-amber-500">
-                                                                                    {emp.total_deductions > emp.lop_deduction ? `-${Math.round(emp.total_deductions - emp.lop_deduction)}` : '-'}
+                                                                                    {emp.statutory_deductions > 0 ? `-${Math.round(emp.statutory_deductions)}` : '-'}
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-right font-mono text-blue-400">
+                                                                                    {emp.advance_recovery > 0 ? `-${Math.round(emp.advance_recovery)}` : '-'}
                                                                                 </td>
                                                                                 <td className="px-4 py-2 text-right font-mono font-bold text-white">
                                                                                     {formatCurrency(emp.net_pay)}
@@ -611,7 +621,11 @@ export default function RunPayroll() {
                                                     </div>
                                                     <div className="rp-calc-row" style={{ color: '#f59e0b' }}>
                                                         <span>Statutory Deductions</span>
-                                                        <span>- {formatCurrency(existingPeriod.total_deductions - existingPeriod.total_lop)}</span>
+                                                        <span>- {formatCurrency(existingPeriod.total_statutory)}</span>
+                                                    </div>
+                                                    <div className="rp-calc-row" style={{ color: '#60a5fa' }}>
+                                                        <span>Advance Salary Recovery</span>
+                                                        <span>- {formatCurrency(existingPeriod.total_advance_recovery)}</span>
                                                     </div>
                                                     <div className="rp-calc-row rp-calc-total">
                                                         <span>Net Disbursal</span>

@@ -127,6 +127,11 @@ export const CLIENTADMIN_ENDPOINTS = {
     LOAN_DETAIL: (id) => `${BASE_URL}/payroll/loans/${id}/`,
     LOAN_GENERATE_SCHEDULE: (id) => `${BASE_URL}/payroll/loans/${id}/generate-schedule/`,
 
+    // Advance Salary
+    ADVANCES: `${BASE_URL}/payroll/advances/`,
+    ADVANCE_DETAIL: (id) => `${BASE_URL}/payroll/advances/${id}/`,
+    ADVANCE_STATS: `${BASE_URL}/payroll/advances/dashboard/stats/`,
+
     // Tax Management
     TAX_SLABS: `${BASE_URL}/payroll/tax-slabs/`,
     TAX_SLAB_DETAIL: (id) => `${BASE_URL}/payroll/tax-slabs/${id}/`,
@@ -162,7 +167,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     ASSET_REQUEST_DETAIL: (id) => `${BASE_URL}/assets/requests/${id}/`,
     ASSET_REQUEST_PROCESS: (id) => `${BASE_URL}/assets/requests/${id}/process/`,
     ASSET_HISTORY: `${BASE_URL}/assets/history/`,
-    
+
     // Performance
     PERFORMANCE_DASHBOARD: `${BASE_URL}/performance/dashboard/`,
     PERFORMANCE_REPORTS: `${BASE_URL}/performance/reports/`,

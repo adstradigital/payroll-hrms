@@ -439,7 +439,8 @@ def payroll_period_generate(request):
             period.status = 'processing'; period.save()
             
             employees = Employee.objects.filter(company_id=company_id, status='active').select_related('department', 'designation')
-            payslips_created, total_gross, total_deductions, total_net, total_lop = 0, Decimal(0), Decimal(0), Decimal(0), Decimal(0)
+            payslips_created, total_gross, total_deductions, total_net = 0, Decimal(0), Decimal(0), Decimal(0)
+            total_lop, total_statutory, total_advance = Decimal(0), Decimal(0), Decimal(0)
             
             for employee in employees:
                 emp_salary = EmployeeSalary.objects.filter(employee=employee, is_current=True).first()
@@ -466,21 +467,69 @@ def payroll_period_generate(request):
                               'overtime_hours': overtime_hours, 'overtime_amount': overtime_amount}
                 )
                 payslip.calculate_salary(); payslip.save()
-                payslips_created += 1; total_gross += payslip.gross_earnings; total_deductions += payslip.total_deductions; total_net += payslip.net_salary; total_lop += payslip.lop_deduction
+                
+                payslips_created += 1
+                total_gross += payslip.gross_earnings
+                total_deductions += payslip.total_deductions
+                total_net += payslip.net_salary
+                total_lop += payslip.lop_deduction
+                total_statutory += payslip.statutory_deductions
+                total_advance += payslip.advance_recovery
 
                 if preview:
-                    preview_data.append({'employee_id': employee.employee_id, 'name': employee.full_name, 'designation': employee.designation.name if employee.designation else '-', 
-                                         'days_paid': float(working_days - lop_days), 'days_lop': float(lop_days), 'basic_salary': float(emp_salary.basic_salary), 
-                                         'gross_pay': float(payslip.gross_earnings), 'deductions': float(payslip.total_deductions), 'net_pay': float(payslip.net_salary), 'lop_deduction': float(payslip.lop_deduction)})
+                    preview_data.append({
+                        'employee_id': employee.employee_id, 
+                        'name': employee.full_name, 
+                        'designation': employee.designation.name if employee.designation else '-', 
+                        'days_paid': float(working_days - lop_days), 
+                        'days_lop': float(lop_days), 
+                        'basic_salary': float(emp_salary.basic_salary), 
+                        'gross_pay': float(payslip.gross_earnings), 
+                        'deductions': float(payslip.total_deductions), 
+                        'statutory_deductions': float(payslip.statutory_deductions),
+                        'advance_recovery': float(payslip.advance_recovery),
+                        'net_pay': float(payslip.net_salary), 
+                        'lop_deduction': float(payslip.lop_deduction)
+                    })
             
-            period.total_employees, period.total_gross, period.total_deductions, period.total_net, period.status, period.processed_at = payslips_created, total_gross, total_deductions, total_net, 'completed', timezone.now()
+            period.total_employees = payslips_created
+            period.total_gross = total_gross
+            period.total_deductions = total_deductions
+            period.total_net = total_net
+            period.total_lop = total_lop
+            period.total_statutory = total_statutory
+            period.total_advance_recovery = total_advance
+            period.status = 'completed'
+            period.processed_at = timezone.now()
             period.save()
             
             if preview:
                 transaction.savepoint_rollback(sid)
-                return Response({'preview': True, 'employees': preview_data, 'summary': {'total_gross': str(total_gross), 'total_net': str(total_net), 'total_deductions': str(total_deductions), 'total_lop': str(total_lop), 'employee_count': payslips_created}})
+                return Response({
+                    'preview': True, 
+                    'employees': preview_data, 
+                    'summary': {
+                        'total_gross': str(total_gross), 
+                        'total_net': str(total_net), 
+                        'total_deductions': str(total_deductions), 
+                        'total_lop': str(total_lop),
+                        'total_statutory': str(total_statutory),
+                        'total_advance_recovery': str(total_advance),
+                        'employee_count': payslips_created
+                    }
+                })
 
-            return Response({'message': f'Payroll generated for {payslips_created} employees', 'period_id': period.id, 'total_net': str(total_net), 'total_gross': str(total_gross), 'total_employees': payslips_created})
+            return Response({
+                'message': f'Payroll generated for {payslips_created} employees', 
+                'period_id': period.id, 
+                'total_net': str(total_net), 
+                'total_gross': str(total_gross), 
+                'total_deductions': str(total_deductions),
+                'total_lop': str(total_lop),
+                'total_statutory': str(total_statutory),
+                'total_advance_recovery': str(total_advance),
+                'total_employees': payslips_created
+            })
     except Exception as e: return Response({'error': str(e)}, status=500)
 
 @api_view(['POST'])
@@ -609,6 +658,81 @@ def payslip_recalculate(request, pk):
         return Response(serializer.data)
     except Exception as e:
         logger.error(f"Error in payslip_recalculate: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def payslip_add_component(request, pk):
+    """Add a manual component (earning/deduction) to a payslip"""
+    try:
+        company = get_client_company(request.user)
+        payslip = get_object_or_404(PaySlip, pk=pk, employee__company=company)
+        
+        name = request.data.get('name')
+        amount = Decimal(str(request.data.get('amount', 0)))
+        component_type = request.data.get('component_type', 'deduction') # default to deduction
+        
+        if not name or amount <= 0:
+            return Response({'error': 'Valid name and amount are required'}, status=400)
+            
+        # Find or create a SalaryComponent for this manual entry
+        comp = SalaryComponent.objects.filter(company=company, name__iexact=name).first()
+        
+        if not comp:
+            # Create ad-hoc component
+            code = name.upper().replace(' ', '_')[:20]
+            base_code = code
+            counter = 1
+            while SalaryComponent.objects.filter(company=company, code=code).exists():
+                code = f"{base_code}_{counter}"
+                counter += 1
+                
+            comp = SalaryComponent.objects.create(
+                company=company,
+                name=name,
+                code=code,
+                component_type=component_type,
+                calculation_type='fixed',
+                is_active=True
+            )
+            
+        # Create PaySlipComponent with is_manual=True
+        PaySlipComponent.objects.create(
+            payslip=payslip,
+            component=comp,
+            amount=amount,
+            is_manual=True
+        )
+        
+        # Recalculate to update totals
+        payslip.calculate_salary()
+        payslip.save()
+        
+        return Response(PaySlipSerializer(payslip).data)
+        
+    except Exception as e:
+        logger.error(f"Error in payslip_add_component: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def payslip_remove_component(request, pk, component_id):
+    """Remove a component from a payslip"""
+    try:
+        company = get_client_company(request.user)
+        payslip = get_object_or_404(PaySlip, pk=pk, employee__company=company)
+        
+        comp_rel = get_object_or_404(PaySlipComponent, id=component_id, payslip=payslip)
+        comp_rel.delete()
+        
+        # Recalculate totals
+        payslip.calculate_salary()
+        payslip.save()
+        
+        return Response(PaySlipSerializer(payslip).data)
+        
+    except Exception as e:
+        logger.error(f"Error in payslip_remove_component: {str(e)}", exc_info=True)
         return Response({'error': str(e)}, status=500)
 
 
@@ -794,3 +918,122 @@ def loan_generate_schedule(request, pk):
         loan.generate_emis()
         return Response({'message': 'EMI schedule generated successfully', 'emis': EMISerializer(loan.emis.all(), many=True).data})
     except Exception as e: return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def advance_salary_list_create(request):
+    """
+    Dedicated view for Advance Salary requests.
+    Forces loan_type='advance' and interest_rate=0.
+    """
+    try:
+        company = get_client_company(request.user)
+        if request.method == 'GET':
+            queryset = Loan.objects.filter(company=company, loan_type__in=['advance', 'Salary Advance']).select_related('employee')
+            status_filter = request.query_params.get('status')
+            employee_id = request.query_params.get('employee')
+            
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+            if employee_id:
+                queryset = queryset.filter(employee_id=employee_id)
+                
+            return Response(LoanSerializer(queryset.order_by('-created_at'), many=True).data)
+            
+        elif request.method == 'POST':
+            # Pre-fill specific fields for Advance Salary
+            data = request.data.copy()
+            data['loan_type'] = 'advance'
+            data['interest_rate'] = 0
+            
+            if not data.get('employee') and hasattr(request.user, 'employee_profile'):
+                data['employee'] = request.user.employee_profile.id
+            
+            # Repayment start usually defaults to next month if not specified
+            if not data.get('repayment_start_date'):
+                # Default to 1st of next month
+                today = date.today()
+                if today.month == 12:
+                    next_month = date(today.year + 1, 1, 1)
+                else:
+                    next_month = date(today.year, today.month + 1, 1)
+                data['repayment_start_date'] = next_month.isoformat()
+
+            serializer = LoanSerializer(data=data)
+            if serializer.is_valid():
+                # Check for existing pending requests if it's an employee self-request
+                if data.get('employee'):
+                    existing = Loan.objects.filter(
+                        employee_id=data['employee'], 
+                        loan_type='advance', 
+                        status__in=['pending', 'approved', 'disbursed']
+                    ).exclude(balance_amount=0).exists()
+                    # We might want to allow multiple depending on policy, but usually 1 is standard
+                    # if existing:
+                    #     return Response({'error': 'You already have an active or pending advance salary request.'}, status=400)
+
+                serializer.save(company=company)
+                return Response(serializer.data, status=201)
+            return Response(serializer.errors, status=400)
+            
+    except Exception as e:
+        logger.error(f"Error in advance_salary_list_create: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def advance_salary_detail(request, pk):
+    """Detail view for Advance Salary with specific approval logic"""
+    try:
+        company = get_client_company(request.user)
+        advance = get_object_or_404(Loan, pk=pk, company=company, loan_type__in=['advance', 'Salary Advance'])
+        
+        if request.method == 'GET':
+            return Response(LoanSerializer(advance).data)
+            
+        elif request.method in ['PUT', 'PATCH']:
+            old_status = advance.status
+            serializer = LoanSerializer(advance, data=request.data, partial=(request.method == 'PATCH'))
+            if serializer.is_valid():
+                advance = serializer.save()
+                
+                # Auto-generate EMIs on approval/disbursement
+                if advance.status in ['approved', 'disbursed'] and old_status not in ['approved', 'disbursed']:
+                    advance.generate_emis()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
+            
+        elif request.method == 'DELETE':
+            if advance.status not in ['pending', 'rejected']:
+                return Response({'error': 'Cannot delete an approved or disbursed advance.'}, status=400)
+            advance.delete()
+            return Response(status=204)
+            
+    except Exception as e:
+        logger.error(f"Error in advance_salary_detail: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def advance_salary_stats(request):
+    """Statistics for the Advance Salary Dashboard"""
+    try:
+        company = get_client_company(request.user)
+        advances = Loan.objects.filter(company=company, loan_type__in=['advance', 'Salary Advance'])
+        
+        stats = {
+            'total_advances_given': advances.filter(status__in=['approved', 'disbursed', 'completed']).aggregate(Sum('principal_amount'))['principal_amount__sum'] or 0,
+            'outstanding_amount': advances.filter(status__in=['approved', 'disbursed']).aggregate(Sum('balance_amount'))['balance_amount__sum'] or 0,
+            'pending_requests': advances.filter(status='pending').count(),
+            'total_requests_count': advances.count(),
+            'approved_this_month': advances.filter(status='approved', updated_at__month=date.today().month).count()
+        }
+        
+        # Monthly trend (last 6 months)
+        # simplified for now
+        
+        return Response(stats)
+    except Exception as e:
+        logger.error(f"Error in advance_salary_stats: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)

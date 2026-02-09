@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import {
     Search, Download, Eye, FileText, Calendar, Filter,
     ArrowUpRight, ArrowDownRight, Wallet, CheckCircle,
-    AlertCircle, X, Loader2, Printer
+    AlertCircle, X, Loader2, Printer, Plus, Trash2
 } from 'lucide-react';
-import { getAllPayslips, getPayslipDashboardStats, downloadPayslip, getPayslipById } from '@/api/api_clientadmin';
+import { getAllPayslips, getPayslipDashboardStats, downloadPayslip, getPayslipById, addPayslipComponent, removePayslipComponent } from '@/api/api_clientadmin';
 import './PaySlips.css';
 
 export default function PaySlips() {
@@ -60,6 +60,36 @@ export default function PaySlips() {
     const [selectedPayslip, setSelectedPayslip] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [addComponentData, setAddComponentData] = useState({ name: 'Salary Advance', amount: '', component_type: 'deduction' });
+    const [addComponentLoading, setAddComponentLoading] = useState(false);
+
+    const handleAddComponent = async (e) => {
+        e.preventDefault();
+        setAddComponentLoading(true);
+        try {
+            const res = await addPayslipComponent(selectedPayslip.id, addComponentData);
+            setSelectedPayslip(res.data); // Update with new calculation
+            setShowAddModal(false);
+            setAddComponentData({ name: 'Salary Advance', amount: '', component_type: 'deduction' }); // Reset
+        } catch (error) {
+            console.error("Failed to add component:", error);
+            alert(error.response?.data?.error || "Failed to add component");
+        } finally {
+            setAddComponentLoading(false);
+        }
+    };
+
+    const handleDeleteComponent = async (componentId) => {
+        if (!confirm('Are you sure you want to remove this manual entry?')) return;
+        try {
+            const res = await removePayslipComponent(selectedPayslip.id, componentId);
+            setSelectedPayslip(res.data);
+        } catch (error) {
+            console.error("Failed to remove component:", error);
+            alert("Failed to remove component");
+        }
+    };
 
     const handleView = async (id) => {
         setModalLoading(true);
@@ -330,14 +360,26 @@ export default function PaySlips() {
                                         </div>
                                     </div>
 
+
                                     <div className="ps-paper-grid mt-12 mb-12">
                                         <div className="ps-paper-section">
                                             <h3 className="ps-section-title ps-title-earnings">Earnings</h3>
                                             <div className="ps-section-rows">
                                                 {selectedPayslip.components?.filter(c => c.component_type?.toLowerCase() === 'earning').map(c => (
-                                                    <div key={c.id} className="ps-section-row">
+                                                    <div key={c.id} className="ps-section-row group relative">
                                                         <span>{c.component_name}</span>
-                                                        <span className="font-bold">{formatCurrency(c.amount)}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold">{formatCurrency(c.amount)}</span>
+                                                            {c.is_manual && (
+                                                                <button
+                                                                    onClick={() => handleDeleteComponent(c.id)}
+                                                                    className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    title="Remove Manual Entry"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -347,12 +389,31 @@ export default function PaySlips() {
                                             </div>
                                         </div>
                                         <div className="ps-paper-section">
-                                            <h3 className="ps-section-title ps-title-deductions">Deductions</h3>
+                                            <div className="flex justify-between items-center border-b border-[#e5e7eb]">
+                                                <h3 className="ps-section-title ps-title-deductions border-b-0">Deductions</h3>
+                                                <button
+                                                    onClick={() => setShowAddModal(true)}
+                                                    className="m-1 px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center gap-1"
+                                                >
+                                                    <Plus size={12} /> Add Deduct
+                                                </button>
+                                            </div>
                                             <div className="ps-section-rows">
                                                 {selectedPayslip.components?.filter(c => c.component_type?.toLowerCase() === 'deduction').map(c => (
-                                                    <div key={c.id} className="ps-section-row">
+                                                    <div key={c.id} className="ps-section-row group relative">
                                                         <span>{c.component_name}</span>
-                                                        <span className="font-bold">{formatCurrency(c.amount)}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold">{formatCurrency(c.amount)}</span>
+                                                            {c.is_manual && (
+                                                                <button
+                                                                    onClick={() => handleDeleteComponent(c.id)}
+                                                                    className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    title="Remove Manual Entry"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -386,7 +447,60 @@ export default function PaySlips() {
                         </div>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+            {/* Add Component Modal */}
+            {
+                showAddModal && (
+                    <div className="ps-modal-overlay">
+                        <div className="bg-[#111] p-6 rounded-lg w-full max-w-md border border-[#333] shadow-2xl animate-fade-in">
+                            <h3 className="text-lg font-bold text-white mb-4">Add Manual Deduction</h3>
+                            <form onSubmit={handleAddComponent}>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Deduction Name</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-[#222] border border-[#333] rounded p-2 text-white focus:border-brand-primary outline-none"
+                                            placeholder="e.g. Salary Advance, Penalty"
+                                            value={addComponentData.name}
+                                            onChange={(e) => setAddComponentData({ ...addComponentData, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Amount (₹)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-[#222] border border-[#333] rounded p-2 text-white focus:border-brand-primary outline-none"
+                                            placeholder="0.00"
+                                            value={addComponentData.amount}
+                                            onChange={(e) => setAddComponentData({ ...addComponentData, amount: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddModal(false)}
+                                        className="px-4 py-2 rounded text-gray-400 hover:bg-[#222]"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={addComponentLoading}
+                                        className="px-4 py-2 rounded bg-brand-primary text-black font-bold hover:opacity-90 disabled:opacity-50"
+                                    >
+                                        {addComponentLoading ? 'Adding...' : 'Add Deduction'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }
