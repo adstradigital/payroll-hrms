@@ -2,6 +2,7 @@ from django.db import models
 from apps.accounts.models import Organization, Employee, BaseModel
 from decimal import Decimal
 import uuid
+from django.utils import timezone
 
 
 class SalaryComponent(BaseModel):
@@ -469,11 +470,75 @@ class PaySlip(BaseModel):
                 for emi in data['emis']:
                     emi.payslip = self
                     emi.save()
+
+        # 6. Process Adhoc Payments (Bonuses, Incentives)
+        # Fetch pending payments for this employee
+        # If payroll_period is specified in AdhocPayment, it must match current period
+        # If payroll_period is None, it's picked up by the first available payroll
+        pending_adhoc_payments = AdhocPayment.objects.filter(
+            employee=self.employee,
+            status='pending'
+        ).filter(
+            models.Q(payroll_period=self.payroll_period) | models.Q(payroll_period__isnull=True)
+        )
+        
+        for payment in pending_adhoc_payments:
+            # Determine component to use
+            comp_to_use = payment.component
+            if not comp_to_use:
+                # Default to a generic "Bonus" or "Incentive" component if not duplicate
+                # Try to find one by name based on payment name, otherwise generic
+                comp_to_use = SalaryComponent.objects.filter(
+                    company=self.employee.company,
+                    name__icontains='Bonus',
+                    component_type='earning'
+                ).first()
+                
+                if not comp_to_use:
+                     # Create a temporary/adhoc component if needed, or error out.
+                     # For safety, let's look for ANY earning component
+                     comp_to_use = SalaryComponent.objects.filter(
+                        company=self.employee.company,
+                        component_type='earning'
+                    ).first()
+            
+            if comp_to_use:
+                # Add to payslip components
+                # Check if we already added a component of this type? 
+                # Adhoc payments might be multiple of same type, so we might need to aggregate or allow duplicates.
+                # PaySlipComponent unique_together is (payslip, component).
+                # So we must aggregate if multiple payments map to same component.
+                
+                existing_item = PaySlipComponent.objects.filter(
+                    payslip=self, 
+                    component=comp_to_use
+                ).first()
+                
+                if existing_item:
+                    existing_item.amount += payment.amount
+                    existing_item.save()
+                else:
+                    PaySlipComponent.objects.create(
+                        payslip=self,
+                        component=comp_to_use,
+                        amount=payment.amount
+                    )
+                
+                if comp_to_use.component_type == 'earning':
+                    self.gross_earnings += payment.amount
+                else:
+                    self.total_deductions += payment.amount
+                    
+                # Link payment to this payslip
+                payment.processed_in_payslip = self
+                # We do NOT change status to processed here yet, usually done when Payslip is finalized/approved.
+                # However, for calculation purposes, we just link it.
+                # If we want to prevent re-calculation picking it up again, we rely on the link.
+                payment.save()
  
         # Update granular fields
         self.statutory_deductions = statutory_deductions_val
         self.advance_recovery = advance_recovery_val
-        
         # Final Net Salary Update
         self.net_salary = self.gross_earnings - self.total_deductions
 
@@ -491,6 +556,48 @@ class PaySlipComponent(BaseModel):
 
     def __str__(self):
         return f"{self.payslip} - {self.component.name}: ₹{self.amount}"
+
+
+
+class AdhocPayment(BaseModel):
+    """
+    One-time payments like Bonuses, Incentives, Reimbursements, etc.
+    These are processed in the next payroll run.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processed', 'Processed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='adhoc_payments')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='adhoc_payments')
+    
+    name = models.CharField(max_length=200) # e.g. "Performance Bonus Q4"
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    
+    # Optional: Link to a specific component for tax classification
+    component = models.ForeignKey(SalaryComponent, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Optional: Lock to a specific payroll period (if null, picked up by next available payroll)
+    payroll_period = models.ForeignKey('PayrollPeriod', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    date = models.DateField(default=timezone.now)
+    
+    # Link to the payslip that processed this payment
+    processed_in_payslip = models.ForeignKey('PaySlip', on_delete=models.SET_NULL, null=True, blank=True, related_name='adhoc_payments')
+    
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-date']
+        verbose_name = 'Adhoc Payment'
+        verbose_name_plural = 'Adhoc Payments'
+        
+    def __str__(self):
+        return f"{self.employee} - {self.name}: ₹{self.amount}"
 
 
 class Loan(BaseModel):
