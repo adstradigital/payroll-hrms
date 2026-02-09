@@ -171,6 +171,12 @@ export const updateAdvance = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPO
 export const deleteAdvance = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ADVANCE_DETAIL(id));
 export const getAdvanceStats = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ADVANCE_STATS);
 
+// Loan Repayment Tracking
+export const getLoanRepaymentTracking = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}loan-repayment-tracking/`, { params });
+export const getLoanRepaymentStats = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}loan-repayment-stats/`);
+export const getEMIPaymentHistory = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}emi-payment-history/`, { params });
+
+
 // Payroll Settings
 export const getPayrollSettings = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL_SETTINGS);
 export const updatePayrollSettings = (data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.PAYROLL_SETTINGS, data);

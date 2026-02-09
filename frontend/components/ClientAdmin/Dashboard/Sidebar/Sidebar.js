@@ -129,6 +129,7 @@ const menuItems = [
             { id: 'advance-approvals', label: 'Advance Approvals', path: '/dashboard/payroll/advance-approvals', adminOnly: true },
             { id: 'loans', label: 'Loans & EMI', translationKey: 'common.loans', path: '/dashboard/payroll/loans', permission: 'payroll.manage' },
             { id: 'loan-approvals', label: 'Loan Approvals', path: '/dashboard/payroll/loan-approvals', adminOnly: true },
+            { id: 'loan-repayment', label: 'Loan Repayment Tracking', path: '/dashboard/payroll/loan-repayment-tracking', permission: 'payroll.manage' },
             { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
         ]
     },

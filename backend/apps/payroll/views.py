@@ -1069,3 +1069,251 @@ def advance_salary_stats(request):
     except Exception as e:
         logger.error(f"Error in advance_salary_stats: {str(e)}", exc_info=True)
         return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def loan_repayment_tracking(request):
+    """
+    Comprehensive loan repayment tracking endpoint.
+    Returns loans with EMI schedules, payment status, and repayment progress.
+    """
+    try:
+        company = get_client_company(request.user)
+        if not company:
+            return Response({'error': 'Company not found'}, status=400)
+        
+        # Get filter parameters
+        employee_id = request.query_params.get('employee')
+        loan_type = request.query_params.get('loan_type')
+        status_filter = request.query_params.get('status')
+        
+        # Base queryset - only disbursed and completed loans (active repayments)
+        queryset = Loan.objects.filter(
+            company=company,
+            status__in=['disbursed', 'completed']
+        ).select_related('employee').prefetch_related('emis')
+        
+        # Apply filters
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        if loan_type:
+            queryset = queryset.filter(loan_type=loan_type)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        # Serialize and enhance with repayment data
+        loans_data = []
+        for loan in queryset.order_by('-created_at'):
+            loan_serialized = LoanSerializer(loan).data
+            
+            # Calculate repayment metrics
+            total_emis = loan.emis.count()
+            paid_emis = loan.emis.filter(status='paid').count()
+            unpaid_emis = loan.emis.filter(status='unpaid').count()
+            
+            total_paid_amount = loan.emis.filter(status='paid').aggregate(
+                total=Sum('amount')
+            )['total'] or Decimal('0')
+            
+            # Calculate progress percentage
+            progress_percentage = 0
+            if loan.total_payable > 0:
+                progress_percentage = float((total_paid_amount / loan.total_payable) * 100)
+            
+            # Add repayment tracking data
+            loan_serialized['repayment_tracking'] = {
+                'total_emis': total_emis,
+                'paid_emis': paid_emis,
+                'unpaid_emis': unpaid_emis,
+                'total_paid_amount': str(total_paid_amount),
+                'outstanding_balance': str(loan.balance_amount),
+                'progress_percentage': round(progress_percentage, 2),
+                'next_emi_date': None,
+                'last_payment_date': None
+            }
+            
+            # Get next EMI date
+            next_emi = loan.emis.filter(status='unpaid').order_by('year', 'month').first()
+            if next_emi:
+                loan_serialized['repayment_tracking']['next_emi_date'] = f"{next_emi.year}-{next_emi.month:02d}-01"
+            
+            # Get last payment date
+            last_paid_emi = loan.emis.filter(status='paid').order_by('-year', '-month').first()
+            if last_paid_emi and last_paid_emi.payslip:
+                loan_serialized['repayment_tracking']['last_payment_date'] = str(last_paid_emi.payslip.payment_date) if last_paid_emi.payslip.payment_date else None
+            
+            loans_data.append(loan_serialized)
+        
+        return Response({
+            'count': len(loans_data),
+            'results': loans_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in loan_repayment_tracking: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def loan_repayment_stats(request):
+    """
+    Dashboard statistics for loan repayment tracking.
+    """
+    try:
+        company = get_client_company(request.user)
+        if not company:
+            return Response({'error': 'Company not found'}, status=400)
+        
+        # Get all disbursed and completed loans
+        loans = Loan.objects.filter(
+            company=company,
+            status__in=['disbursed', 'completed']
+        )
+        
+        # Calculate statistics
+        total_disbursed = loans.aggregate(Sum('principal_amount'))['principal_amount__sum'] or Decimal('0')
+        total_outstanding = loans.filter(status='disbursed').aggregate(Sum('balance_amount'))['balance_amount__sum'] or Decimal('0')
+        
+        # Calculate total recovered (total payable - outstanding for disbursed + completed loans)
+        total_recovered = Decimal('0')
+        for loan in loans:
+            if loan.status == 'completed':
+                total_recovered += loan.total_payable
+            else:  # disbursed
+                total_recovered += (loan.total_payable - loan.balance_amount)
+        
+        # Count active loans
+        active_loans_count = loans.filter(status='disbursed').count()
+        completed_loans_count = loans.filter(status='completed').count()
+        
+        # Calculate recovery rate
+        recovery_rate = 0
+        total_payable_all = loans.aggregate(Sum('total_payable'))['total_payable__sum'] or Decimal('0')
+        if total_payable_all > 0:
+            recovery_rate = float((total_recovered / total_payable_all) * 100)
+        
+        # Get EMI statistics
+        all_emis = EMI.objects.filter(loan__company=company, loan__status__in=['disbursed', 'completed'])
+        total_emis = all_emis.count()
+        paid_emis = all_emis.filter(status='paid').count()
+        pending_emis = all_emis.filter(status='unpaid').count()
+        
+        # Monthly recovery trend (last 6 months)
+        from dateutil.relativedelta import relativedelta
+        today = date.today()
+        monthly_trend = []
+        
+        for i in range(5, -1, -1):
+            target_date = today - relativedelta(months=i)
+            month_emis = all_emis.filter(
+                status='paid',
+                month=target_date.month,
+                year=target_date.year
+            )
+            month_total = month_emis.aggregate(Sum('amount'))['amount__sum'] or Decimal('0')
+            
+            monthly_trend.append({
+                'month': target_date.strftime('%b %Y'),
+                'amount': str(month_total),
+                'count': month_emis.count()
+            })
+        
+        # Loan type breakdown
+        loan_types = loans.values('loan_type').annotate(
+            count=Count('id'),
+            total_amount=Sum('principal_amount'),
+            outstanding=Sum('balance_amount')
+        ).order_by('-total_amount')
+        
+        return Response({
+            'total_disbursed': str(total_disbursed),
+            'total_recovered': str(total_recovered),
+            'total_outstanding': str(total_outstanding),
+            'recovery_rate': round(recovery_rate, 2),
+            'active_loans_count': active_loans_count,
+            'completed_loans_count': completed_loans_count,
+            'total_emis': total_emis,
+            'paid_emis': paid_emis,
+            'pending_emis': pending_emis,
+            'monthly_trend': monthly_trend,
+            'loan_type_breakdown': list(loan_types)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in loan_repayment_stats: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def emi_payment_history(request):
+    """
+    Detailed EMI payment history with filtering.
+    """
+    try:
+        company = get_client_company(request.user)
+        if not company:
+            return Response({'error': 'Company not found'}, status=400)
+        
+        # Get filter parameters
+        employee_id = request.query_params.get('employee')
+        status_filter = request.query_params.get('status')
+        loan_type = request.query_params.get('loan_type')
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+        
+        # Base queryset
+        queryset = EMI.objects.filter(
+            loan__company=company
+        ).select_related('loan', 'loan__employee', 'payslip')
+        
+        # Apply filters
+        if employee_id:
+            queryset = queryset.filter(loan__employee_id=employee_id)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if loan_type:
+            queryset = queryset.filter(loan__loan_type=loan_type)
+        if from_date:
+            try:
+                from_dt = date.fromisoformat(from_date)
+                queryset = queryset.filter(year__gte=from_dt.year)
+                if queryset.filter(year=from_dt.year).exists():
+                    queryset = queryset.exclude(year=from_dt.year, month__lt=from_dt.month)
+            except ValueError:
+                pass
+        if to_date:
+            try:
+                to_dt = date.fromisoformat(to_date)
+                queryset = queryset.filter(year__lte=to_dt.year)
+                if queryset.filter(year=to_dt.year).exists():
+                    queryset = queryset.exclude(year=to_dt.year, month__gt=to_dt.month)
+            except ValueError:
+                pass
+        
+        # Serialize with additional data
+        emis_data = []
+        for emi in queryset.order_by('-year', '-month'):
+            emi_serialized = EMISerializer(emi).data
+            
+            # Add employee and loan details
+            emi_serialized['employee_name'] = emi.loan.employee.full_name
+            emi_serialized['employee_id_display'] = emi.loan.employee.employee_id
+            emi_serialized['loan_type'] = emi.loan.loan_type
+            emi_serialized['loan_id'] = str(emi.loan.id)
+            
+            # Add payment details if paid
+            if emi.status == 'paid' and emi.payslip:
+                emi_serialized['payment_date'] = str(emi.payslip.payment_date) if emi.payslip.payment_date else None
+                emi_serialized['payslip_id'] = str(emi.payslip.id)
+                emi_serialized['period_name'] = emi.payslip.payroll_period.name if emi.payslip.payroll_period else None
+            
+            emis_data.append(emi_serialized)
+        
+        return Response({
+            'count': len(emis_data),
+            'results': emis_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in emi_payment_history: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)

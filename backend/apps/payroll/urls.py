@@ -11,7 +11,8 @@ from .views import (
     payroll_settings_detail,
     loan_list_create, loan_detail, loan_generate_schedule,
     payslip_add_component, payslip_remove_component,
-    advance_salary_list_create, advance_salary_detail, advance_salary_stats
+    advance_salary_list_create, advance_salary_detail, advance_salary_stats,
+    loan_repayment_tracking, loan_repayment_stats, emi_payment_history
 )
 from .payroll_generation import generate_payroll_advanced, get_payroll_reports
 
@@ -72,4 +73,9 @@ urlpatterns = [
     path('advances/', advance_salary_list_create, name='advance-salary-list'),
     path('advances/<uuid:pk>/', advance_salary_detail, name='advance-salary-detail'),
     path('advances/dashboard/stats/', advance_salary_stats, name='advance-salary-stats'),
+    
+    # Loan Repayment Tracking
+    path('loan-repayment-tracking/', loan_repayment_tracking, name='loan-repayment-tracking'),
+    path('loan-repayment-stats/', loan_repayment_stats, name='loan-repayment-stats'),
+    path('emi-payment-history/', emi_payment_history, name='emi-payment-history'),
 ]
