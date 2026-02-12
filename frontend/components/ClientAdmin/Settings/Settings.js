@@ -18,6 +18,7 @@ import HolidaySettings from './HolidaySettings/HolidaySettings';
 import WorkSchedulesSettings from './WorkSchedulesSettings/WorkSchedulesSettings';
 import OverTimeSettings from './OverTimeRule/OverTimeSettings';
 import TaxSettings from './TaxSettings/TaxSettings';
+import EmailSettings from './EmailSettings/EmailSettings';
 
 import './Settings.css';
 
@@ -93,7 +94,8 @@ const settingsMenu = [
         items: [
             { id: 'payroll-settings', label: 'Payroll Settings' },
             { id: 'salary-components', label: 'Salary Components' },
-            { id: 'tax-settings', label: 'Tax Settings' }
+            { id: 'tax-settings', label: 'Tax Settings' },
+            { id: 'email-settings', label: 'Email Configuration' }
         ]
     }
 ];
@@ -156,6 +158,8 @@ export default function Settings() {
                 return <HolidaySettings />;
             case 'tax-settings':
                 return <TaxSettings />;
+            case 'email-settings':
+                return <EmailSettings />;
             default:
                 return <PlaceholderContent activeItem={activeItem} />;
         }

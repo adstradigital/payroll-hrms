@@ -765,6 +765,7 @@ const TaxManagement = () => {
                         </div>
                     </div>
                 )}
+
             </div>
 
             {/* Modal */}
@@ -777,14 +778,16 @@ const TaxManagement = () => {
             />
 
             {/* Notification Toast */}
-            {notification && (
-                <div className={`fixed bottom-8 right-8 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-slide-in ${notification.type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
-                    }`}>
-                    {notification.type === 'error' ? <AlertCircle size={20} /> : <Check size={20} />}
-                    <span className="font-medium">{notification.message}</span>
-                </div>
-            )}
-        </div>
+            {
+                notification && (
+                    <div className={`fixed bottom-8 right-8 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-slide-in ${notification.type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
+                        }`}>
+                        {notification.type === 'error' ? <AlertCircle size={20} /> : <Check size={20} />}
+                        <span className="font-medium">{notification.message}</span>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

@@ -457,6 +457,7 @@ def payroll_period_generate(request):
             employees = Employee.objects.filter(company_id=company_id, status='active').select_related('department', 'designation')
             payslips_created, total_gross, total_deductions, total_net = 0, Decimal(0), Decimal(0), Decimal(0)
             total_lop, total_statutory, total_advance = Decimal(0), Decimal(0), Decimal(0)
+            total_adhoc_earnings, total_adhoc_deductions = Decimal(0), Decimal(0)
             
             for employee in employees:
                 emp_salary = EmployeeSalary.objects.filter(employee=employee, is_current=True).first()
@@ -491,6 +492,8 @@ def payroll_period_generate(request):
                 total_lop += payslip.lop_deduction
                 total_statutory += payslip.statutory_deductions
                 total_advance += payslip.advance_recovery
+                total_adhoc_earnings += payslip.adhoc_earnings
+                total_adhoc_deductions += payslip.adhoc_deductions
 
                 if preview:
                     preview_data.append({
@@ -505,7 +508,8 @@ def payroll_period_generate(request):
                         'statutory_deductions': float(payslip.statutory_deductions),
                         'advance_recovery': float(payslip.advance_recovery),
                         'net_pay': float(payslip.net_salary), 
-                        'lop_deduction': float(payslip.lop_deduction)
+                        'lop_deduction': float(payslip.lop_deduction),
+                        'adhoc_earnings': float(payslip.adhoc_earnings)
                     })
             
             period.total_employees = payslips_created
@@ -515,6 +519,8 @@ def payroll_period_generate(request):
             period.total_lop = total_lop
             period.total_statutory = total_statutory
             period.total_advance_recovery = total_advance
+            period.total_adhoc_earnings = total_adhoc_earnings
+            period.total_adhoc_deductions = total_adhoc_deductions
             period.status = 'completed'
             period.processed_at = timezone.now()
             period.save()
@@ -539,6 +545,8 @@ def payroll_period_generate(request):
                         'total_lop': str(total_lop),
                         'total_statutory': str(total_statutory),
                         'total_advance_recovery': str(total_advance),
+                        'total_adhoc_earnings': str(total_adhoc_earnings),
+                        'total_adhoc_deductions': str(total_adhoc_deductions),
                         'employee_count': payslips_created
                     }
                 })
@@ -552,6 +560,8 @@ def payroll_period_generate(request):
                 'total_lop': str(total_lop),
                 'total_statutory': str(total_statutory),
                 'total_advance_recovery': str(total_advance),
+                'total_adhoc_earnings': str(total_adhoc_earnings),
+                'total_adhoc_deductions': str(total_adhoc_deductions),
                 'total_employees': payslips_created
             })
     except Exception as e: return Response({'error': str(e)}, status=500)
@@ -582,6 +592,10 @@ def payroll_period_mark_paid(request, pk):
                     loan.status = 'completed'
                     loan.balance_amount = 0
                 loan.save()
+
+            # Finalize Adhoc Payments
+            from .models import AdhocPayment
+            AdhocPayment.objects.filter(processed_in_payslip__in=payslips, status='pending').update(status='processed')
 
             period.status = 'paid'
             period.save()
@@ -676,6 +690,89 @@ def payslip_download(request, pk):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         response['Content-Length'] = len(pdf_buffer.getvalue()); return response
     except Exception as e: return Response({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def payslip_send_email(request, pk):
+    """Generate payslip PDF and send it to the employee via email"""
+    try:
+        company = get_client_company(request.user)
+        payslip = get_object_or_404(PaySlip, pk=pk, employee__company=company)
+        
+        employee = payslip.employee
+        if not employee.email:
+            return Response({'error': f"Employee {employee.full_name} does not have an email address."}, status=400)
+
+        # Get payroll settings for current company
+        payroll_settings = PayrollSettings.objects.filter(company=company).first()
+        
+        # Fallback to backend settings if DB fields are empty
+        from django.conf import settings as django_settings
+        
+        email_host = getattr(payroll_settings, 'email_host', None) or getattr(django_settings, 'EMAIL_HOST', None)
+        email_port = getattr(payroll_settings, 'email_port', None) or getattr(django_settings, 'EMAIL_PORT', 587)
+        email_user = getattr(payroll_settings, 'email_host_user', None) or getattr(django_settings, 'EMAIL_HOST_USER', None)
+        email_pass = getattr(payroll_settings, 'email_host_password', None) or getattr(django_settings, 'EMAIL_HOST_PASSWORD', None)
+        email_use_tls = getattr(payroll_settings, 'email_use_tls', True)
+        from_email = getattr(payroll_settings, 'default_from_email', None) or getattr(django_settings, 'DEFAULT_FROM_EMAIL', email_user)
+
+        if not email_host or not email_user:
+            return Response({
+                'error': "Email configuration is incomplete. Please set your SMTP details in Dashboard -> Payroll -> Tax Management -> Email Configuration."
+            }, status=400)
+
+        # Create connection explicitly to catch errors early
+        connection = None
+        try:
+            from django.core.mail import get_connection, EmailMessage
+            connection = get_connection(
+                backend='django.core.mail.backends.smtp.EmailBackend',
+                host=email_host,
+                port=email_port,
+                username=email_user,
+                password=email_pass,
+                use_tls=email_use_tls,
+                timeout=10
+            )
+            # Testing connection
+            connection.open()
+        except Exception as conn_err:
+            logger.error(f"SMTP Connection failed: {str(conn_err)}")
+            return Response({
+                'error': f"Failed to connect to SMTP server ({email_host}). Please check your Host, Port, and Credentials. Error: {str(conn_err)}"
+            }, status=400)
+
+        # Generate PDF Content
+        from .utils import generate_payslip_pdf
+        try:
+            pdf_buffer = generate_payslip_pdf(payslip)
+            pdf_content = pdf_buffer.getvalue()
+        except Exception as pdf_err:
+            logger.error(f"PDF Generation failed: {str(pdf_err)}")
+            return Response({'error': f"Failed to generate payslip PDF: {str(pdf_err)}"}, status=500)
+        
+        subject = f"Payslip for {payslip.payroll_period.name} - {company.name}"
+        body = f"Dear {employee.full_name},\n\nPlease find attached your payslip for the month of {payslip.payroll_period.name}.\n\nBest Regards,\n{company.name} HR Team"
+        
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=from_email,
+            to=[employee.email],
+            connection=connection
+        )
+        
+        filename = f"Payslip_{employee.full_name.replace(' ', '_')}_{payslip.payroll_period.name.replace(' ', '_')}.pdf"
+        email.attach(filename, pdf_content, 'application/pdf')
+        
+        email.send()
+        connection.close()
+        
+        return Response({'message': f"Payslip successfully sent to {employee.email}"})
+        
+    except Exception as e:
+        logger.error(f"Unexpected error in payslip_send_email: {str(e)}", exc_info=True)
+        return Response({'error': f"An unexpected error occurred: {str(e)}"}, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -882,6 +979,29 @@ def payroll_settings_detail(request):
         settings, created = PayrollSettings.objects.get_or_create(company=company)
         
         if request.method == 'GET':
+            # Fallback to backend settings if DB fields are empty
+            from django.conf import settings as django_settings
+            
+            # Map DB fields to Django settings
+            # We only populate if DB field is empty/default to show "effective" settings
+            if not settings.email_host and getattr(django_settings, 'EMAIL_HOST', None):
+                settings.email_host = django_settings.EMAIL_HOST
+            
+            if getattr(django_settings, 'EMAIL_PORT', None) and (not settings.email_port or settings.email_port == 587):
+                # Only override if default 587 and present in settings, or if 0/null
+                # Actually, 587 is default in model. If user hasn't changed it, it matches. 
+                # If settings has 25, we might want to show 25.
+                settings.email_port = django_settings.EMAIL_PORT
+
+            if not settings.email_host_user and getattr(django_settings, 'EMAIL_HOST_USER', None):
+                settings.email_host_user = django_settings.EMAIL_HOST_USER
+            
+            if not settings.email_host_password and getattr(django_settings, 'EMAIL_HOST_PASSWORD', None):
+                settings.email_host_password = django_settings.EMAIL_HOST_PASSWORD
+                
+            if not settings.default_from_email and getattr(django_settings, 'DEFAULT_FROM_EMAIL', None):
+                settings.default_from_email = django_settings.DEFAULT_FROM_EMAIL
+
             serializer = PayrollSettingsSerializer(settings)
             return Response(serializer.data)
             
@@ -1317,3 +1437,230 @@ def emi_payment_history(request):
     except Exception as e:
         logger.error(f"Error in emi_payment_history: {str(e)}", exc_info=True)
         return Response({'error': str(e)}, status=500)
+
+
+# ============================================
+# Adhoc Payments (Bonuses & Incentives)
+# ============================================
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def adhoc_payment_list_create(request):
+    """
+    List and create adhoc payments (bonuses, incentives, etc.)
+    GET: List all adhoc payments with filtering
+    POST: Create new adhoc payment
+    """
+    try:
+        company = get_client_company(request.user)
+        if not company:
+            return Response({'error': 'Company not found'}, status=400)
+        
+        if request.method == 'GET':
+            # Base queryset
+            from .models import AdhocPayment
+            queryset = AdhocPayment.objects.filter(
+                company=company
+            ).select_related('employee', 'component', 'payroll_period', 'processed_in_payslip')
+            
+            # Filtering
+            employee_id = request.query_params.get('employee')
+            status_filter = request.query_params.get('status')
+            month = request.query_params.get('month')
+            year = request.query_params.get('year')
+            search = request.query_params.get('search')
+            
+            if employee_id:
+                queryset = queryset.filter(employee_id=employee_id)
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+            if month and year:
+                queryset = queryset.filter(date__month=month, date__year=year)
+            elif year:
+                queryset = queryset.filter(date__year=year)
+            if search:
+                from django.db.models import Q
+                queryset = queryset.filter(
+                    Q(name__icontains=search) | 
+                    Q(employee__first_name__icontains=search) |
+                    Q(employee__last_name__icontains=search) |
+                    Q(employee__employee_id__icontains=search)
+                )
+            
+            # Order by date descending
+            queryset = queryset.order_by('-date', '-created_at')
+            
+            from .serializers import AdhocPaymentSerializer
+            serializer = AdhocPaymentSerializer(queryset, many=True)
+            return Response(serializer.data)
+        
+        elif request.method == 'POST':
+            from .serializers import AdhocPaymentSerializer
+            serializer = AdhocPaymentSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(company=company)
+                
+                log_activity(
+                    user=request.user,
+                    action_type='CREATE',
+                    module='PAYROLL',
+                    description=f"Created adhoc payment: {serializer.data.get('name')} for {serializer.data.get('employee_name')}"
+                )
+                
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        logger.error(f"Error in adhoc_payment_list_create: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET', 'PATCH', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def adhoc_payment_detail(request, pk):
+    """
+    Retrieve, update, or delete a specific adhoc payment
+    GET: Retrieve adhoc payment details
+    PATCH/PUT: Update adhoc payment
+    DELETE: Delete adhoc payment (only if pending)
+    """
+    try:
+        company = get_client_company(request.user)
+        from .models import AdhocPayment
+        payment = get_object_or_404(AdhocPayment, pk=pk, company=company)
+        
+        if request.method == 'GET':
+            from .serializers import AdhocPaymentSerializer
+            serializer = AdhocPaymentSerializer(payment)
+            return Response(serializer.data)
+        
+        elif request.method in ['PATCH', 'PUT']:
+            from .serializers import AdhocPaymentSerializer
+            partial = request.method == 'PATCH'
+            serializer = AdhocPaymentSerializer(payment, data=request.data, partial=partial)
+            if serializer.is_valid():
+                serializer.save()
+                
+                log_activity(
+                    user=request.user,
+                    action_type='UPDATE',
+                    module='PAYROLL',
+                    description=f"Updated adhoc payment: {payment.name}"
+                )
+                
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        elif request.method == 'DELETE':
+            # Only allow deletion of pending payments
+            if payment.status != 'pending':
+                return Response(
+                    {'error': 'Only pending payments can be deleted'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            payment_name = payment.name
+            payment.delete()
+            
+            log_activity(
+                user=request.user,
+                action_type='DELETE',
+                module='PAYROLL',
+                description=f"Deleted adhoc payment: {payment_name}"
+            )
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    except Exception as e:
+        logger.error(f"Error in adhoc_payment_detail: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def adhoc_payment_stats(request):
+    """
+    Get statistics for adhoc payments dashboard
+    Returns: total paid, total pending, recent payments, monthly breakdown
+    """
+    try:
+        company = get_client_company(request.user)
+        if not company:
+            return Response({'error': 'Company not found'}, status=400)
+        
+        from .models import AdhocPayment
+        
+        # Base queryset
+        all_payments = AdhocPayment.objects.filter(company=company)
+        
+        # Status-based aggregations
+        pending_payments = all_payments.filter(status='pending')
+        processed_payments = all_payments.filter(status='processed')
+        
+        total_pending = pending_payments.aggregate(Sum('amount'))['amount__sum'] or Decimal('0')
+        total_paid = processed_payments.aggregate(Sum('amount'))['amount__sum'] or Decimal('0')
+        
+        pending_count = pending_payments.count()
+        processed_count = processed_payments.count()
+        
+        # Recent payments (last 5)
+        recent_payments = all_payments.select_related('employee').order_by('-date', '-created_at')[:5]
+        recent_data = []
+        for payment in recent_payments:
+            recent_data.append({
+                'id': str(payment.id),
+                'name': payment.name,
+                'employee_name': payment.employee.full_name,
+                'employee_id': payment.employee.employee_id,
+                'amount': str(payment.amount),
+                'status': payment.status,
+                'date': payment.date.isoformat()
+            })
+        
+        # Monthly breakdown (last 6 months)
+        from dateutil.relativedelta import relativedelta
+        today = date.today()
+        monthly_breakdown = []
+        
+        for i in range(5, -1, -1):
+            target_date = today - relativedelta(months=i)
+            month_payments = all_payments.filter(
+                date__month=target_date.month,
+                date__year=target_date.year
+            )
+            month_total = month_payments.aggregate(Sum('amount'))['amount__sum'] or Decimal('0')
+            
+            monthly_breakdown.append({
+                'month': target_date.strftime('%b %Y'),
+                'amount': str(month_total),
+                'count': month_payments.count(),
+                'pending': month_payments.filter(status='pending').count(),
+                'processed': month_payments.filter(status='processed').count()
+            })
+        
+        # Component type breakdown (if components are assigned)
+        component_breakdown = all_payments.filter(
+            component__isnull=False
+        ).values(
+            'component__name'
+        ).annotate(
+            count=Count('id'),
+            total_amount=Sum('amount')
+        ).order_by('-total_amount')
+        
+        return Response({
+            'total_pending': str(total_pending),
+            'total_paid': str(total_paid),
+            'pending_count': pending_count,
+            'processed_count': processed_count,
+            'total_count': all_payments.count(),
+            'recent_payments': recent_data,
+            'monthly_breakdown': monthly_breakdown,
+            'component_breakdown': list(component_breakdown)
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in adhoc_payment_stats: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+

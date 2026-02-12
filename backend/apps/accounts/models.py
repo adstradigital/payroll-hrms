@@ -361,6 +361,8 @@ class Employee(BaseModel):
     aadhar_number = models.CharField(max_length=12, blank=True)
     passport_number = models.CharField(max_length=20, blank=True)
     driving_license = models.CharField(max_length=20, blank=True)
+    uan_number = models.CharField(max_length=12, blank=True, null=True, verbose_name="UAN Number")
+    esi_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="ESI Number")
 
     # Bank Details
     bank_name = models.CharField(max_length=100, blank=True)

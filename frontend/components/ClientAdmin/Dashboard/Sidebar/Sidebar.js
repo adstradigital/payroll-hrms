@@ -124,6 +124,7 @@ const menuItems = [
             { id: 'employee-salary', label: 'Employee Salary', translationKey: 'common.employeeSalary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },
             { id: 'payslips', label: 'Payslips', translationKey: 'common.payslips', path: '/dashboard/payroll/payslips' },
             { id: 'encashments', label: 'Encashments & Reimbursements', translationKey: 'common.encashments', path: '/dashboard/payroll/encashments-reimbursements', permission: 'payroll.manage' },
+            { id: 'bonus-incentives', label: 'Bonus & Incentives', path: '/dashboard/payroll/bonus-incentives', permission: 'payroll.manage' },
             { id: 'tax', label: 'Tax Management', translationKey: 'common.tax', path: '/dashboard/payroll/tax', permission: 'payroll.manage' },
             { id: 'advance-salary', label: 'Advance Salary', path: '/dashboard/payroll/advance-salary' },
             { id: 'advance-approvals', label: 'Advance Approvals', path: '/dashboard/payroll/advance-approvals', adminOnly: true },

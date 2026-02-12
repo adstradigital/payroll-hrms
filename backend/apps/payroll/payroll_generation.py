@@ -17,7 +17,7 @@ from apps.leave.models import LeaveRequest
 from .models import (
     PayrollPeriod, PaySlip, PaySlipComponent,
     EmployeeSalary, EmployeeSalaryComponent, SalaryComponent,
-    EMI
+    EMI, AdhocPayment
 )
 
 logger = logging.getLogger(__name__)
@@ -251,6 +251,41 @@ class PayrollCalculationEngine:
                     'calc_type': 'attendance_based'
                 })
                 total_earnings += overtime_amount
+
+            # Process Adhoc Payments (Bonuses/Incentives)
+            adhoc_payments = AdhocPayment.objects.filter(
+                employee=employee,
+                status='pending',
+                date__lte=end_date
+            )
+            
+            for payment in adhoc_payments:
+                # Determine if earning or deduction based on linked component or amount sign?
+                # Usually AdhocPayment is an earning unless specified otherwise or amount is negative (if allowed)
+                # But safer to rely on component type if present
+                
+                is_deduction = False
+                if payment.component:
+                    is_deduction = payment.component.component_type == 'deduction'
+                
+                # If no component, assume it's an earning (Bonus)
+                
+                if is_deduction:
+                    deductions.append({
+                        'name': payment.name,
+                        'code': 'ADHOC_DED',
+                        'amount': float(payment.amount),
+                        'calc_type': 'fixed'
+                    })
+                    total_deductions += payment.amount
+                else:
+                    earnings.append({
+                        'name': payment.name,
+                        'code': 'ADHOC',
+                        'amount': float(payment.amount),
+                        'calc_type': 'fixed'
+                    })
+                    total_earnings += payment.amount
 
             # Process Loan/Advance EMIs (Preview)
             current_month_emis = EMI.objects.filter(

@@ -31,6 +31,7 @@ class ActivityLog(models.Model):
         ('BULK_UPLOAD', 'Bulk Upload'),
         ('SUPPORT', 'Support'),
         ('SYSTEM', 'System'),
+        ('LEAVE', 'Leave Management'),
     ]
     module = models.CharField(max_length=20, choices=MODULE_CHOICES, db_index=True)
     

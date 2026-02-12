@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     SalaryComponent, SalaryStructure, SalaryStructureComponent,
     EmployeeSalary, EmployeeSalaryComponent, PayrollPeriod, PaySlip, PaySlipComponent,
-    TaxSlab, TaxDeclaration, PayrollSettings, Loan, EMI
+    TaxSlab, TaxDeclaration, PayrollSettings, Loan, EMI, AdhocPayment
 )
 
 
@@ -171,4 +171,16 @@ class TaxDeclarationSerializer(serializers.ModelSerializer):
         # OR usually total_declared_amount is calculated from the JSON, 
         # so we might want to allow it to be sent or auto-calculate it in validation/save.
         # For now, allowing it to be writable or auto-calculated in frontend?
-        # Let's keep it standard.
+        # Let's keep it standard..
+
+
+class AdhocPaymentSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_id_display = serializers.CharField(source='employee.employee_id', read_only=True)
+    component_name = serializers.CharField(source='component.name', read_only=True)
+    period_name = serializers.CharField(source='payroll_period.name', read_only=True)
+    
+    class Meta:
+        model = AdhocPayment
+        fields = '__all__'
+        read_only_fields = ['company', 'status', 'processed_in_payslip']

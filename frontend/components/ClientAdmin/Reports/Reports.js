@@ -181,10 +181,12 @@ export default function Reports() {
                     Department: p.department,
                     Designation: p.designation,
                     Basic: p.basic_salary,
-                    Earnings: p.earnings.map(e => `${e.name}: ${e.amount}`).join(' | '),
                     Gross: p.gross_salary,
-                    Deductions: p.deductions.map(d => `${d.name}: ${d.amount}`).join(' | '),
-                    Net: p.net_salary,
+                    EPF_Employee: p.pf_deduction,
+                    ESI_Employee: p.esi_deduction,
+                    TDS: p.tds_deduction,
+                    Total_Deductions: p.total_deductions,
+                    Net_Salary: p.net_salary,
                     Status: p.status
                 })) || [];
             } else if (reportId === 'daily-attendance') {
@@ -214,7 +216,18 @@ export default function Reports() {
                 })) : [];
             } else if (reportId === 'epf-esi') {
                 const res = await getPayrollReports({ type: 'statutory' });
-                exportData = res.data || [];
+                exportData = res.data?.map(s => ({
+                    Employee: s.employee_name,
+                    ID: s.employee_id,
+                    UAN: s.uan,
+                    ESI_IP_No: s.esi_no,
+                    Gross_Salary: s.gross_salary,
+                    PF_Employee: s.pf_employee,
+                    PF_Employer: s.pf_employer,
+                    ESI_Employee: s.esi_employee,
+                    ESI_Employer: s.esi_employer,
+                    Total_Contribution: (s.pf_employee + s.pf_employer + s.esi_employee + s.esi_employer).toFixed(2)
+                })) || [];
             } else {
                 exportData = [{ Report: reportName, Info: 'Detailed export coming soon in backend update.', Timestamp: new Date().toISOString() }];
             }

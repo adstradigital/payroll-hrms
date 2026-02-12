@@ -1,6 +1,9 @@
 from django.db import models
 from apps.accounts.models import Organization, Employee
 from datetime import date
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class LeaveType(models.Model):
@@ -190,6 +193,13 @@ class LeaveRequest(models.Model):
         self.approved_at = timezone.now()
         self.save()
         
+        # Send notification
+        try:
+            from .emails import send_leave_status_email
+            send_leave_status_email(self, 'approved')
+        except Exception as e:
+            logger.error(f"Failed to trigger leave approval email: {str(e)}")
+        
         # Update leave balance
         balance, _ = LeaveBalance.objects.get_or_create(
             employee=self.employee,
@@ -206,6 +216,13 @@ class LeaveRequest(models.Model):
         self.status = 'rejected'
         self.rejection_reason = rejection_reason
         self.save()
+        
+        # Send notification
+        try:
+            from .emails import send_leave_status_email
+            send_leave_status_email(self, 'rejected')
+        except Exception as e:
+            logger.error(f"Failed to trigger leave rejection email: {str(e)}")
         
         # Remove from pending
         try:

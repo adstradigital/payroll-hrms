@@ -117,6 +117,7 @@ export const getPayslipDashboardStats = (params) => axiosInstance.get(CLIENTADMI
 export const getMyPayslips = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYSLIP_MY_PAYSLIPS);
 export const addPayslipComponent = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYSLIPS}${id}/add-component/`, data);
 export const removePayslipComponent = (id, componentId) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.PAYSLIPS}${id}/components/${componentId}/`);
+export const sendPayslipEmail = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYSLIPS}${id}/send-email/`);
 
 // Tax Management
 export const getTaxSlabs = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.TAX_SLABS, { params });
@@ -175,6 +176,14 @@ export const getAdvanceStats = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ADV
 export const getLoanRepaymentTracking = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}loan-repayment-tracking/`, { params });
 export const getLoanRepaymentStats = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}loan-repayment-stats/`);
 export const getEMIPaymentHistory = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}emi-payment-history/`, { params });
+
+// Adhoc Payments (Bonuses & Incentives)
+export const getAdhocPayments = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/`, { params });
+export const getAdhocPaymentById = (id) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/${id}/`);
+export const createAdhocPayment = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/`, data);
+export const updateAdhocPayment = (id, data) => axiosInstance.patch(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/${id}/`, data);
+export const deleteAdhocPayment = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/${id}/`);
+export const getAdhocPaymentStats = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/stats/`);
 
 
 // Payroll Settings

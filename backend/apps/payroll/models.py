@@ -174,6 +174,8 @@ class PayrollPeriod(BaseModel):
     total_lop = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     total_statutory = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     total_advance_recovery = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_adhoc_earnings = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_adhoc_deductions = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     
     processed_by = models.ForeignKey(
         Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_payrolls'
@@ -223,6 +225,8 @@ class PaySlip(BaseModel):
     statutory_deductions = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     advance_recovery = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     overtime_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    adhoc_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    adhoc_deductions = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     # Payment details
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='generated')
@@ -276,6 +280,8 @@ class PaySlip(BaseModel):
         self.components.filter(is_manual=False).delete()
         # Detach any EMIs linked to this payslip (they will be re-attached if still valid)
         EMI.objects.filter(payslip=self).update(payslip=None)
+        # Detach any AdhocPayments linked to this payslip
+        AdhocPayment.objects.filter(processed_in_payslip=self).update(processed_in_payslip=None)
         
         # Get components from employee salary
         components = self.employee_salary.components.select_related('component').all()
@@ -477,9 +483,12 @@ class PaySlip(BaseModel):
         # If payroll_period is None, it's picked up by the first available payroll
         pending_adhoc_payments = AdhocPayment.objects.filter(
             employee=self.employee,
-            status='pending'
+            status='pending',
+            date__lte=self.payroll_period.end_date
         ).filter(
             models.Q(payroll_period=self.payroll_period) | models.Q(payroll_period__isnull=True)
+        ).filter(
+            models.Q(processed_in_payslip__isnull=True)
         )
         
         for payment in pending_adhoc_payments:
@@ -526,8 +535,10 @@ class PaySlip(BaseModel):
                 
                 if comp_to_use.component_type == 'earning':
                     self.gross_earnings += payment.amount
+                    self.adhoc_earnings += payment.amount
                 else:
                     self.total_deductions += payment.amount
+                    self.adhoc_deductions += payment.amount
                     
                 # Link payment to this payslip
                 payment.processed_in_payslip = self
@@ -541,6 +552,8 @@ class PaySlip(BaseModel):
         self.advance_recovery = advance_recovery_val
         # Final Net Salary Update
         self.net_salary = self.gross_earnings - self.total_deductions
+        
+        self.save()
 
 
 class PaySlipComponent(BaseModel):
@@ -806,6 +819,14 @@ class PayrollSettings(BaseModel):
     esi_contribution_rate_employer = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('3.25'))
     esi_contribution_rate_employee = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.75'))
     esi_wage_ceiling = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('21000.00'))
+
+    # Email Settings (SMTP)
+    email_host = models.CharField(max_length=255, blank=True, help_text='SMTP Host (e.g., smtp.gmail.com)')
+    email_port = models.PositiveIntegerField(default=587, help_text='SMTP Port (e.g., 587)')
+    email_host_user = models.CharField(max_length=255, blank=True, help_text='Email Address')
+    email_host_password = models.CharField(max_length=255, blank=True, help_text='Email Password / App Password')
+    email_use_tls = models.BooleanField(default=True, help_text='Use TLS')
+    default_from_email = models.CharField(max_length=255, blank=True, help_text='From Email Address')
 
     class Meta:
         verbose_name_plural = 'Payroll Settings'

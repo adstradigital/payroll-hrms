@@ -8,6 +8,7 @@ from apps.accounts.models import Employee
 from apps.attendance.models import Attendance
 from apps.payroll.models import PaySlip
 from datetime import date
+from decimal import Decimal
 from django.utils import timezone
 
 class LeaveReportViewSet(viewsets.ViewSet):
@@ -200,7 +201,7 @@ class PayrollReportViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def detailed(self, request):
-        """Get detailed payroll register for a month"""
+        """Get detailed payroll register for a month with granular statutory fields"""
         company_id = request.query_params.get('company')
         if not company_id:
             employee = getattr(request.user, 'employee_profile', None)
@@ -221,6 +222,13 @@ class PayrollReportViewSet(viewsets.ViewSet):
 
         data = []
         for p in payslips:
+            components = p.components.all().select_related('component')
+            
+            # Extract granular statutory fields
+            pf_amount = float(sum(c.amount for c in components if c.component.statutory_type == 'pf'))
+            esi_amount = float(sum(c.amount for c in components if c.component.statutory_type == 'esi'))
+            tds_amount = float(sum(c.amount for c in components if c.component.statutory_type == 'tds'))
+            
             data.append({
                 'employee': p.employee.full_name,
                 'employee_id': p.employee.employee_id,
@@ -228,11 +236,63 @@ class PayrollReportViewSet(viewsets.ViewSet):
                 'designation': p.employee.designation.name if p.employee.designation else 'N/A',
                 'basic_salary': float(p.basic_salary),
                 'gross_salary': float(p.gross_earnings),
+                'pf_deduction': pf_amount,
+                'esi_deduction': esi_amount,
+                'tds_deduction': tds_amount,
                 'total_deductions': float(p.total_deductions),
                 'net_salary': float(p.net_salary),
                 'status': p.status,
-                'earnings': [{'name': c.component.name, 'amount': float(c.amount)} for c in p.components.filter(component__component_type='earning')],
-                'deductions': [{'name': c.component.name, 'amount': float(c.amount)} for c in p.components.filter(component__component_type='deduction')]
+                'earnings': [{'name': c.component.name, 'amount': float(c.amount)} for c in components if c.component.component_type == 'earning'],
+                'deductions': [{'name': c.component.name, 'amount': float(c.amount)} for c in components if c.component.component_type == 'deduction']
             })
 
         return Response({'payslips': data})
+
+    @action(detail=False, methods=['get'])
+    def statutory(self, request):
+        """Get statutory (PF/ESI) compliance report"""
+        company_id = request.query_params.get('company')
+        if not company_id:
+            employee = getattr(request.user, 'employee_profile', None)
+            if employee:
+                company_id = employee.company_id
+        
+        if not company_id:
+            return Response({'error': 'company parameter required'}, status=400)
+
+        year = request.query_params.get('year', date.today().year)
+        month = request.query_params.get('month', date.today().month)
+
+        payslips = PaySlip.objects.filter(
+            employee__company_id=company_id,
+            payroll_period__year=year,
+            payroll_period__month=month
+        ).select_related('employee')
+
+        # Statutory reports need employer share too, which isn't currently stored in PaySlipComponent.
+        # For now, we report employee shares and placeholders for employer shares.
+        
+        data = []
+        for p in payslips:
+            components = p.components.all().select_related('component')
+            
+            pf_emp = sum(c.amount for c in components if c.component.statutory_type == 'pf')
+            esi_emp = sum(c.amount for c in components if c.component.statutory_type == 'esi')
+            
+            # Simple placeholder logic for employer share if not explicit (Standard India rates)
+            pf_emplr = (pf_emp if pf_emp > 0 else 0) # usually matched or capped
+            esi_emplr = (p.gross_earnings * Decimal('0.0325')).quantize(Decimal('0.01')) if esi_emp > 0 else 0
+
+            data.append({
+                'employee_name': p.employee.full_name,
+                'employee_id': p.employee.employee_id,
+                'uan': p.employee.uan_number or 'N/A',
+                'esi_no': p.employee.esi_number or 'N/A',
+                'gross_salary': float(p.gross_earnings),
+                'pf_employee': float(pf_emp),
+                'pf_employer': float(pf_emplr),
+                'esi_employee': float(esi_emp),
+                'esi_employer': float(esi_emplr),
+            })
+
+        return Response(data)

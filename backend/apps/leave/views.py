@@ -173,13 +173,12 @@ def leave_request_list_create(request):
                 balance, _ = LeaveBalance.objects.get_or_create(employee=leave_request.employee, leave_type=leave_request.leave_type, year=leave_request.start_date.year, defaults={'allocated': leave_request.leave_type.days_per_year})
                 balance.pending += leave_request.days_count; balance.save()
                 
-                log_activity(
-                    user=request.user,
-                    action_type='CREATE',
-                    module='LEAVE',
-                    description=f"Leave request submitted for {leave_request.days_count} days ({leave_request.leave_type.name})",
-                    reference_id=str(leave_request.id)
-                )
+                # Send notification to Dept Head
+                try:
+                    from .emails import send_leave_request_to_dept_head
+                    send_leave_request_to_dept_head(leave_request)
+                except Exception as e:
+                    logger.error(f"Failed to trigger dept head leave notification: {str(e)}")
                 
                 return Response(serializer.data, status=201)
             return Response(serializer.errors, status=400)
@@ -295,3 +294,80 @@ def leave_request_stats(request):
         stats['recent_requests'] = LeaveRequestSerializer(recent_list, many=True).data
         return Response(stats)
     except Exception as e: return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([]) # Public but signed
+def leave_request_email_process(request, pk):
+    """
+    Process leave approval/rejection from email links.
+    """
+    try:
+        from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
+        from django.http import HttpResponse
+        
+        token = request.query_params.get('token')
+        action = request.query_params.get('action')
+        
+        if not token or not action:
+            return HttpResponse("<h1>Invalid Request</h1><p>Missing token or action.</p>", status=400)
+            
+        signer = TimestampSigner()
+        try:
+            # Signer expects the max_age in seconds (e.g., 2 days = 172800)
+            original_value = signer.unsign(token, max_age=172800)
+            expected_value = f"{pk}:{action}"
+            
+            if original_value != expected_value:
+                return HttpResponse("<h1>Invalid Token</h1><p>The token does not match this request.</p>", status=403)
+                
+        except SignatureExpired:
+            return HttpResponse("<h1>Link Expired</h1><p>This approval link has expired (48h limit).</p>", status=403)
+        except BadSignature:
+            return HttpResponse("<h1>Invalid Signature</h1><p>The link is malformed or tampered with.</p>", status=403)
+
+        leave_request = get_object_or_404(LeaveRequest, pk=pk)
+        
+        if leave_request.status != 'pending':
+            message = f"already {leave_request.status.capitalize()}"
+            color = "#64748b" # Gray
+        else:
+            if action == 'approve':
+                # Identify the head performing the action
+                approver = leave_request.employee.department.head if leave_request.employee.department else None
+                leave_request.approve(approver)
+                message = "Approved successfully."
+                color = "#10b981"
+            elif action == 'reject':
+                leave_request.reject("Rejected via email notification.")
+                message = "Rejected successfully."
+                color = "#ef4444"
+            else:
+                return HttpResponse("<h1>Invalid Action</h1>", status=400)
+
+        html_response = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Leave Processed</title>
+            <style>
+                body {{ font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f4f4; }}
+                .card {{ background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }}
+                h1 {{ color: {color}; margin-bottom: 10px; }}
+                p {{ color: #666; line-height: 1.6; }}
+                .btn {{ display: inline-block; margin-top: 20px; padding: 10px 20px; background: #1e293b; color: white; text-decoration: none; border-radius: 6px; }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>{message}</h1>
+                <p>The leave request for <strong>{leave_request.employee.full_name}</strong> has been processed.</p>
+                <a href="/" class="btn">Go to Dashboard</a>
+            </div>
+        </body>
+        </html>
+        """
+        return HttpResponse(html_response)
+        
+    except Exception as e:
+        logger.error(f"Error processing email leave link: {str(e)}")
+        return HttpResponse(f"<h1>Server Error</h1><p>{str(e)}</p>", status=500)

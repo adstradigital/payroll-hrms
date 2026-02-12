@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import {
     Search, Download, Eye, FileText, Calendar, Filter,
     ArrowUpRight, ArrowDownRight, Wallet, CheckCircle,
-    AlertCircle, X, Loader2, Printer, Plus, Trash2
+    AlertCircle, X, Loader2, Printer, Plus, Trash2, Mail
 } from 'lucide-react';
-import { getAllPayslips, getPayslipDashboardStats, downloadPayslip, getPayslipById, addPayslipComponent, removePayslipComponent } from '@/api/api_clientadmin';
+import { getAllPayslips, getPayslipDashboardStats, downloadPayslip, getPayslipById, addPayslipComponent, removePayslipComponent, sendPayslipEmail } from '@/api/api_clientadmin';
 import './PaySlips.css';
 
 export default function PaySlips() {
@@ -137,6 +137,17 @@ export default function PaySlips() {
         } catch (error) {
             console.error("Download failed:", error);
             alert("Failed to download payslip. Please try again.");
+        }
+    };
+
+    const handleSendEmail = async (id, name) => {
+        if (!confirm(`Are you sure you want to send the payslip to ${name}?`)) return;
+        try {
+            await sendPayslipEmail(id);
+            alert(`Payslip sent successfully to ${name}`);
+        } catch (error) {
+            console.error("Failed to send email:", error);
+            alert(error.response?.data?.error || "Failed to send email");
         }
     };
 
@@ -277,6 +288,13 @@ export default function PaySlips() {
                                     </td>
                                     <td className="text-right">
                                         <div className="flex justify-end gap-3">
+                                            <button
+                                                className="ps-btn-icon"
+                                                title="Send Email"
+                                                onClick={() => handleSendEmail(slip.id, slip.employee_name)}
+                                            >
+                                                <Mail size={18} />
+                                            </button>
                                             <button
                                                 className="ps-btn-icon"
                                                 title="View Detail View"

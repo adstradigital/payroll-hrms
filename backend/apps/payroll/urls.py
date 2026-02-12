@@ -5,14 +5,15 @@ from .views import (
     salary_structure_list_create, salary_structure_detail, salary_structure_add_component, salary_structure_update_components,
     employee_salary_list_create, employee_salary_detail, employee_salary_current, employee_salary_stats,
     payroll_period_list_create, payroll_period_detail, payroll_period_generate, payroll_period_mark_paid,
-    payslip_list_create, payslip_detail, payslip_my_payslips, payslip_dashboard_stats, payslip_download, payslip_recalculate,
+    payslip_list_create, payslip_detail, payslip_my_payslips, payslip_dashboard_stats, payslip_download, payslip_recalculate, payslip_send_email,
     tax_slab_list_create, tax_slab_detail, 
     tax_declaration_list_create, tax_declaration_detail, tax_dashboard_stats,
     payroll_settings_detail,
     loan_list_create, loan_detail, loan_generate_schedule,
     payslip_add_component, payslip_remove_component,
     advance_salary_list_create, advance_salary_detail, advance_salary_stats,
-    loan_repayment_tracking, loan_repayment_stats, emi_payment_history
+    loan_repayment_tracking, loan_repayment_stats, emi_payment_history,
+    adhoc_payment_list_create, adhoc_payment_detail, adhoc_payment_stats
 )
 from .payroll_generation import generate_payroll_advanced, get_payroll_reports
 
@@ -56,6 +57,7 @@ urlpatterns = [
     path('payslips/my-payslips/', payslip_my_payslips, name='payslip-my-payslips'),
     path('payslips/dashboard-stats/', payslip_dashboard_stats, name='payslip-dashboard-stats'),
     path('payslips/<uuid:pk>/download/', payslip_download, name='payslip-download'),
+    path('payslips/<uuid:pk>/send-email/', payslip_send_email, name='payslip-send-email'),
     path('payslips/<uuid:pk>/recalculate/', payslip_recalculate, name='payslip-recalculate'),
     path('payslips/<uuid:pk>/add-component/', payslip_add_component, name='payslip-add-component'),
     path('payslips/<uuid:pk>/components/<uuid:component_id>/', payslip_remove_component, name='payslip-remove-component'),
@@ -78,4 +80,9 @@ urlpatterns = [
     path('loan-repayment-tracking/', loan_repayment_tracking, name='loan-repayment-tracking'),
     path('loan-repayment-stats/', loan_repayment_stats, name='loan-repayment-stats'),
     path('emi-payment-history/', emi_payment_history, name='emi-payment-history'),
+    
+    # Adhoc Payments (Bonuses & Incentives)
+    path('adhoc-payments/', adhoc_payment_list_create, name='adhoc-payment-list'),
+    path('adhoc-payments/stats/', adhoc_payment_stats, name='adhoc-payment-stats'),
+    path('adhoc-payments/<uuid:pk>/', adhoc_payment_detail, name='adhoc-payment-detail'),
 ]

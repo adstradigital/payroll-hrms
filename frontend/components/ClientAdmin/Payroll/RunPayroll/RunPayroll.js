@@ -5,7 +5,7 @@ import {
     Play, Calendar, Users, DollarSign, AlertCircle,
     CheckCircle, FileText, Loader2, ArrowRight, ShieldCheck,
     Activity, Lock, ChevronRight, Zap, AlertTriangle,
-    TrendingUp, Sliders, X, Trash2
+    TrendingUp, Sliders, X, Trash2, Gift
 } from 'lucide-react';
 import {
     getPayrollPeriods, generateAdvancedPayroll,
@@ -160,6 +160,8 @@ export default function RunPayroll() {
                 total_lop: res.data.total_lop || "0",
                 total_statutory: res.data.total_statutory || "0",
                 total_advance_recovery: res.data.total_advance_recovery || "0",
+                total_adhoc_earnings: res.data.total_adhoc_earnings || "0",
+                total_adhoc_deductions: res.data.total_adhoc_deductions || "0",
                 total_deductions: res.data.total_deductions || "0",
                 total_employees: res.data.total_employees,
                 status: 'Completed'
@@ -439,6 +441,16 @@ export default function RunPayroll() {
                                                                 </div>
                                                                 <div className="rp-stat-meta">Salary Advances</div>
                                                             </div>
+                                                            <div className="rp-stat-box">
+                                                                <div className="rp-stat-header">
+                                                                    <span>Bonuses & Incentives</span>
+                                                                    <Gift size={16} className="text-emerald" />
+                                                                </div>
+                                                                <div className="rp-stat-value text-emerald">
+                                                                    {previewData ? formatCurrency(previewData.summary.total_adhoc_earnings) : '--'}
+                                                                </div>
+                                                                <div className="rp-stat-meta">One-time Earnings</div>
+                                                            </div>
                                                         </div>
 
                                                         {/* Employee Preview Table */}
@@ -456,6 +468,7 @@ export default function RunPayroll() {
                                                                             <th className="px-4 py-3 text-right text-red-400">LOP</th>
                                                                             <th className="px-4 py-3 text-right text-amber-500">Statutory</th>
                                                                             <th className="px-4 py-3 text-right text-blue-400">Advance</th>
+                                                                            <th className="px-4 py-3 text-right text-emerald">Bonus</th>
                                                                             <th className="px-4 py-3 text-right">Net Salary</th>
                                                                         </tr>
                                                                     </thead>
@@ -477,6 +490,9 @@ export default function RunPayroll() {
                                                                                 </td>
                                                                                 <td className="px-4 py-2 text-right font-mono text-blue-400">
                                                                                     {emp.advance_recovery > 0 ? `-${Math.round(emp.advance_recovery)}` : '-'}
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-right font-mono text-emerald">
+                                                                                    {emp.adhoc_earnings > 0 ? `+${Math.round(emp.adhoc_earnings)}` : '-'}
                                                                                 </td>
                                                                                 <td className="px-4 py-2 text-right font-mono font-bold text-white">
                                                                                     {formatCurrency(emp.net_pay)}
@@ -626,6 +642,10 @@ export default function RunPayroll() {
                                                     <div className="rp-calc-row" style={{ color: '#60a5fa' }}>
                                                         <span>Advance Salary Recovery</span>
                                                         <span>- {formatCurrency(existingPeriod.total_advance_recovery)}</span>
+                                                    </div>
+                                                    <div className="rp-calc-row text-emerald">
+                                                        <span>Bonuses & Incentives</span>
+                                                        <span>+ {formatCurrency(existingPeriod.total_adhoc_earnings)}</span>
                                                     </div>
                                                     <div className="rp-calc-row rp-calc-total">
                                                         <span>Net Disbursal</span>
