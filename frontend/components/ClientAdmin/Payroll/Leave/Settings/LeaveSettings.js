@@ -68,7 +68,7 @@ export default function LeaveSettings() {
                     <p>Configure global leave rules and automated accrual behaviors for your organization.</p>
                 </div>
                 <button
-                    className="btn btn-primary"
+                    className="settings-btn settings-btn--primary"
                     onClick={handleSave}
                     disabled={saving}
                 >

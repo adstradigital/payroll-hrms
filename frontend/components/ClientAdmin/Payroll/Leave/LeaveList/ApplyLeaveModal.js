@@ -440,7 +440,7 @@ export default function ApplyLeaveModal({ isOpen, onClose, currentUser, leaveTyp
                     <div className="apply-leave-modal__actions">
                         <button
                             type="button"
-                            className="btn btn-secondary"
+                            className="apply-leave-modal__btn apply-leave-modal__btn--secondary"
                             onClick={onClose}
                             disabled={submitting}
                         >
@@ -448,7 +448,7 @@ export default function ApplyLeaveModal({ isOpen, onClose, currentUser, leaveTyp
                         </button>
                         <button
                             type="submit"
-                            className="btn btn-primary"
+                            className="apply-leave-modal__btn apply-leave-modal__btn--primary"
                             disabled={submitting || hasInsufficientBalance}
                         >
                             {submitting ? (

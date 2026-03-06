@@ -1526,6 +1526,29 @@
 
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 25px rgba(212, 175, 55, 0.4); }
 
+.objective-empty-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--gradient-primary);
+    border: none;
+    border-radius: var(--radius-lg);
+    color: black;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-glow);
+    font-family: 'Sora', sans-serif;
+}
+
+.objective-empty-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.4);
+}
+
 /* Focus Mode */
 .focus-mode .command-bar,
 .focus-mode .insights-panel,

@@ -743,7 +743,7 @@ export default function Objectives() {
                     </div>
                     <h3>No objectives found</h3>
                     <p>Create your first objective to start tracking your goals</p>
-                    <button onClick={() => { resetForm(); setShowModal(true); }} className="btn-primary">
+                    <button onClick={() => { resetForm(); setShowModal(true); }} className="objective-empty-action">
                         <Plus size={16} />
                         Create Objective
                     </button>

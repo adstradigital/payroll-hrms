@@ -7,6 +7,29 @@ import BASE_URL from '../../../../../api/config';
 
 const PERFORMANCE_BASE = `${BASE_URL}/performance`;
 
+const formatApiError = (error) => {
+    if (!error || typeof error !== 'object') {
+        return 'Request failed';
+    }
+
+    if (typeof error.detail === 'string') {
+        return error.detail;
+    }
+
+    if (typeof error.message === 'string') {
+        return error.message;
+    }
+
+    const fieldErrors = Object.entries(error)
+        .filter(([_, value]) => value !== null && value !== undefined)
+        .map(([field, value]) => {
+            const message = Array.isArray(value) ? value.join(', ') : String(value);
+            return `${field}: ${message}`;
+        });
+
+    return fieldErrors[0] || 'Request failed';
+};
+
 // Helper function for authenticated requests
 const authFetch = async (url, options = {}) => {
     const token = localStorage.getItem('accessToken');
@@ -20,7 +43,7 @@ const authFetch = async (url, options = {}) => {
     
     if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-        throw new Error(error.detail || error.message || 'Request failed');
+        throw new Error(formatApiError(error));
     }
 
     // Handle 204 No Content

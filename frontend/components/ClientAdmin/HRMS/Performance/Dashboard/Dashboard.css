@@ -58,6 +58,7 @@
 .perf-header__actions {
     display: flex;
     gap: var(--spacing-sm);
+    align-items: center;
 }
 
 .period-select {
@@ -67,6 +68,58 @@
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-size: var(--font-size-sm);
+    min-height: 42px;
+}
+
+.period-select:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--brand-primary-light);
+}
+
+.perf-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.perf-action-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.perf-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.perf-action-btn--primary {
+    background: linear-gradient(135deg, var(--brand-primary), #6366f1);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(79, 70, 229, 0.22);
+}
+
+.perf-action-btn--primary:hover:not(:disabled) {
+    filter: brightness(1.04);
+    box-shadow: 0 14px 28px rgba(79, 70, 229, 0.28);
+}
+
+[data-theme="dark"] .perf-action-btn--primary,
+.dark .perf-action-btn--primary {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #111827;
+    box-shadow: 0 14px 28px rgba(245, 158, 11, 0.24);
 }
 
 /* Metrics Grid */
@@ -357,12 +410,13 @@
 
 /* Alert Card */
 .alert-card {
-    background: var(--color-danger-light);
-    border: 1px solid var(--color-danger);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.06));
+    border: 1px solid rgba(239, 68, 68, 0.28);
     border-radius: var(--radius-xl);
     padding: var(--spacing-lg);
     position: relative;
     overflow: hidden;
+    box-shadow: var(--card-shadow);
 }
 
 .alert-card__header {
@@ -379,7 +433,7 @@
 .alert-card__title {
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-bold);
-    color: var(--text-primary);
+    color: #b91c1c;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin: 0;
@@ -387,8 +441,10 @@
 
 .alert-card__text {
     font-size: var(--font-size-xs);
-    color: var(--text-secondary);
+    color: #7f1d1d;
     margin: 0;
+    max-width: 85%;
+    line-height: 1.6;
 }
 
 .alert-card__bg-icon {
@@ -396,7 +452,23 @@
     bottom: -16px;
     right: -16px;
     color: var(--color-danger);
-    opacity: 0.1;
+    opacity: 0.12;
+}
+
+[data-theme="dark"] .alert-card,
+.dark .alert-card {
+    background: linear-gradient(135deg, rgba(127, 29, 29, 0.42), rgba(69, 10, 10, 0.9));
+    border-color: rgba(248, 113, 113, 0.28);
+}
+
+[data-theme="dark"] .alert-card__title,
+.dark .alert-card__title {
+    color: #fecaca;
+}
+
+[data-theme="dark"] .alert-card__text,
+.dark .alert-card__text {
+    color: #fca5a5;
 }
 
 /* Activity Card */
@@ -428,7 +500,7 @@
 .activity-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
+    gap: 12px;
 }
 
 .activity-item {
@@ -436,6 +508,16 @@
     align-items: center;
     gap: var(--spacing-sm);
     cursor: pointer;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.activity-item:hover {
+    border-color: var(--brand-primary);
+    transform: translateY(-1px);
 }
 
 .activity-item__icon-wrapper {
@@ -482,6 +564,7 @@
     text-transform: uppercase;
     font-family: monospace;
     margin: 2px 0 0 0;
+    letter-spacing: 0.08em;
 }
 
 .activity-item__arrow {
@@ -499,4 +582,16 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+    .perf-header__actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .period-select,
+    .perf-action-btn {
+        width: 100%;
+    }
 }

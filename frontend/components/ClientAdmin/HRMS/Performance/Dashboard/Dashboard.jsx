@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
     BarChart3, Users, Target, CheckCircle, Clock, TrendingUp, 
     AlertTriangle, Award, Calendar, ChevronRight, Plus, 
@@ -81,6 +82,7 @@ const FuturisticChart = ({ type = 'donut', data, size = 200 }) => {
 };
 
 export default function Dashboard() {
+    const router = useRouter();
     const [periods, setPeriods] = useState([]);
     const [selectedPeriod, setSelectedPeriod] = useState('');
     const [stats, setStats] = useState({
@@ -173,6 +175,10 @@ export default function Dashboard() {
         { label: "Avg. Rating", value: stats.average_rating?.toFixed(1) || "0.0", icon: Award, trend: "Out of 5" },
     ];
 
+    const handleCreateReview = () => {
+        router.push('/dashboard/performance/reviews?open=create');
+    };
+
     if (loading) {
         return (
             <div className="perf-dashboard perf-dashboard--loading">
@@ -200,7 +206,7 @@ export default function Dashboard() {
                             <option key={period.id} value={period.id}>{period.name}</option>
                         ))}
                     </select>
-                    <button className="btn btn-primary">
+                    <button className="perf-action-btn perf-action-btn--primary" onClick={handleCreateReview}>
                         <Plus size={16} />
                         New Review
                     </button>

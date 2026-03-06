@@ -205,6 +205,46 @@ export default function KeyResultsTracking() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const handleExportReport = () => {
+    if (filteredGoals.length === 0) {
+      showToast('No goals available to export', 'error');
+      return;
+    }
+
+    const selectedPeriodName = reviewPeriods.find((period) => String(period.id) === String(selectedPeriod))?.name || 'all-periods';
+    const headers = ['Goal', 'Description', 'Objective', 'Status', 'Progress (%)', 'Due Date', 'Review Period'];
+    const csvRows = filteredGoals.map((goal) => [
+      goal.title,
+      goal.description || '',
+      goal.objective_title || '',
+      goal.status,
+      goal.progress_percentage,
+      goal.due_date ? new Date(goal.due_date).toLocaleDateString() : '',
+      selectedPeriodName
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvRows.map((row) =>
+        row
+          .map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`)
+          .join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `key-results-${selectedPeriodName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast('Key results exported successfully', 'success');
+  };
+
   // ==================== STATISTICS ====================
   const statistics = useMemo(() => {
     const total = goals.length;
@@ -574,7 +614,7 @@ export default function KeyResultsTracking() {
                         <h2 className="section-title">
                             {filteredGoals.length} {filteredGoals.length === 1 ? 'Goal' : 'Goals'}
                         </h2>
-                        <button className="export-btn">
+                        <button className="export-btn" onClick={handleExportReport} disabled={filteredGoals.length === 0}>
                             <Download size={16} /> Export Report
                         </button>
                     </div>

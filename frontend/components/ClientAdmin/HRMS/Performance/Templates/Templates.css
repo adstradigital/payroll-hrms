@@ -231,6 +231,24 @@
     box-shadow: 0 0 25px var(--brand-primary-light);
 }
 
+.templates-add-btn {
+    background: linear-gradient(135deg, var(--brand-primary) 0%, #f4c430 100%);
+    color: #050505;
+    box-shadow: 0 14px 28px rgba(212, 175, 55, 0.24);
+    border: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+.templates-add-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 34px rgba(212, 175, 55, 0.32);
+    filter: saturate(1.04);
+}
+
+.templates-add-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.22), 0 18px 34px rgba(212, 175, 55, 0.28);
+}
+
 .btn-secondary {
     background: var(--bg-tertiary);
     color: var(--text-secondary);
@@ -370,7 +388,7 @@
 }
 
 .templates-card .template-item__content {
-    padding: 1.25rem;
+    padding: 1.5rem 1.25rem 1.25rem;
 }
 
 .templates-card .template-item__weightage {
@@ -475,9 +493,11 @@
 
 .template-item__header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 0.75rem;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
 }
 
 .template-item__header h4 {
@@ -485,6 +505,8 @@
     font-weight: 600;
     color: var(--text-primary);
     margin: 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .template-item__description {
@@ -569,6 +591,9 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    line-height: 1;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .badge-success {
@@ -706,6 +731,43 @@
     border-radius: 0 0 1rem 1rem;
 }
 
+.templates-modal-btn {
+    min-width: 160px;
+    justify-content: center;
+    font-weight: 700;
+    border-radius: 0.75rem;
+}
+
+.templates-modal-btn--secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.templates-modal-btn--secondary:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    border-color: var(--text-muted);
+}
+
+.templates-modal-btn--primary {
+    background: linear-gradient(135deg, var(--brand-primary) 0%, #f4c430 100%);
+    color: #050505;
+    border: 1px solid rgba(212, 175, 55, 0.18);
+    box-shadow: 0 14px 28px rgba(212, 175, 55, 0.22);
+}
+
+.templates-modal-btn--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 34px rgba(212, 175, 55, 0.3);
+    filter: saturate(1.04);
+}
+
+.templates-modal-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
 /* Form Styles */
 .form-group {
     margin-bottom: 1.25rem;
@@ -715,6 +777,11 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
+    align-items: start;
+}
+
+.form-row--criteria-options {
+    grid-template-columns: minmax(0, 1fr) 160px;
 }
 
 .form-group label {
@@ -755,7 +822,7 @@
 
 .form-hint {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-top: 0.5rem;
     display: block;
 }
@@ -765,7 +832,10 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    margin-top: 0.75rem;
     margin-bottom: 0;
+    padding-top: 0.875rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .form-group--checkbox input {
@@ -778,31 +848,38 @@
 .form-group--checkbox label {
     margin: 0;
     cursor: pointer;
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 /* Color Picker */
 .color-picker {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(4, 28px);
+    gap: 0.625rem;
+    align-content: start;
+    padding-top: 0.25rem;
 }
 
 .color-picker__swatch {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    border: 2px solid transparent;
+    border: 2px solid rgba(255, 255, 255, 0.14);
     cursor: pointer;
     transition: all 0.2s;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
 
 .color-picker__swatch:hover {
-    transform: scale(1.1);
+    transform: scale(1.08);
+    border-color: rgba(255, 255, 255, 0.32);
 }
 
 .color-picker__swatch.active {
-    border-color: var(--text-primary);
-    box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px currentColor;
+    border-color: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.26), inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+    transform: scale(1.05);
 }
 
 /* Confirm Message */
@@ -990,6 +1067,17 @@
     box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
 }
 
+[data-theme="light"] .templates-add-btn {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+[data-theme="light"] .templates-add-btn:hover {
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
 [data-theme="light"] .btn-secondary {
     background: #ffffff;
     border-color: #d4d4d8;
@@ -1087,6 +1175,33 @@
     border-top-color: #e4e4e7;
 }
 
+[data-theme="light"] .templates-modal-btn--secondary {
+    background: #ffffff;
+    color: #3f3f46;
+    border-color: #d4d4d8;
+}
+
+[data-theme="light"] .templates-modal-btn--secondary:hover {
+    background: #f4f4f5;
+    color: #18181b;
+    border-color: #a1a1aa;
+}
+
+[data-theme="light"] .templates-modal-btn--primary {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+[data-theme="light"] .templates-modal-btn--primary:hover {
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+[data-theme="light"] .form-group--checkbox {
+    border-top-color: #e4e4e7;
+}
+
 [data-theme="light"] .form-group input,
 [data-theme="light"] .form-group textarea {
     background: #ffffff;
@@ -1105,7 +1220,18 @@
 }
 
 [data-theme="light"] .color-picker__swatch.active {
-    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px currentColor;
+    border-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22), inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .form-row--criteria-options {
+        grid-template-columns: 1fr;
+    }
+
+    .color-picker {
+        grid-template-columns: repeat(5, 28px);
+    }
 }
 
 [data-theme="light"] .toast {

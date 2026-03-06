@@ -621,7 +621,7 @@ export default function ReviewPeriods() {
                 ) : <div></div>}
                 
                 <button 
-                    className="btn btn-primary"
+                    className="btn period-create-btn"
                     onClick={() => { resetForm(); setShowModal(true); }}
                 >
                     <Plus size={18} />
@@ -639,7 +639,7 @@ export default function ReviewPeriods() {
                     <h3>No Review Periods Found</h3>
                     <p>Create your first review period to get started</p>
                     <button 
-                        className="btn btn-primary"
+                        className="btn period-create-btn period-create-btn--centered"
                         style={{margin: '0 auto'}}
                         onClick={() => { resetForm(); setShowModal(true); }}
                     >
@@ -786,10 +786,10 @@ export default function ReviewPeriods() {
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                                <button type="button" className="btn period-modal-btn period-modal-btn--secondary" onClick={() => setShowModal(false)}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary">
+                                <button type="submit" className="btn period-modal-btn period-modal-btn--primary">
                                     {editingPeriod ? 'Update' : 'Create'}
                                 </button>
                             </div>

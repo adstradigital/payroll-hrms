@@ -2,7 +2,8 @@
 
 import { createPortal } from 'react-dom';
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
-import { Search, Plus, Star, Calendar, TrendingUp, User, Filter, 
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, Plus, Star, Calendar, TrendingUp, Filter, 
     Download, MoreVertical, ChevronDown, Eye, Edit, Trash2, Clock,
     CheckCircle, AlertCircle, XCircle
 } from 'lucide-react';
@@ -10,12 +11,47 @@ import {
     getPerformanceReviews, 
     getPerformanceReview,
     updatePerformanceReview,
-    getReviewPeriods
+    deletePerformanceReview
 } from '../services/performanceService';
 import { getAllEmployees } from '../../../../../api/api_clientadmin';
 import './Reviews.css';
 
+const REVIEW_STATUS_META = {
+    completed: { class: 'badge-success', icon: CheckCircle, label: 'Completed' },
+    in_progress: { class: 'badge-warning', icon: TrendingUp, label: 'In Progress' },
+    pending: { class: 'badge-secondary', icon: Clock, label: 'Pending' },
+    self_submitted: { class: 'badge-warning', icon: Clock, label: 'Self Submitted' },
+    under_review: { class: 'badge-warning', icon: TrendingUp, label: 'Under Review' },
+    rejected: { class: 'badge-danger', icon: AlertCircle, label: 'Rejected' }
+};
+
+const getStatusBadge = (status) => REVIEW_STATUS_META[status] || REVIEW_STATUS_META.pending;
+
+const escapeCsvValue = (value) => {
+    const normalized = value === null || value === undefined ? '' : String(value);
+    return `"${normalized.replace(/"/g, '""')}"`;
+};
+
+const downloadCsv = (filename, headers, rows) => {
+    const csvContent = [
+        headers.join(','),
+        ...rows.map((row) => row.map(escapeCsvValue).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
 export default function Reviews() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -28,10 +64,17 @@ export default function Reviews() {
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [dropdownAnchor, setDropdownAnchor] = useState(null);
     const [editingReview, setEditingReview] = useState(null);
+    const [detailsReview, setDetailsReview] = useState(null);
 
     useEffect(() => {
         fetchReviews();
     }, []);
+
+    useEffect(() => {
+        if (searchParams.get('open') === 'create') {
+            setActiveDropdown('create_modal');
+        }
+    }, [searchParams]);
 
     const fetchReviews = async () => {
         setLoading(true);
@@ -52,6 +95,7 @@ export default function Reviews() {
             }));
 
             setReviews(mappedReviews);
+            setSelectedReviews((prev) => prev.filter((id) => mappedReviews.some((review) => review.id === id)));
         } catch (error) {
             console.error('Failed to fetch reviews:', error);
         } finally {
@@ -103,15 +147,6 @@ export default function Reviews() {
 
     const departments = [...new Set(reviews.map(r => r.department))];
 
-    const getStatusBadge = (status) => {
-        const badges = {
-            completed: { class: 'badge-success', icon: CheckCircle, label: 'Completed' },
-            in_progress: { class: 'badge-warning', icon: TrendingUp, label: 'In Progress' },
-            pending: { class: 'badge-secondary', icon: Clock, label: 'Pending' },
-        };
-        return badges[status] || badges.pending;
-    };
-
     const toggleReviewSelection = (id) => {
         setSelectedReviews(prev =>
             prev.includes(id) ? prev.filter(reviewId => reviewId !== id) : [...prev, id]
@@ -140,8 +175,100 @@ export default function Reviews() {
         setActiveDropdown(null);
     };
 
+    const closeDropdown = () => {
+        setActiveDropdown(null);
+        setDropdownAnchor(null);
+    };
+
+    const handleOpenCreateModal = () => {
+        setActiveDropdown('create_modal');
+    };
+
+    const handleCloseCreateModal = () => {
+        setActiveDropdown(null);
+        if (searchParams.get('open') === 'create') {
+            router.replace('/dashboard/performance/reviews');
+        }
+    };
+
     const closeEditModal = () => {
         setEditingReview(null);
+    };
+
+    const getReviewRowsForExport = (items) => items.map((review) => [
+        review.employee,
+        review.reviewer,
+        review.department,
+        review.period,
+        review.rating ?? 'Not Rated',
+        `${review.progress}%`,
+        getStatusBadge(review.status).label,
+        review.date
+    ]);
+
+    const handleExportSelected = () => {
+        const selectedItems = filteredReviews.filter((review) => selectedReviews.includes(review.id));
+        if (selectedItems.length === 0) {
+            window.alert('Select at least one review to export.');
+            return;
+        }
+
+        downloadCsv(
+            `performance-reviews-${new Date().toISOString().slice(0, 10)}.csv`,
+            ['Employee', 'Reviewer', 'Department', 'Period', 'Rating', 'Progress', 'Status', 'Due Date'],
+            getReviewRowsForExport(selectedItems)
+        );
+    };
+
+    const handleDeleteReview = async (reviewId) => {
+        const targetReview = reviews.find((review) => review.id === reviewId);
+        const label = targetReview?.employee || 'this review';
+
+        if (!window.confirm(`Delete ${label}'s performance review?`)) {
+            return;
+        }
+
+        try {
+            await deletePerformanceReview(reviewId);
+            setReviews((prev) => prev.filter((review) => review.id !== reviewId));
+            setSelectedReviews((prev) => prev.filter((id) => id !== reviewId));
+            setDetailsReview((prev) => (prev?.id === reviewId ? null : prev));
+            closeDropdown();
+        } catch (error) {
+            console.error('Failed to delete review:', error);
+            window.alert(error.message || 'Failed to delete review.');
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedReviews.length === 0) {
+            return;
+        }
+
+        if (!window.confirm(`Delete ${selectedReviews.length} selected review(s)?`)) {
+            return;
+        }
+
+        const results = await Promise.allSettled(selectedReviews.map((reviewId) => deletePerformanceReview(reviewId)));
+        const successfulIds = selectedReviews.filter((_, index) => results[index].status === 'fulfilled');
+        const failedCount = results.length - successfulIds.length;
+
+        if (successfulIds.length > 0) {
+            setReviews((prev) => prev.filter((review) => !successfulIds.includes(review.id)));
+            setSelectedReviews((prev) => prev.filter((id) => !successfulIds.includes(id)));
+        }
+
+        if (failedCount > 0) {
+            window.alert(`${failedCount} review(s) could not be deleted. Check the console for details.`);
+            results
+                .filter((result) => result.status === 'rejected')
+                .forEach((result) => console.error('Bulk delete failed:', result.reason));
+        }
+    };
+
+    const handleViewDetails = (review) => {
+        setDetailsReview(review);
+        closeDropdown();
     };
 
     return (
@@ -200,7 +327,7 @@ export default function Reviews() {
                     </button>
                 </div>
                 <div className="reviews-toolbar__right">
-                    <button className="btn btn-primary" onClick={() => setActiveDropdown('create_modal')}>
+                    <button className="btn btn-primary" onClick={handleOpenCreateModal}>
                         <Plus size={18} /> New Review
                     </button>
                 </div>
@@ -242,8 +369,12 @@ export default function Reviews() {
                 <div className="selection-bar">
                     <span className="selection-bar__count">{selectedReviews.length} selected</span>
                     <div className="selection-bar__actions">
-                        <button className="btn btn-sm btn-outline">Export Selected</button>
-                        <button className="btn btn-sm btn-outline btn-outline--danger"><Trash2 size={16} /> Delete</button>
+                        <button className="btn btn-sm btn-outline" onClick={handleExportSelected}>
+                            <Download size={16} /> Export Selected
+                        </button>
+                        <button className="btn btn-sm btn-outline btn-outline--danger" onClick={handleBulkDelete}>
+                            <Trash2 size={16} /> Delete
+                        </button>
                     </div>
                 </div>
             )}
@@ -339,8 +470,8 @@ export default function Reviews() {
 
             <CreateReviewModal 
                 isOpen={activeDropdown === 'create_modal'} 
-                onClose={() => setActiveDropdown(null)}
-                onSuccess={() => { setActiveDropdown(null); fetchReviews(); }}
+                onClose={handleCloseCreateModal}
+                onSuccess={() => { handleCloseCreateModal(); fetchReviews(); }}
             />
 
             {activeDropdown && activeDropdown !== 'create_modal' && dropdownAnchor && (
@@ -353,14 +484,26 @@ export default function Reviews() {
                         if (!review) return null;
                         return (
                             <>
-                                <button className="dropdown-item"><Eye size={16} /> View Details</button>
+                                <button className="dropdown-item" onClick={() => handleViewDetails(review)}><Eye size={16} /> View Details</button>
                                 <button className="dropdown-item" onClick={() => handleEditClick(review)}><Edit size={16} /> Edit</button>
                                 <div className="dropdown-divider"></div>
-                                <button className="dropdown-item dropdown-item--danger"><Trash2 size={16} /> Delete</button>
+                                <button className="dropdown-item dropdown-item--danger" onClick={() => handleDeleteReview(review.id)}><Trash2 size={16} /> Delete</button>
                             </>
                         );
                     })()}
                 </DropdownPortal>
+            )}
+
+            {detailsReview && (
+                <ReviewDetailsModal
+                    review={detailsReview}
+                    isOpen={!!detailsReview}
+                    onClose={() => setDetailsReview(null)}
+                    onEdit={() => {
+                        setEditingReview(detailsReview);
+                        setDetailsReview(null);
+                    }}
+                />
             )}
 
             {editingReview && (
@@ -371,6 +514,63 @@ export default function Reviews() {
                     onSuccess={() => { closeEditModal(); fetchReviews(); }}
                 />
             )}
+        </div>
+    );
+}
+
+function ReviewDetailsModal({ review, isOpen, onClose, onEdit }) {
+    if (!isOpen || !review) return null;
+
+    const statusBadge = getStatusBadge(review.status);
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal modal--details" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h2>Review Details</h2>
+                    <button className="modal-close" onClick={onClose}><XCircle size={24} /></button>
+                </div>
+                <div className="modal-body">
+                    <div className="review-details">
+                        <div className="review-details__hero">
+                            <div className="employee-avatar employee-avatar--large">
+                                {review.employee.split(' ').map((name) => name[0]).join('').slice(0, 2)}
+                            </div>
+                            <div>
+                                <h3 className="review-details__title">{review.employee}</h3>
+                                <p className="review-details__subtitle">{review.department}</p>
+                            </div>
+                            <span className={`badge ${statusBadge.class}`}><statusBadge.icon size={12} /> {statusBadge.label}</span>
+                        </div>
+                        <div className="review-details__grid">
+                            <div className="detail-card">
+                                <span className="detail-label">Reviewer</span>
+                                <span className="detail-value">{review.reviewer}</span>
+                            </div>
+                            <div className="detail-card">
+                                <span className="detail-label">Review Period</span>
+                                <span className="detail-value">{review.period}</span>
+                            </div>
+                            <div className="detail-card">
+                                <span className="detail-label">Rating</span>
+                                <span className="detail-value">{review.rating ?? 'Not Rated'}</span>
+                            </div>
+                            <div className="detail-card">
+                                <span className="detail-label">Progress</span>
+                                <span className="detail-value">{review.progress}%</span>
+                            </div>
+                            <div className="detail-card">
+                                <span className="detail-label">Due Date</span>
+                                <span className="detail-value">{review.date}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="modal-footer">
+                    <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+                    <button type="button" className="btn btn-primary" onClick={onEdit}>Edit Review</button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -611,11 +811,17 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
             ]);
 
             const periodList = periodsRes?.results || periodsRes || [];
-            const activePeriods = periodList.filter(p => p.is_active);
-            setPeriods(activePeriods);
+            const normalizedPeriods = Array.isArray(periodList) ? periodList : [];
+            const prioritizedPeriods = [...normalizedPeriods].sort((a, b) => {
+                const aPriority = a.is_active || a.status === 'active' ? 1 : 0;
+                const bPriority = b.is_active || b.status === 'active' ? 1 : 0;
+                return bPriority - aPriority;
+            });
+
+            setPeriods(prioritizedPeriods);
             
-            if (activePeriods.length > 0) {
-                setFormData(prev => ({ ...prev, review_period: activePeriods[0].id }));
+            if (prioritizedPeriods.length > 0) {
+                setFormData(prev => ({ ...prev, review_period: prioritizedPeriods[0].id }));
             }
 
             const empList = employeesRes.data?.results || employeesRes.data || [];
@@ -707,12 +913,14 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                             >
                                 <option value="" disabled>Select a period</option>
                                 {periods.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                    <option key={p.id} value={p.id}>
+                                        {p.name}{p.is_active || p.status === 'active' ? ' (Active)' : ''}
+                                    </option>
                                 ))}
                             </select>
                             {periods.length === 0 && (
                                 <small style={{ color: 'var(--rv-color-warning)', marginTop: '0.5rem', display: 'block' }}>
-                                    No active review periods found. Please activate one first.
+                                    No review periods found. Please create one first.
                                 </small>
                             )}
                         </div>

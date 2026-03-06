@@ -108,10 +108,10 @@ export default function LeaveReports() {
 
             {/* Actions */}
             <div className="report-actions">
-                <button className="btn btn-secondary" onClick={() => handleExport('CSV')}>
+                <button className="report-btn report-btn--secondary" onClick={() => handleExport('CSV')}>
                     <Download size={16} /> Export CSV
                 </button>
-                <button className="btn btn-primary" onClick={() => handleExport('PDF')}>
+                <button className="report-btn report-btn--primary" onClick={() => handleExport('PDF')}>
                     <FileText size={16} /> Export PDF
                 </button>
             </div>
@@ -148,7 +148,7 @@ export default function LeaveReports() {
                     </select>
                 </div>
 
-                <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={fetchReport}>
+                <button className="report-icon-btn" onClick={fetchReport}>
                     <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                 </button>
             </div>

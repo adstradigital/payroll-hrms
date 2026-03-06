@@ -379,7 +379,7 @@ class AttendanceRegularizationActionSerializer(serializers.Serializer):
 # Aliases for views
 AttendancePolicySerializer = AttendancePolicyDetailSerializer
 ShiftSerializer = ShiftDetailSerializer
-AttendanceRegularizationSerializer = AttendanceRegularizationActionSerializer # Points to the action serializer
-AttendanceRegularizationRequestAlias = AttendanceRegularizationRequestSerializer # Renamed alias for request model
+AttendanceRegularizationSerializer = AttendanceRegularizationRequestSerializer
+AttendanceRegularizationRequestAlias = AttendanceRegularizationRequestSerializer
 AttendanceSerializer = AttendanceListSerializer
 

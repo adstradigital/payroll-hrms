@@ -106,6 +106,58 @@ export default function LeaveBalance() {
         }
     };
 
+    const handleExport = () => {
+        if (filteredBalances.length === 0) {
+            alert('No leave balance records available to export.');
+            return;
+        }
+
+        const escapeCsv = (value) => {
+            const normalized = value === null || value === undefined ? '' : String(value);
+            return `"${normalized.replace(/"/g, '""')}"`;
+        };
+
+        const csvRows = [
+            ['Employee', 'Employee ID', 'Leave Type', 'Year', 'Allocated', 'Carry Forward', 'Used', 'Pending', 'Available', 'Usage %'],
+            ...filteredBalances.map((balance) => {
+                const allocated = parseFloat(balance.allocated || 0);
+                const carryForward = parseFloat(balance.carry_forward || 0);
+                const used = parseFloat(balance.used || 0);
+                const pending = parseFloat(balance.pending || 0);
+                const available = parseFloat(balance.available || 0);
+                const totalQuota = allocated + carryForward;
+                const usagePercent = totalQuota > 0 ? ((used / totalQuota) * 100).toFixed(1) : '0.0';
+
+                return [
+                    balance.employee_name || '',
+                    balance.employee_id_display || '',
+                    balance.leave_type_name || '',
+                    balance.year || selectedYear,
+                    allocated.toFixed(1),
+                    carryForward.toFixed(1),
+                    used.toFixed(1),
+                    pending.toFixed(1),
+                    available.toFixed(1),
+                    usagePercent,
+                ];
+            }),
+        ];
+
+        const csvContent = csvRows
+            .map((row) => row.map(escapeCsv).join(','))
+            .join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `leave_balances_${selectedYear}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    };
+
     const filteredBalances = balances.filter(b => {
         const empName = b.employee_name || '';
         const empId = b.employee_id_display || '';
@@ -202,7 +254,7 @@ export default function LeaveBalance() {
 
                 <div className="balance-toolbar-right">
                     <button
-                        className="btn btn-secondary"
+                        className="balance-btn balance-btn--secondary"
                         onClick={handleBulkAllocate}
                         disabled={isAllocating}
                     >
@@ -210,15 +262,18 @@ export default function LeaveBalance() {
                         Bulk Allocate
                     </button>
                     <button
-                        className="btn btn-secondary"
+                        className="balance-btn balance-btn--outline"
                         onClick={handleRunAccrual}
                         disabled={isAllocating}
-                        style={{ border: '1px solid var(--primary-color)', color: 'var(--primary-color)' }}
                     >
                         {isAllocating ? <Loader2 size={16} className="animate-spin" /> : <Clock size={16} />}
                         Run Accrual
                     </button>
-                    <button className="btn btn-primary">
+                    <button
+                        className="balance-btn balance-btn--primary"
+                        onClick={handleExport}
+                        disabled={filteredBalances.length === 0}
+                    >
                         <Download size={16} />
                         Export
                     </button>
@@ -231,7 +286,7 @@ export default function LeaveBalance() {
                     <div className="balance-empty">
                         <AlertCircle size={48} />
                         <p>No balance records found for {selectedYear}.</p>
-                        <button className="btn btn-primary" onClick={handleBulkAllocate}>
+                        <button className="balance-btn balance-btn--primary" onClick={handleBulkAllocate}>
                             Run Allocation Now
                         </button>
                     </div>

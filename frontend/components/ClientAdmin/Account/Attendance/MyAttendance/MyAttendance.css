@@ -291,6 +291,16 @@
     background: var(--brand-primary-hover, #d97706);
 }
 
+.my-attendance .leave-apply-btn {
+    padding: 0.5rem 0.95rem;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    width: auto;
+    min-width: auto;
+    flex: 0 0 auto;
+    align-self: center;
+}
+
 /* --- Stats Grid --- */
 /* --- Stats Grid --- */
 /* --- Stats Grid --- */
