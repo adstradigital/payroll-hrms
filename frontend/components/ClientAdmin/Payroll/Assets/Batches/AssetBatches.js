@@ -113,6 +113,22 @@ export default function AssetBatches() {
         }
     };
 
+    const getStatusClassName = (status = '') => status.replace(/_/g, '-');
+    const getStatusLabel = (status = '') => status.replace(/[-_]/g, ' ');
+    const getStatusIcon = (status = '') => {
+        const normalizedStatus = getStatusClassName(status);
+
+        if (normalizedStatus === 'completed') {
+            return <CheckCircle size={16} />;
+        }
+
+        if (normalizedStatus === 'in-progress' || normalizedStatus === 'pending') {
+            return <Clock size={16} />;
+        }
+
+        return <AlertCircle size={16} />;
+    };
+
     return (
         <div className="asset-batches">
             {/* Header / Stats */}
@@ -158,56 +174,120 @@ export default function AssetBatches() {
                 </div>
             </div>
 
-            {/* Batch Table */}
-            <div className="ab-table-container">
-                <table className="ab-table">
-                    <thead>
-                        <tr>
-                            <th>Batch ID</th>
-                            <th>Batch Name</th>
-                            <th>Type</th>
-                            <th>Items</th>
-                            <th>Created Date</th>
-                            <th>Status</th>
-                            <th>Vendor</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {batches.map((batch) => (
-                            <tr key={batch.id}>
-                                <td className="ab-td-id">{batch.id}</td>
-                                <td className="ab-td-name">
-                                    <div className="ab-name-wrapper">
-                                        <Package size={16} className="ab-pkg-icon" />
-                                        <span>{batch.name}</span>
-                                    </div>
-                                </td>
-                                <td><span className="ab-type-tag">{batch.batch_type}</span></td>
-                                <td>{batch.items_count} Units</td>
-                                <td>{batch.date}</td>
-                                <td>
-                                    <span className={`ab-status-label ab-status-label--${batch.status}`}>
-                                        {batch.status.replace('-', ' ')}
-                                    </span>
-                                </td>
-                                <td>{batch.vendor || '-'}</td>
-                                <td>
-                                    <div className="ab-action-row">
-                                        <button className="ab-action-icon" title="Edit" onClick={() => handleEditBatch(batch)}>
-                                            <Plus size={16} style={{ transform: 'rotate(45deg)' }} />
-                                        </button>
-                                        <button className="ab-action-icon" title="Delete" onClick={() => handleDeleteBatch(batch.id)}>
-                                            <AlertCircle size={16} />
-                                        </button>
-                                        <button className="ab-action-icon"><MoreVertical size={16} /></button>
-                                    </div>
-                                </td>
+            {/* Batch Views */}
+            {viewMode === 'table' ? (
+                <div className="ab-table-container">
+                    <table className="ab-table">
+                        <thead>
+                            <tr>
+                                <th>Batch ID</th>
+                                <th>Batch Name</th>
+                                <th>Type</th>
+                                <th>Items</th>
+                                <th>Created Date</th>
+                                <th>Status</th>
+                                <th>Vendor</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {batches.map((batch) => (
+                                <tr key={batch.id}>
+                                    <td className="ab-td-id">{batch.id}</td>
+                                    <td className="ab-td-name">
+                                        <div className="ab-name-wrapper">
+                                            <Package size={16} className="ab-pkg-icon" />
+                                            <span>{batch.name}</span>
+                                        </div>
+                                    </td>
+                                    <td><span className="ab-type-tag">{batch.batch_type}</span></td>
+                                    <td>{batch.items_count} Units</td>
+                                    <td>{batch.date}</td>
+                                    <td>
+                                        <span className={`ab-status-label ab-status-label--${getStatusClassName(batch.status)}`}>
+                                            {getStatusLabel(batch.status)}
+                                        </span>
+                                    </td>
+                                    <td>{batch.vendor || '-'}</td>
+                                    <td>
+                                        <div className="ab-action-row">
+                                            <button className="ab-action-icon" title="Edit" onClick={() => handleEditBatch(batch)}>
+                                                <Plus size={16} style={{ transform: 'rotate(45deg)' }} />
+                                            </button>
+                                            <button className="ab-action-icon" title="Delete" onClick={() => handleDeleteBatch(batch.id)}>
+                                                <AlertCircle size={16} />
+                                            </button>
+                                            <button className="ab-action-icon"><MoreVertical size={16} /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <div className="ab-batch-grid">
+                    {batches.map((batch) => (
+                        <div key={batch.id} className="ab-batch-card">
+                            <div className="ab-batch-card-header">
+                                <div className="ab-batch-card-title">
+                                    <div className="ab-batch-card-icon">
+                                        <Package size={18} />
+                                    </div>
+                                    <div>
+                                        <div className="ab-batch-card-name">{batch.name}</div>
+                                        <div className="ab-batch-card-id">{batch.id}</div>
+                                    </div>
+                                </div>
+                                <span className={`ab-status-label ab-status-label--${getStatusClassName(batch.status)}`}>
+                                    {getStatusLabel(batch.status)}
+                                </span>
+                            </div>
+
+                            <div className="ab-batch-card-meta">
+                                <div className="ab-batch-card-meta-item">
+                                    <span className="ab-batch-card-meta-label">Type</span>
+                                    <span className="ab-type-tag">{batch.batch_type}</span>
+                                </div>
+                                <div className="ab-batch-card-meta-item">
+                                    <span className="ab-batch-card-meta-label">Items</span>
+                                    <span className="ab-batch-card-meta-value">{batch.items_count} Units</span>
+                                </div>
+                                <div className="ab-batch-card-meta-item">
+                                    <span className="ab-batch-card-meta-label">Created Date</span>
+                                    <span className="ab-batch-card-meta-value ab-batch-card-meta-inline">
+                                        <Calendar size={14} />
+                                        {batch.date}
+                                    </span>
+                                </div>
+                                <div className="ab-batch-card-meta-item">
+                                    <span className="ab-batch-card-meta-label">Status</span>
+                                    <span className="ab-batch-card-meta-value ab-batch-card-meta-inline">
+                                        {getStatusIcon(batch.status)}
+                                        {getStatusLabel(batch.status)}
+                                    </span>
+                                </div>
+                                <div className="ab-batch-card-meta-item ab-batch-card-meta-item--full">
+                                    <span className="ab-batch-card-meta-label">Vendor</span>
+                                    <span className="ab-batch-card-meta-value">{batch.vendor || '-'}</span>
+                                </div>
+                            </div>
+
+                            <div className="ab-action-row">
+                                <button className="ab-action-icon" title="Edit" onClick={() => handleEditBatch(batch)}>
+                                    <Plus size={16} style={{ transform: 'rotate(45deg)' }} />
+                                </button>
+                                <button className="ab-action-icon" title="Delete" onClick={() => handleDeleteBatch(batch.id)}>
+                                    <AlertCircle size={16} />
+                                </button>
+                                <button className="ab-action-icon" title="More actions">
+                                    <MoreVertical size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Asset Batch Modal */}
             {showModal && (

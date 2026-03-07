@@ -454,47 +454,47 @@ export default function RunPayroll() {
                                                         </div>
 
                                                         {/* Employee Preview Table */}
-                                                        <div className="mt-6 border border-[#222] rounded-lg overflow-hidden bg-[#0a0a0a]">
-                                                            <div className="p-3 bg-[#111] border-b border-[#222] flex justify-between items-center">
-                                                                <h4 className="text-sm font-bold text-secondary uppercase tracking-wider">Employee Impact Preview</h4>
-                                                                <span className="text-xs text-muted">Review before execution</span>
+                                                        <div className="rp-preview-table">
+                                                            <div className="rp-preview-table-header">
+                                                                <h4 className="rp-preview-table-title">Employee Impact Preview</h4>
+                                                                <span className="rp-preview-table-note">Review before execution</span>
                                                             </div>
-                                                            <div className="overflow-x-auto max-h-[300px]">
-                                                                <table className="w-full text-sm text-left">
-                                                                    <thead className="text-xs text-muted uppercase bg-[#151515] sticky top-0">
+                                                            <div className="rp-preview-table-scroll">
+                                                                <table>
+                                                                    <thead>
                                                                         <tr>
-                                                                            <th className="px-4 py-3">Employee</th>
-                                                                            <th className="px-4 py-3 text-right">Gross Pay</th>
-                                                                            <th className="px-4 py-3 text-right text-red-400">LOP</th>
-                                                                            <th className="px-4 py-3 text-right text-amber-500">Statutory</th>
-                                                                            <th className="px-4 py-3 text-right text-blue-400">Advance</th>
-                                                                            <th className="px-4 py-3 text-right text-emerald">Bonus</th>
-                                                                            <th className="px-4 py-3 text-right">Net Salary</th>
+                                                                            <th>Employee</th>
+                                                                            <th className="text-right">Gross Pay</th>
+                                                                            <th className="text-right text-red-400">LOP</th>
+                                                                            <th className="text-right text-amber-500">Statutory</th>
+                                                                            <th className="text-right text-blue-400">Advance</th>
+                                                                            <th className="text-right text-emerald">Bonus</th>
+                                                                            <th className="text-right">Net Salary</th>
                                                                         </tr>
                                                                     </thead>
-                                                                    <tbody className="divide-y divide-[#222]">
+                                                                    <tbody>
                                                                         {previewData?.employees.map((emp, idx) => (
-                                                                            <tr key={idx} className="hover:bg-[#111]">
-                                                                                <td className="px-4 py-2 font-medium">
-                                                                                    <div className="text-white">{emp.name}</div>
-                                                                                    <div className="text-xs text-muted">{emp.designation}</div>
+                                                                            <tr key={idx}>
+                                                                                <td className="font-medium">
+                                                                                    <div className="rp-preview-table-name">{emp.name}</div>
+                                                                                    <div className="rp-preview-table-role">{emp.designation}</div>
                                                                                 </td>
-                                                                                <td className="px-4 py-2 text-right font-mono text-white">
+                                                                                <td className="text-right font-mono rp-preview-table-value">
                                                                                     {formatCurrency(emp.gross_pay)}
                                                                                 </td>
-                                                                                <td className="px-4 py-2 text-right font-mono text-red-400">
+                                                                                <td className="text-right font-mono text-red-400">
                                                                                     {emp.lop_deduction > 0 ? `-${Math.round(emp.lop_deduction)}` : '-'}
                                                                                 </td>
-                                                                                <td className="px-4 py-2 text-right font-mono text-amber-500">
+                                                                                <td className="text-right font-mono text-amber-500">
                                                                                     {emp.statutory_deductions > 0 ? `-${Math.round(emp.statutory_deductions)}` : '-'}
                                                                                 </td>
-                                                                                <td className="px-4 py-2 text-right font-mono text-blue-400">
+                                                                                <td className="text-right font-mono text-blue-400">
                                                                                     {emp.advance_recovery > 0 ? `-${Math.round(emp.advance_recovery)}` : '-'}
                                                                                 </td>
-                                                                                <td className="px-4 py-2 text-right font-mono text-emerald">
+                                                                                <td className="text-right font-mono text-emerald">
                                                                                     {emp.adhoc_earnings > 0 ? `+${Math.round(emp.adhoc_earnings)}` : '-'}
                                                                                 </td>
-                                                                                <td className="px-4 py-2 text-right font-mono font-bold text-white">
+                                                                                <td className="text-right font-mono font-bold rp-preview-table-value">
                                                                                     {formatCurrency(emp.net_pay)}
                                                                                 </td>
                                                                             </tr>

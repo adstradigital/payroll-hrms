@@ -1,4 +1,7 @@
 .loan-repayment-container {
+    --accent-primary: var(--brand-primary);
+    --accent-secondary: var(--brand-primary-hover);
+    --border-subtle: var(--border-color);
     padding: 2rem;
     background-color: var(--bg-primary);
     min-height: 100vh;

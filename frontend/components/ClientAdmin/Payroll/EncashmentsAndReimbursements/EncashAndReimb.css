@@ -165,13 +165,20 @@
 }
 
 .er-modal {
-    background: #111;
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 2rem;
     width: 100%;
     max-width: 500px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.er-modal-title {
+    margin: 0 0 1rem;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
 }
 
 .er-form-group {
@@ -202,6 +209,35 @@
 .er-select:focus,
 .er-textarea:focus {
     border-color: var(--brand-primary);
+}
+
+.er-file-drop {
+    position: relative;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.er-file-drop:hover {
+    border-color: var(--brand-primary);
+}
+
+.er-file-drop-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+}
+
+.er-file-drop-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    word-break: break-word;
 }
 
 .er-modal-actions {

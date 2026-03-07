@@ -155,7 +155,7 @@ const menuItems = [
         label: 'Bulk Upload',
         translationKey: 'common.bulkUpload',
         icon: Upload,
-        path: '/dashboard/payroll/bulk-upload/dashboard',
+        path: '/dashboard/payroll/bulk-upload',
         adminOnly: true,
         children: [
             { id: 'bu-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll/bulk-upload/dashboard' },

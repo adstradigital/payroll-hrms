@@ -244,7 +244,7 @@ const EncashAndReimb = () => {
             {showModal && (
                 <div className="er-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}>
                     <div className="er-modal">
-                        <h2 className="text-xl font-bold mb-4 text-white">
+                        <h2 className="er-modal-title">
                             New {activeTab === 'reimbursement' ? 'Reimbursement' : 'Encashment'} Request
                         </h2>
                         <form onSubmit={handleSubmit}>
@@ -305,15 +305,15 @@ const EncashAndReimb = () => {
                                     </div>
                                     <div className="er-form-group">
                                         <label>Receipt (Optional)</label>
-                                        <div className="border border-dashed border-gray-600 rounded p-4 text-center cursor-pointer hover:border-brand-primary transition-colors relative">
+                                        <div className="er-file-drop">
                                             <input
                                                 type="file"
                                                 onChange={handleFileChange}
                                                 className="absolute inset-0 opacity-0 cursor-pointer"
                                             />
-                                            <div className="flex flex-col items-center gap-2 text-muted">
+                                            <div className="er-file-drop-content">
                                                 <Upload size={20} />
-                                                <span className="text-sm">{formData.attachment ? formData.attachment.name : "Click to upload file"}</span>
+                                                <span className="er-file-drop-text">{formData.attachment ? formData.attachment.name : "Click to upload file"}</span>
                                             </div>
                                         </div>
                                     </div>

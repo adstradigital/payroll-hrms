@@ -9,13 +9,16 @@ import {
 import { getAssetRequests, createAssetRequest } from '@/api/api_clientadmin';
 import './AssetRequests.css';
 
+const INITIAL_FORM_DATA = { asset_type: '', priority: 'medium', reason: '' };
+
 export default function AssetRequests() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [formData, setFormData] = useState({ asset_type: '', priority: 'medium', reason: '' });
+    const [formData, setFormData] = useState(INITIAL_FORM_DATA);
     const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });
+    const [showRequestForm, setShowRequestForm] = useState(false);
 
     useEffect(() => {
         fetchRequests();
@@ -45,11 +48,17 @@ export default function AssetRequests() {
         e.preventDefault();
         try {
             await createAssetRequest(formData);
-            setFormData({ asset_type: '', priority: 'medium', reason: '' });
+            setFormData(INITIAL_FORM_DATA);
+            setShowRequestForm(false);
             fetchRequests();
         } catch (error) {
             console.error('Error creating request:', error);
         }
+    };
+
+    const handleCloseRequestForm = () => {
+        setFormData(INITIAL_FORM_DATA);
+        setShowRequestForm(false);
     };
 
     const filteredRequests = requests.filter(req => {
@@ -61,13 +70,53 @@ export default function AssetRequests() {
 
     return (
         <div className="asset-requests">
-            {/* Upper Section: Request Form & Stats */}
-            <div className="ar-top-layout">
-                {/* Request Form */}
-                <div className="ar-card ar-form-card">
-                    <div className="ar-card-header">
+            <div className="ar-dashboard-header">
+                <div className="ar-dashboard-copy">
+                    <span className="ar-dashboard-kicker">Assets Dashboard</span>
+                    <h2>Asset Requests</h2>
+                    <p>Track request volume, pending approvals, and submit a new asset request from one place.</p>
+                </div>
+                {!showRequestForm && (
+                    <button
+                        type="button"
+                        className="ar-btn-primary ar-btn-primary--compact"
+                        onClick={() => setShowRequestForm(true)}
+                    >
+                        Submit New Request
+                    </button>
+                )}
+            </div>
+
+            <div className="ar-stats-grid">
+                <div className="ar-mini-stat">
+                    <div className="ar-mini-stat-info">
+                        <span className="label">Total Requests</span>
+                        <span className="value">{stats.total}</span>
+                    </div>
+                    <div className="ar-mini-stat-icon blue"><Send size={20} /></div>
+                </div>
+                <div className="ar-mini-stat">
+                    <div className="ar-mini-stat-info">
+                        <span className="label">Pending</span>
+                        <span className="value">{stats.pending}</span>
+                    </div>
+                    <div className="ar-mini-stat-icon orange"><Clock size={20} /></div>
+                </div>
+                <div className="ar-mini-stat">
+                    <div className="ar-mini-stat-info">
+                        <span className="label">Approved</span>
+                        <span className="value">{stats.approved}</span>
+                    </div>
+                    <div className="ar-mini-stat-icon green"><CheckCircle2 size={20} /></div>
+                </div>
+            </div>
+
+            {showRequestForm && (
+                <div className="ar-card ar-form-card is-open">
+                    <div className="ar-card-header ar-card-header--split">
                         <h3><Send size={18} /> New Asset Request</h3>
                     </div>
+
                     <form className="ar-form" onSubmit={handleSubmit}>
                         <div className="ar-form-row">
                             <div className="ar-form-group">
@@ -103,35 +152,13 @@ export default function AssetRequests() {
                                 required
                             ></textarea>
                         </div>
-                        <button type="submit" className="ar-btn-primary">Submit Request</button>
+                        <div className="ar-form-actions">
+                            <button type="button" className="ar-btn-secondary" onClick={handleCloseRequestForm}>Cancel</button>
+                            <button type="submit" className="ar-btn-primary">Send Request</button>
+                        </div>
                     </form>
                 </div>
-
-                {/* Request Stats */}
-                <div className="ar-stats-side">
-                    <div className="ar-mini-stat">
-                        <div className="ar-mini-stat-info">
-                            <span className="label">Total Requests</span>
-                            <span className="value">{stats.total}</span>
-                        </div>
-                        <div className="ar-mini-stat-icon blue"><Send size={20} /></div>
-                    </div>
-                    <div className="ar-mini-stat">
-                        <div className="ar-mini-stat-info">
-                            <span className="label">Pending</span>
-                            <span className="value">{stats.pending}</span>
-                        </div>
-                        <div className="ar-mini-stat-icon orange"><Clock size={20} /></div>
-                    </div>
-                    <div className="ar-mini-stat">
-                        <div className="ar-mini-stat-info">
-                            <span className="label">Approved</span>
-                            <span className="value">{stats.approved}</span>
-                        </div>
-                        <div className="ar-mini-stat-icon green"><CheckCircle2 size={20} /></div>
-                    </div>
-                </div>
-            </div>
+            )}
 
             {/* Tabs & List */}
             <div className="ar-list-section">
