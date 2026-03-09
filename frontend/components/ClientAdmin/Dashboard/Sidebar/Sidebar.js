@@ -8,7 +8,7 @@ import {
     Wallet, FileText, Settings, ChevronDown,
     ChevronRight, LogOut, Bell, User, CheckCircle2,
     X, Loader, AlertCircle, HelpCircle, Upload, Activity,
-    Box, Package, TrendingUp
+    Box, Package, TrendingUp, UserCheck
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -31,6 +31,26 @@ const menuItems = [
         translationKey: 'common.profile',
         icon: User,
         path: '/dashboard/profile',
+    },
+        {
+        id: 'recruitment',
+        label: 'Recruitment',
+        translationKey: 'common.recruitment',
+        module: 'HRMS',
+        icon: UserCheck,
+        path: '/dashboard/recruitment',
+        permission: ['recruitment.view', 'recruitment.view_job_openings'],
+        children: [
+            { id: 'recruit-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/recruitment' },
+            { id: 'recruitment-pipeline', label: 'Recruitment Pipeline', translationKey: 'common.recruitmentPipeline', path: '/dashboard/recruitment/pipeline' },
+            { id: 'recruitment-survey', label: 'Recruitment Survey', translationKey: 'common.recruitmentSurvey', path: '/dashboard/recruitment/survey' },
+            { id: 'candidates', label: 'Candidates', translationKey: 'common.candidates', path: '/dashboard/recruitment/candidates' },
+            { id: 'interview', label: 'Interview', translationKey: 'common.interview', path: '/dashboard/recruitment/interview' },
+            { id: 'recruitment-general', label: 'Recruitment', translationKey: 'common.recruitment', path: '/dashboard/recruitment/recruitment' },
+            { id: 'open-jobs', label: 'Open Jobs', translationKey: 'common.openJobs', path: '/dashboard/recruitment/job-openings' },
+            { id: 'stages', label: 'Stages', translationKey: 'common.stages', path: '/dashboard/recruitment/stages' },
+            { id: 'skill-zone', label: 'Skill Zone', translationKey: 'common.skillZone', path: '/dashboard/recruitment/skill-zone' },
+        ]
     },
     {
         id: 'employees',
@@ -91,6 +111,7 @@ const menuItems = [
             { id: 'leave-settings', label: 'Settings', translationKey: 'common.settings', path: '/dashboard/leave/settings', adminOnly: true },
         ]
     },
+
     {
         id: 'performance',
         label: 'Performance',

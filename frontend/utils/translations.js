@@ -67,7 +67,17 @@ export const translations = {
             assetBatches: "Asset Batches",
             assetRequests: "Asset Requests",
             assetHistory: "Asset History",
-            loans: "Loans & EMI"
+            loans: "Loans & EMI",
+            recruitment: "Recruitment",
+            jobOpenings: "Job Openings",
+            candidates: "Candidates",
+            hiringPipeline: "Hiring Pipeline",
+            recruitmentPipeline: "Recruitment Pipeline",
+            recruitmentSurvey: "Recruitment Survey",
+            interview: "Interview",
+            openJobs: "Open Jobs",
+            stages: "Stages",
+            skillZone: "Skill Zone"
         },
         auth: {
             login: "Login",
@@ -179,7 +189,17 @@ export const translations = {
             assetBatches: "അസറ്റ് ബാച്ചുകൾ",
             assetRequests: "അസറ്റ് അപേക്ഷകൾ",
             assetHistory: "അസറ്റ് ചരിത്രം",
-            loans: "ലോണുകളും ഇഎംഐയും"
+            loans: "ലോണുകളും ഇഎംഐയും",
+            recruitment: "റിക്രൂട്ട്മെന്റ്",
+            jobOpenings: "തൊഴിലവസരങ്ങൾ",
+            candidates: "ഉദ്യോഗാർത്ഥികൾ",
+            hiringPipeline: "ഹയറിംഗ് പൈപ്പ്ലൈൻ",
+            recruitmentPipeline: "റിക്രൂട്ട്മെന്റ് പൈപ്പ്ലൈൻ",
+            recruitmentSurvey: "റിക്രൂട്ട്മെന്റ് സർവേ",
+            interview: "അഭിമുഖം",
+            openJobs: "ഓപ്പൺ ജോലികൾ",
+            stages: "ഘട്ടങ്ങൾ",
+            skillZone: "സ്കിൽ സോൺ"
         },
         auth: {
             login: "ലോഗിൻ",
@@ -291,7 +311,17 @@ export const translations = {
             assetBatches: "دفعات الأصول",
             assetRequests: "طلبات الأصول",
             assetHistory: "سجل الأصول",
-            loans: "القروض والأقساط"
+            loans: "القروض والأقساط",
+            recruitment: "التوظيف",
+            jobOpenings: "فرص العمل",
+            candidates: "المرشحون",
+            hiringPipeline: "مراحل التوظيف",
+            recruitmentPipeline: "خطة التوظيف",
+            recruitmentSurvey: "استبيان التوظيف",
+            interview: "مقابلة",
+            openJobs: "وظائف مفتوحة",
+            stages: "مراحل",
+            skillZone: "منطقة المهارات"
         },
         auth: {
             login: "تسجيل الدخول",

@@ -53,12 +53,17 @@ const Approvals = () => {
         try {
             const response = await axiosInstance.post(SUPERADMIN_ENDPOINTS.APPROVE_REGISTRATION(request.id));
             if (response.data.success) {
-                alert(`✅ Organization "${request.organization_name}" has been approved!\n\n📧 Login credentials have been sent to:\n${request.admin_email}\n\nThe client admin can now access their dashboard.`);
+                const loginUsername = response?.data?.login_username || request.admin_email;
+                alert(`Organization "${request.organization_name}" has been approved.\n\nLogin credentials have been sent to:\n${request.admin_email}\n\nLogin Username: ${loginUsername}\n\nThe client admin can now access their dashboard.`);
                 setRequests(prev => prev.filter(req => req.id !== request.id));
             }
         } catch (err) {
             console.error('Approval error:', err);
-            alert('Failed to approve registration. Please try again.');
+            const backendMessage =
+                err?.response?.data?.error ||
+                err?.response?.data?.detail ||
+                'Failed to approve registration. Please try again.';
+            alert(backendMessage);
         } finally {
             setProcessingId(null);
         }
@@ -258,3 +263,4 @@ const Approvals = () => {
 };
 
 export default Approvals;
+

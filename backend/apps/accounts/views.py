@@ -1659,21 +1659,39 @@ def approve_registration(request, pk):
         
         if registration.status != 'pending':
             return Response({'error': 'Registration already processed'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Check for existing user or employee with this email
-        if User.objects.filter(email=registration.admin_email).exists() or Employee.objects.filter(email=registration.admin_email).exists():
-            return Response({'error': f"An account or employee profile with email '{registration.admin_email}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        def build_unique_login_identifier(base_email):
+            """
+            Generate a unique email-like login identifier when admin_email is already in use.
+            """
+            if '@' in base_email:
+                local_part, domain_part = base_email.split('@', 1)
+            else:
+                local_part, domain_part = base_email, 'login.local'
+
+            candidate = base_email
+            suffix = 1
+            while (
+                User.objects.filter(username=candidate).exists()
+                or User.objects.filter(email=candidate).exists()
+                or Employee.objects.filter(email=candidate).exists()
+            ):
+                candidate = f"{local_part}+{suffix}@{domain_part}"
+                suffix += 1
+            return candidate
         
         with transaction.atomic():
             # Generate password
             generated_password = secrets.token_urlsafe(12)
-            
+
+            # If this email is already used, auto-generate a unique login identifier to allow approval.
+            login_identifier = build_unique_login_identifier(registration.admin_email)
+
             # Create user
-            username = registration.admin_email.split('@')[0] + '_' + secrets.token_hex(4)
             name_parts = registration.admin_name.split()
             user = User.objects.create_user(
-                username=username,
-                email=registration.admin_email,
+                username=login_identifier,
+                email=login_identifier,
                 password=generated_password,
                 first_name=name_parts[0] if name_parts else '',
                 last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
@@ -1750,7 +1768,7 @@ def approve_registration(request, pk):
                 employee_id=employee_id,
                 first_name=name_parts[0] if name_parts else '',
                 last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
-                email=registration.admin_email,
+                email=login_identifier,
                 phone=registration.admin_phone,
                 date_of_joining=timezone.now().date(),
                 status='active',
@@ -1788,7 +1806,7 @@ def approve_registration(request, pk):
                 admin_email=registration.admin_email,
                 admin_name=registration.admin_name,
                 organization_name=registration.organization_name,
-                username=registration.admin_email,
+                username=login_identifier,
                 password=generated_password,
                 login_url="http://localhost:3000/login"  # Update for production
             )
@@ -1804,6 +1822,7 @@ def approve_registration(request, pk):
             'success': True,
             'message': f'Organization "{registration.organization_name}" approved successfully!',
             'credentials_sent_to': registration.admin_email,
+            'login_username': login_identifier,
             'organization_id': str(organization.id)
         })
     except Exception as e:

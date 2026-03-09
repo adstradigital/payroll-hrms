@@ -182,3 +182,20 @@ recalculate_payslip
 
 generate_payroll_advanced
 get_payroll_reports
+
+RECRUITMENT
+
+job_opening_list_create
+job_opening_detail
+job_opening_stats
+job_opening_duplicate
+job_opening_applications
+
+candidate_list_create
+candidate_detail
+candidate_stats
+candidate_add_note
+candidate_update_status
+candidate_toggle_star
+candidate_bulk_update
+candidate_apply_to_job

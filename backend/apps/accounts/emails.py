@@ -136,7 +136,7 @@ Great news! Your organization "{organization_name}" has been approved and your a
 
 Here are your login credentials:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Email/Username: {admin_email}
+Email/Username: {username}
 Temporary Password: {password}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -205,7 +205,7 @@ The Nexus HRMS Team
                     <h3>🔐 Your Login Credentials</h3>
                     <div class="credential-row">
                         <span class="credential-label">Email / Username:</span>
-                        <span class="credential-value">{admin_email}</span>
+                        <span class="credential-value">{username}</span>
                     </div>
                     <div class="credential-row">
                         <span class="credential-label">Temporary Password:</span>

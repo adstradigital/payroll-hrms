@@ -1,39 +1,65 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, Mail, Phone, MapPin, Star, MoreVertical } from 'lucide-react';
+import recruitmentApi from '@/api/recruitmentApi';
 import './Candidates.css';
 
-const mockCandidates = [
-    { id: 1, name: 'Alex Johnson', email: 'alex@email.com', phone: '+1 234-567-8901', position: 'Senior React Developer', experience: '5 years', stage: 'screening', rating: 4, appliedDate: '2026-01-14' },
-    { id: 2, name: 'Emily Chen', email: 'emily@email.com', phone: '+1 234-567-8902', position: 'Product Designer', experience: '3 years', stage: 'interview', rating: 5, appliedDate: '2026-01-13' },
-    { id: 3, name: 'Michael Brown', email: 'michael@email.com', phone: '+1 234-567-8903', position: 'Marketing Manager', experience: '7 years', stage: 'offer', rating: 4, appliedDate: '2026-01-10' },
-    { id: 4, name: 'Sarah Davis', email: 'sarah@email.com', phone: '+1 234-567-8904', position: 'HR Executive', experience: '2 years', stage: 'applied', rating: 3, appliedDate: '2026-01-15' },
-];
-
 const stages = [
-    { id: 'applied', label: 'Applied', color: 'secondary' },
-    { id: 'screening', label: 'Screening', color: 'info' },
-    { id: 'interview', label: 'Interview', color: 'warning' },
-    { id: 'offer', label: 'Offer', color: 'success' },
+    { id: 'NEW', label: 'New', color: 'secondary' },
+    { id: 'SCREENING', label: 'Screening', color: 'info' },
+    { id: 'INTERVIEW', label: 'Interview', color: 'warning' },
+    { id: 'OFFERED', label: 'Offered', color: 'success' },
+    { id: 'HIRED', label: 'Hired', color: 'success' },
+    { id: 'REJECTED', label: 'Rejected', color: 'danger' },
 ];
 
 export default function Candidates() {
-    const [candidates, setCandidates] = useState(mockCandidates);
+    const [candidates, setCandidates] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStage, setFilterStage] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchCandidates();
+    }, []);
+
+    const fetchCandidates = async () => {
+        try {
+            const response = await recruitmentApi.getCandidates();
+            setCandidates(response.data.results || []);
+        } catch (error) {
+            console.error('Failed to fetch candidates:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredCandidates = candidates.filter(c => {
-        const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.position.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStage = filterStage === 'all' || c.stage === filterStage;
-        return matchesSearch && matchesStage;
+        const fullName = c.full_name || `${c.first_name} ${c.last_name}`;
+        const jobTitle = c.current_job_title || '';
+        const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            jobTitle.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = filterStatus === 'all' || c.status === filterStatus;
+        return matchesSearch && matchesStatus;
     });
 
-    const getStageBadge = (stage) => {
-        const stageInfo = stages.find(s => s.id === stage);
-        return stageInfo ? `badge-${stageInfo.color}` : '';
+    const getStatusBadge = (status) => {
+        const stageInfo = stages.find(s => s.id === status);
+        return stageInfo ? `badge-${stageInfo.color}` : 'badge-secondary';
     };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString();
+    };
+    
+    // Helper to get initials
+    const getInitials = (firstName, lastName) => {
+        return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`;
+    };
+
+    if (loading) return <div>Loading candidates...</div>;
 
     return (
         <div className="candidates">
@@ -52,10 +78,10 @@ export default function Candidates() {
                     </div>
                     <select
                         className="candidates-filter"
-                        value={filterStage}
-                        onChange={(e) => setFilterStage(e.target.value)}
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
                     >
-                        <option value="all">All Stages</option>
+                        <option value="all">All Statuses</option>
                         {stages.map(s => (
                             <option key={s.id} value={s.id}>{s.label}</option>
                         ))}
@@ -71,9 +97,9 @@ export default function Candidates() {
                             <th>Candidate</th>
                             <th>Position</th>
                             <th>Experience</th>
-                            <th>Stage</th>
+                            <th>Status</th>
                             <th>Rating</th>
-                            <th>Applied</th>
+                            <th>Added</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -83,19 +109,19 @@ export default function Candidates() {
                                 <td>
                                     <div className="candidate-info">
                                         <div className="candidate-avatar">
-                                            {candidate.name.split(' ').map(n => n[0]).join('')}
+                                            {getInitials(candidate.first_name, candidate.last_name)}
                                         </div>
                                         <div className="candidate-details">
-                                            <span className="candidate-name">{candidate.name}</span>
+                                            <span className="candidate-name">{candidate.full_name || `${candidate.first_name} ${candidate.last_name}`}</span>
                                             <span className="candidate-email">{candidate.email}</span>
                                         </div>
                                     </div>
                                 </td>
-                                <td>{candidate.position}</td>
-                                <td>{candidate.experience}</td>
+                                <td>{candidate.current_job_title || '-'}</td>
+                                <td>{candidate.total_experience_years ? `${candidate.total_experience_years} years` : '-'}</td>
                                 <td>
-                                    <span className={`badge ${getStageBadge(candidate.stage)}`}>
-                                        {stages.find(s => s.id === candidate.stage)?.label}
+                                    <span className={`badge ${getStatusBadge(candidate.status)}`}>
+                                        {stages.find(s => s.id === candidate.status)?.label || candidate.status}
                                     </span>
                                 </td>
                                 <td>
@@ -104,12 +130,12 @@ export default function Candidates() {
                                             <Star
                                                 key={i}
                                                 size={14}
-                                                className={i < candidate.rating ? 'star--filled' : 'star--empty'}
+                                                className={i < (Number(candidate.overall_rating) || 0) ? 'star--filled' : 'star--empty'}
                                             />
                                         ))}
                                     </div>
                                 </td>
-                                <td>{candidate.appliedDate}</td>
+                                <td>{formatDate(candidate.created_at)}</td>
                                 <td>
                                     <button className="action-btn">
                                         <MoreVertical size={16} />

@@ -1,28 +1,60 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, MapPin, Clock, Users, Eye, Edit, Trash2 } from 'lucide-react';
+import recruitmentApi from '@/api/recruitmentApi';
 import './JobOpenings.css';
 
-const mockJobs = [
-    { id: 1, title: 'Senior React Developer', department: 'Engineering', location: 'Remote', type: 'Full-time', applicants: 45, status: 'active', postedDate: '2026-01-10' },
-    { id: 2, title: 'Product Designer', department: 'Design', location: 'New York', type: 'Full-time', applicants: 28, status: 'active', postedDate: '2026-01-12' },
-    { id: 3, title: 'Marketing Manager', department: 'Marketing', location: 'London', type: 'Contract', applicants: 12, status: 'closed', postedDate: '2026-01-05' },
-    { id: 4, title: 'HR Executive', department: 'HR', location: 'Mumbai', type: 'Full-time', applicants: 35, status: 'active', postedDate: '2026-01-15' },
-];
-
 export default function JobOpenings() {
-    const [jobs, setJobs] = useState(mockJobs);
+    const [jobs, setJobs] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(true);
 
-    const getStatusBadge = (status) => {
-        return status === 'active' ? 'badge-success' : 'badge-secondary';
+    useEffect(() => {
+        fetchJobs();
+    }, []);
+
+    const fetchJobs = async () => {
+        try {
+            const response = await recruitmentApi.getJobs();
+            setJobs(response.data.results || []);
+        } catch (error) {
+            console.error('Failed to fetch jobs:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
+    const handleSearch = (e) => {
+        setSearchTerm(e.target.value);
+        // Debounce or just filter locally for now if list is small, 
+        // or trigger API search
+        // For now, let's just filter locally as per original code logic, 
+        // or effectively we can use the API search:
+        // recruitmentApi.getJobs({ search: e.target.value }).then(...)
+    };
+
+    // Use local filtering for immediate feedback if list is small
     const filteredJobs = jobs.filter(job =>
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.department.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'OPEN': return 'badge-success';
+            case 'CLOSED': return 'badge-secondary';
+            case 'DRAFT': return 'badge-warning';
+            case 'ON_HOLD': return 'badge-warning';
+            default: return 'badge-secondary';
+        }
+    };
+
+    const formatEmploymentType = (type) => {
+        return type ? type.replace('_', '-').toLowerCase() : '';
+    };
+
+    if (loading) return <div>Loading jobs...</div>;
 
     return (
         <div className="job-openings">
@@ -38,7 +70,7 @@ export default function JobOpenings() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button className="btn btn-primary">
+                <button className="btn btn-primary" onClick={() => alert('Create Job Modal to be implemented')}>
                     <Plus size={18} />
                     Create Job
                 </button>
@@ -53,7 +85,7 @@ export default function JobOpenings() {
                                 <Users size={20} />
                             </div>
                             <span className={`badge ${getStatusBadge(job.status)}`}>
-                                {job.status === 'active' ? '● Active' : '● Closed'}
+                                {job.status === 'OPEN' ? '● Active' : `● ${job.status}`}
                             </span>
                         </div>
 
@@ -67,11 +99,11 @@ export default function JobOpenings() {
                             </div>
                             <div className="job-card__detail">
                                 <Clock size={14} />
-                                <span>{job.type}</span>
+                                <span style={{textTransform: 'capitalize'}}>{formatEmploymentType(job.employment_type)}</span>
                             </div>
                             <div className="job-card__detail">
                                 <Users size={14} />
-                                <span>{job.applicants} Applicants</span>
+                                <span>{job.applications_count} Applicants</span>
                             </div>
                         </div>
 
@@ -82,7 +114,7 @@ export default function JobOpenings() {
                 ))}
 
                 {/* Add New Job Card */}
-                <div className="job-card job-card--add">
+                <div className="job-card job-card--add" onClick={() => alert('Create Job Modal to be implemented')}>
                     <div className="job-card__add-content">
                         <Plus size={32} />
                         <span>Post New Job</span>

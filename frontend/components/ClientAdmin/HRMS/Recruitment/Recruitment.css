@@ -1,0 +1,54 @@
+.recruitment-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.recruitment-header {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+}
+
+.recruitment-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.recruitment-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.recruitment-tab:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.recruitment-tab.active {
+  background: var(--brand-primary-light);
+  color: var(--brand-primary);
+}
+
+.recruitment-content {
+  flex: 1;
+  min-height: 0; /* Allow scrolling inside if needed */
+}
+
+/* Dark mode adjustments done via variables, but specific overrides if needed */
+[data-theme="dark"] .recruitment-header {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
