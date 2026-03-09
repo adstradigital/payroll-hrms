@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import {
     FileText, Search, Filter, CheckCircle, XCircle, Clock, Plus,
     MoreVertical, Eye, Download, ChevronRight, Loader2, Upload,
@@ -40,6 +41,8 @@ export default function AdvancedDocumentRequest() {
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showNewRequestModal, setShowNewRequestModal] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+    const [bulkImportLoading, setBulkImportLoading] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState(new Set());
@@ -98,6 +101,32 @@ export default function AdvancedDocumentRequest() {
         });
     }, [requests, searchTerm]);
 
+    const employeeLookup = useMemo(() => {
+        const lookup = new Map();
+        const normalize = (value) => String(value || '').trim().toLowerCase();
+
+        employees.forEach((employee) => {
+            const employeeId = employee.id;
+            if (!employeeId) return;
+
+            const candidates = [
+                employee.id,
+                employee.employee_id,
+                employee.employee_code,
+                employee.full_name,
+                employee.name,
+                employee.email,
+            ];
+
+            candidates.forEach((candidate) => {
+                const key = normalize(candidate);
+                if (key) lookup.set(key, employeeId);
+            });
+        });
+
+        return lookup;
+    }, [employees]);
+
     // --- Handlers ---
     const handleOpenReview = (request) => {
         // If it's a "submitted" request (has file), open review
@@ -151,6 +180,109 @@ export default function AdvancedDocumentRequest() {
         setSelectedIds(new Set());
     };
 
+    const handleDownloadBulkTemplate = () => {
+        const rows = [
+            ['Employee', 'Document Type', 'Reason', 'Direction'],
+            ['EMP001', 'PAN Card', 'Compliance verification', activeTab],
+            ['employee@email.com', 'Address Proof', 'KYC update', activeTab],
+        ];
+
+        const worksheet = XLSX.utils.aoa_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'DocumentRequests');
+        XLSX.writeFile(workbook, 'Document_Request_Bulk_Import_Template.xlsx');
+    };
+
+    const getEmployeeIdentifier = (row) => {
+        return (
+            row['Employee'] ||
+            row['Employee ID'] ||
+            row['Employee Code'] ||
+            row['Employee Email'] ||
+            row['Employee Name'] ||
+            ''
+        );
+    };
+
+    const normalizeDirection = (value) => {
+        const normalized = String(value || '').trim().toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
+        if (normalized === 'admin_to_employee' || normalized === 'employee_to_admin') {
+            return normalized;
+        }
+        return activeTab;
+    };
+
+    const handleBulkImportFile = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+
+        setBulkImportLoading(true);
+        try {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+
+            if (!rows.length) {
+                alert('No rows found in the selected file.');
+                return;
+            }
+
+            const normalize = (value) => String(value || '').trim().toLowerCase();
+            let successCount = 0;
+            let errorCount = 0;
+            const errorLines = [];
+
+            for (let index = 0; index < rows.length; index++) {
+                const row = rows[index];
+                const rowNumber = index + 2;
+                const employeeInput = getEmployeeIdentifier(row);
+                const employeeId = employeeLookup.get(normalize(employeeInput));
+                const documentType = String(row['Document Type'] || row['Document'] || '').trim();
+                const reason = String(row['Reason'] || '').trim();
+                const direction = normalizeDirection(row['Direction']);
+
+                if (!employeeId || !documentType || !reason) {
+                    errorCount++;
+                    errorLines.push(`Row ${rowNumber}: Missing/invalid Employee, Document Type, or Reason.`);
+                    continue;
+                }
+
+                try {
+                    await createDocumentRequest({
+                        employee: employeeId,
+                        document_type: documentType,
+                        reason,
+                        direction,
+                    });
+                    successCount++;
+                } catch (importErr) {
+                    errorCount++;
+                    errorLines.push(`Row ${rowNumber}: ${importErr?.response?.data?.error || importErr?.message || 'Failed to create request.'}`);
+                }
+            }
+
+            await fetchRequests();
+
+            const summary = [`Import completed. Success: ${successCount}, Failed: ${errorCount}`];
+            if (errorLines.length) {
+                summary.push('', 'Sample errors:');
+                summary.push(...errorLines.slice(0, 5));
+            }
+            alert(summary.join('\n'));
+
+            if (successCount > 0) {
+                setShowBulkImportModal(false);
+            }
+        } catch (err) {
+            console.error('Bulk import failed:', err);
+            alert('Unable to process this file. Please upload a valid .xlsx/.xls/.csv file.');
+        } finally {
+            setBulkImportLoading(false);
+        }
+    };
+
     return (
         <div className="doc-req-container">
             {/* Header Section */}
@@ -163,7 +295,7 @@ export default function AdvancedDocumentRequest() {
                     <p>Manage compliance, requests, and approvals.</p>
                 </div>
                 <div className="doc-req-header-actions">
-                    <button className="doc-btn doc-btn-secondary">
+                    <button className="doc-btn doc-btn-secondary" onClick={() => setShowBulkImportModal(true)}>
                         <Briefcase size={18} /> Bulk Import
                     </button>
                     <button className="doc-btn doc-btn-primary" onClick={() => setShowNewRequestModal(true)}>
@@ -382,6 +514,49 @@ export default function AdvancedDocumentRequest() {
                 />
             )}
 
+            {showBulkImportModal && (
+                <div className="modal-overlay" onClick={() => setShowBulkImportModal(false)}>
+                    <div className="review-modal" style={{ maxWidth: '560px', height: 'auto', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Bulk Import Document Requests</h3>
+                            <button onClick={() => setShowBulkImportModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                Required columns: <strong>Employee</strong>, <strong>Document Type</strong>, <strong>Reason</strong>. Optional: <strong>Direction</strong>.
+                            </p>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                Employee can be ID, code, email, or full name.
+                            </p>
+
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                <button type="button" className="doc-btn doc-btn-secondary" onClick={handleDownloadBulkTemplate}>
+                                    <Download size={16} /> Download Template
+                                </button>
+                                <input
+                                    id="document-request-bulk-file"
+                                    type="file"
+                                    accept=".xlsx,.xls,.csv"
+                                    onChange={handleBulkImportFile}
+                                    style={{ display: 'none' }}
+                                />
+                                <button
+                                    type="button"
+                                    className="doc-btn doc-btn-primary"
+                                    onClick={() => document.getElementById('document-request-bulk-file')?.click()}
+                                    disabled={bulkImportLoading}
+                                >
+                                    {bulkImportLoading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+                                    {bulkImportLoading ? ' Importing...' : ' Choose File'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Review Modal (The Main Feature) */}
             {showReviewModal && selectedRequest && (
                 <div className="modal-overlay">
@@ -585,9 +760,9 @@ function NewRequestModal({ direction, employees, documentTypes, onClose, onSucce
                 </div>
                 <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Employee</label>
+                        <label className="doc-modal-label">Employee</label>
                         <select
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                            className="doc-modal-field"
                             required
                             onChange={e => setFormData({ ...formData, employee: e.target.value })}
                         >
@@ -596,9 +771,9 @@ function NewRequestModal({ direction, employees, documentTypes, onClose, onSucce
                         </select>
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Document Type</label>
+                        <label className="doc-modal-label">Document Type</label>
                         <select
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                            className="doc-modal-field"
                             required
                             onChange={e => setFormData({ ...formData, document_type: e.target.value })}
                         >
@@ -607,9 +782,9 @@ function NewRequestModal({ direction, employees, documentTypes, onClose, onSucce
                         </select>
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Reason</label>
+                        <label className="doc-modal-label">Reason</label>
                         <textarea
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                            className="doc-modal-field doc-modal-textarea"
                             required
                             onChange={e => setFormData({ ...formData, reason: e.target.value })}
                         />

@@ -510,6 +510,38 @@
     background: var(--card-bg);
 }
 
+.doc-modal-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #fff;
+}
+
+.doc-modal-field {
+    width: 100%;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    color: #fff;
+}
+
+.doc-modal-field:focus {
+    outline: none;
+    border-color: rgba(255, 184, 0, 0.6);
+}
+
+.doc-modal-field option {
+    color: #fff;
+    background: #0b0b0b;
+}
+
+.doc-modal-textarea {
+    min-height: 5rem;
+    resize: vertical;
+}
+
 .modal-split-body {
     flex: 1;
     display: flex;

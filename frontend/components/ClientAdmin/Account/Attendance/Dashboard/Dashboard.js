@@ -10,12 +10,42 @@ import {
     CheckCircle2,
     AlertCircle
 } from 'lucide-react';
+import attendanceApi from '@/api/attendance_api';
+import './Dashboard.css';
 
 /**
  * Modern Attendance Dashboard
  * A high-fidelity UI for managing employee presence, overtime, and validations.
  */
 export default function Dashboard() {
+    const formatCheckInTime = (timeValue) => {
+        if (!timeValue) return null;
+
+        const [hours, minutes] = String(timeValue).split(':');
+        if (hours === undefined || minutes === undefined) return timeValue;
+
+        const hourNum = Number(hours);
+        if (Number.isNaN(hourNum)) return timeValue;
+
+        const suffix = hourNum >= 12 ? 'PM' : 'AM';
+        const normalizedHour = hourNum % 12 || 12;
+        return `${normalizedHour}:${minutes} ${suffix}`;
+    };
+
+    const normalizeValidationRecord = (record) => ({
+        id: record.id,
+        employee: {
+            name: record.employee?.name || 'Unknown Employee',
+            id: record.employee?.employee_id || record.employee?.id || 'N/A',
+            avatar: record.employee?.avatar || (record.employee?.name || 'U').charAt(0).toUpperCase()
+        },
+        date: record.date || record.in_date || '--',
+        check_in: formatCheckInTime(record.check_in),
+        work_type: record.work_type || 'Office',
+        pending: record.pending || '0.00',
+        work: record.work || ''
+    });
+
     // --- State Management ---
     const [stats, setStats] = useState({
         attendance_percentage: 85,
@@ -42,11 +72,7 @@ export default function Dashboard() {
         { name: 'Ellen Ripley', break_start: '12:45 PM', avatar: 'ER' },
         { name: 'Arthur Dallas', break_start: '01:15 PM', avatar: 'AD' }
     ]);
-    const [toValidate, setToValidate] = useState([
-        { id: 1, employee: { name: 'James Cameron', id: 'EMP001', avatar: 'JC' }, date: '2026-02-05', check_in: '08:55 AM', work_type: 'Office', pending: '0.00', work: '8.50' },
-        { id: 2, employee: { name: 'Kathryn Bigelow', id: 'EMP002', avatar: 'KB' }, date: '2026-02-05', check_in: '09:15 AM', work_type: 'Remote', pending: '0.25', work: '7.75' },
-        { id: 3, employee: { name: 'Christopher Nolan', id: 'EMP003', avatar: 'CN' }, date: '2026-02-05', check_in: '08:30 AM', work_type: 'Office', pending: '0.00', work: '9.00' },
-    ]);
+    const [toValidate, setToValidate] = useState([]);
     const [deptOvertime, setDeptOvertime] = useState([
         { department: 'Engineering', overtime_hours: 45, color: '#6366f1' },
         { department: 'Sales', overtime_hours: 30, color: '#8b5cf6' },
@@ -54,11 +80,78 @@ export default function Dashboard() {
         { department: 'Finance', overtime_hours: 10, color: '#f59e0b' },
     ]);
 
-    // Mock Loading state
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [bulkValidating, setBulkValidating] = useState(false);
+    const [validatingIds, setValidatingIds] = useState([]);
+    const [validationError, setValidationError] = useState('');
 
-    const handleValidate = (id) => {
-        setToValidate(prev => prev.filter(item => item.id !== id));
+    useEffect(() => {
+        const fetchAttendanceToValidate = async () => {
+            setLoading(true);
+            try {
+                const res = await attendanceApi.getAttendanceToValidate();
+                const records = res.data?.records || [];
+                setToValidate(records.map(normalizeValidationRecord));
+                setValidationError('');
+            } catch (error) {
+                console.error('Failed to fetch attendance validations:', error);
+                setValidationError(
+                    error?.response?.data?.error || 'Failed to load pending attendance validations.'
+                );
+                setToValidate([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAttendanceToValidate();
+    }, []);
+
+    const handleValidate = async (id) => {
+        setValidatingIds(prev => [...prev, id]);
+        try {
+            await attendanceApi.validateAttendance({ attendance_id: id });
+            setToValidate(prev => prev.filter(item => item.id !== id));
+        } catch (error) {
+            console.error('Failed to validate attendance:', error);
+            alert(error?.response?.data?.error || 'Failed to validate attendance record.');
+        } finally {
+            setValidatingIds(prev => prev.filter(item => item !== id));
+        }
+    };
+
+    const handleBulkValidate = async () => {
+        if (toValidate.length === 0 || bulkValidating) return;
+
+        setBulkValidating(true);
+        const pendingIds = toValidate.map(item => item.id);
+
+        try {
+            const results = await Promise.allSettled(
+                pendingIds.map((attendanceId) =>
+                    attendanceApi.validateAttendance({ attendance_id: attendanceId })
+                )
+            );
+
+            const successfulIds = results
+                .map((result, index) => (result.status === 'fulfilled' ? pendingIds[index] : null))
+                .filter(Boolean);
+
+            const failedCount = results.length - successfulIds.length;
+
+            if (successfulIds.length > 0) {
+                setToValidate(prev => prev.filter(item => !successfulIds.includes(item.id)));
+            }
+
+            if (failedCount > 0) {
+                alert(`${failedCount} attendance record(s) could not be validated. Please try again.`);
+            }
+        } catch (error) {
+            console.error('Bulk validate failed:', error);
+            alert('Failed to validate attendance records.');
+        } finally {
+            setBulkValidating(false);
+        }
     };
 
     const maxPercentage = Math.max(...analyticsData.map(d => d.percentage), 100);
@@ -172,7 +265,13 @@ export default function Dashboard() {
                         <h3 className="card-heading">Pending Validations</h3>
                         <span className="badge-count">{toValidate.length} Requests</span>
                     </div>
-                    <button className="primary-btn">Bulk Validate</button>
+                    <button
+                        className="primary-btn"
+                        onClick={handleBulkValidate}
+                        disabled={loading || bulkValidating || toValidate.length === 0}
+                    >
+                        {bulkValidating ? 'Validating...' : 'Bulk Validate'}
+                    </button>
                 </div>
                 <div className="responsive-table-container">
                     <table className="modern-table">
@@ -187,7 +286,11 @@ export default function Dashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {toValidate.map((row) => (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="6" className="table-empty-state">Loading validations...</td>
+                                </tr>
+                            ) : toValidate.length > 0 ? toValidate.map((row) => (
                                 <tr key={row.id}>
                                     <td>
                                         <div className="user-cell">
@@ -200,7 +303,7 @@ export default function Dashboard() {
                                     </td>
                                     <td>
                                         <div className="time-cell">
-                                            <span className="time">{row.check_in}</span>
+                                            <span className="time">{row.check_in || '--'}</span>
                                             <span className="date">{row.date}</span>
                                         </div>
                                     </td>
@@ -211,8 +314,8 @@ export default function Dashboard() {
                                     </td>
                                     <td>
                                         <div className="hours-group">
-                                            <span className="hrs-val">{row.work}h</span>
-                                            <div className="mini-progress"><div className="fill" style={{ width: '85%' }}></div></div>
+                                            <span className="hrs-val">{row.work ? `${row.work}h` : 'Pending'}</span>
+                                            <div className="mini-progress"><div className="fill" style={{ width: row.work ? '85%' : '40%' }}></div></div>
                                         </div>
                                     </td>
                                     <td>
@@ -222,12 +325,19 @@ export default function Dashboard() {
                                         <button
                                             className="action-btn-success"
                                             onClick={() => handleValidate(row.id)}
+                                            disabled={bulkValidating || validatingIds.includes(row.id)}
                                         >
-                                            Approve
+                                            {validatingIds.includes(row.id) ? 'Validating...' : 'Approve'}
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                            )) : (
+                                <tr>
+                                    <td colSpan="6" className="table-empty-state">
+                                        {validationError || 'No pending validations.'}
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

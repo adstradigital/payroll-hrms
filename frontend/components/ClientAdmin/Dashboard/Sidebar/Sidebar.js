@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     LayoutDashboard, Users, Calendar, Clock,
@@ -100,15 +100,15 @@ const menuItems = [
         path: '/dashboard/leave',
         permission: ['leave.view', 'leave.view_leave'],
         children: [
-            { id: 'leave-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/leave' },
+            { id: 'leave-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/leave?tab=dashboard' },
             { id: 'leave-my-requests', label: 'My Leave Requests', translationKey: 'common.myRequests', path: '/dashboard/leave?tab=requests' },
             { id: 'leave-requests-queue', label: 'Requests Queue', translationKey: 'common.requestsQueue', path: '/dashboard/leave?tab=all-requests', adminOnly: true },
-            { id: 'leave-approvals', label: 'Approvals', translationKey: 'common.approvals', path: '/dashboard/leave/approvals', permission: 'leave.view' },
-            { id: 'leave-types', label: 'Leave Types', translationKey: 'common.leaveManagement', path: '/dashboard/leave/types', adminOnly: true },
-            { id: 'leave-holidays', label: 'Holiday Calendar', translationKey: 'common.holidayCalendar', path: '/dashboard/leave/holidays' },
-            { id: 'leave-balance', label: 'Leave Balance', translationKey: 'common.leaveBalance', path: '/dashboard/leave/balance' },
-            { id: 'leave-reports-sub', label: 'Reports', translationKey: 'common.reports', path: '/dashboard/leave/reports', permission: 'reports.view_reports' },
-            { id: 'leave-settings', label: 'Settings', translationKey: 'common.settings', path: '/dashboard/leave/settings', adminOnly: true },
+            { id: 'leave-approvals', label: 'Approvals', translationKey: 'common.approvals', path: '/dashboard/leave?tab=approvals', permission: 'leave.view' },
+            { id: 'leave-types', label: 'Leave Types', translationKey: 'common.leaveManagement', path: '/dashboard/leave?tab=types', adminOnly: true },
+            { id: 'leave-holidays', label: 'Holiday Calendar', translationKey: 'common.holidayCalendar', path: '/dashboard/leave?tab=holidays' },
+            { id: 'leave-balance', label: 'Leave Balance', translationKey: 'common.leaveBalance', path: '/dashboard/leave?tab=balance' },
+            { id: 'leave-reports-sub', label: 'Reports', translationKey: 'common.reports', path: '/dashboard/leave?tab=reports', permission: 'reports.view_reports' },
+            { id: 'leave-settings', label: 'Settings', translationKey: 'common.settings', path: '/dashboard/leave?tab=settings', adminOnly: true },
         ]
     },
 
@@ -176,7 +176,7 @@ const menuItems = [
         label: 'Bulk Upload',
         translationKey: 'common.bulkUpload',
         icon: Upload,
-        path: '/dashboard/payroll/bulk-upload/dashboard',
+        path: '/dashboard/payroll/bulk-upload',
         adminOnly: true,
         children: [
             { id: 'bu-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll/bulk-upload/dashboard' },
@@ -226,6 +226,7 @@ const menuItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { user, logout } = useAuth();
     const { t } = useLanguage();
     const { hasHRMS, hasPayroll, hasPermission, hasAnyPermission, isAdmin, hasTaxManagement, designation } = usePermissions();
@@ -239,6 +240,27 @@ export default function Sidebar() {
     const [checkingAttendance, setCheckingAttendance] = useState(false);
     const [ticketStats, setTicketStats] = useState(null);
 
+    const pathMatchesCurrent = (targetPath, { exact = false } = {}) => {
+        const [basePath, queryString = ''] = targetPath.split('?');
+        const targetParams = new URLSearchParams(queryString);
+        const targetEntries = Array.from(targetParams.entries());
+
+        if (targetEntries.length > 0) {
+            if (pathname !== basePath) return false;
+            return targetEntries.every(([key, value]) => {
+                const currentValue = searchParams.get(key);
+                if (currentValue === value) return true;
+                return key === 'tab' && value === 'dashboard' && currentValue === null;
+            });
+        }
+
+        if (exact) {
+            return pathname === basePath;
+        }
+
+        return pathname === basePath || pathname.startsWith(basePath + '/');
+    };
+
     const [expandedItems, setExpandedItems] = useState(() => {
         const defaultExpanded = [];
 
@@ -248,12 +270,9 @@ export default function Sidebar() {
             let maxLen = -1;
 
             items.forEach(item => {
-                if (pathname.startsWith(item.path) && item.path.length > maxLen) {
-                    // Check if is actually a subpath (ends in / or is exact)
-                    if (pathname === item.path || pathname.startsWith(item.path + '/')) {
-                        maxLen = item.path.length;
-                        bestMatch = item;
-                    }
+                if (pathMatchesCurrent(item.path, { exact: false }) && item.path.length > maxLen) {
+                    maxLen = item.path.length;
+                    bestMatch = item;
                 }
             });
             return bestMatch;
@@ -299,11 +318,9 @@ export default function Sidebar() {
             let maxLen = -1;
 
             items.forEach(item => {
-                if (pathname.startsWith(item.path) && item.path.length > maxLen) {
-                    if (pathname === item.path || pathname.startsWith(item.path + '/')) {
-                        maxLen = item.path.length;
-                        bestMatch = item;
-                    }
+                if (pathMatchesCurrent(item.path, { exact: false }) && item.path.length > maxLen) {
+                    maxLen = item.path.length;
+                    bestMatch = item;
                 }
             });
             return bestMatch;
@@ -327,7 +344,7 @@ export default function Sidebar() {
         if (changed) {
             setExpandedItems(itemsToExpand);
         }
-    }, [pathname]);
+    }, [pathname, searchParams]);
 
     useEffect(() => {
         // Fetch ticket stats on component mount
@@ -340,7 +357,7 @@ export default function Sidebar() {
         );
     };
 
-    const isActive = (path) => pathname === path;
+    const isActive = (path) => pathMatchesCurrent(path, { exact: true });
     const isParentActive = (item) => {
         if (isActive(item.path)) return true;
 
@@ -350,11 +367,9 @@ export default function Sidebar() {
         let maxLen = -1;
 
         itemsToMatch.forEach(mi => {
-            if (pathname.startsWith(mi.path) && (pathname === mi.path || pathname.startsWith(mi.path + '/'))) {
-                if (mi.path.length > maxLen) {
-                    maxLen = mi.path.length;
-                    bestMatch = mi;
-                }
+            if (pathMatchesCurrent(mi.path, { exact: false }) && mi.path.length > maxLen) {
+                maxLen = mi.path.length;
+                bestMatch = mi;
             }
         });
 
@@ -365,10 +380,10 @@ export default function Sidebar() {
 
         // If this is a sub-item, check if it's a prefix of the current path
         if (item.children) {
-            return item.children.some(child => pathname === child.path || pathname.startsWith(child.path + '/'));
+            return item.children.some(child => pathMatchesCurrent(child.path, { exact: false }));
         }
 
-        return pathname.startsWith(item.path + '/');
+        return pathMatchesCurrent(item.path, { exact: false });
     };
 
     const fetchTicketStats = async () => {

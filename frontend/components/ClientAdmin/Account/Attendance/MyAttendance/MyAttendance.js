@@ -550,9 +550,8 @@ export default function MyAttendance() {
                         <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingRight: '4rem' }}>
                             <h3 style={{ margin: 0, color: 'var(--text-secondary)' }}>Leave Balances</h3>
                             <button
-                                className="btn btn-primary"
+                                className="btn btn-primary leave-apply-btn"
                                 onClick={() => setLeaveModalOpen(true)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                             >
                                 <Plus size={18} /> Apply Leave
                             </button>

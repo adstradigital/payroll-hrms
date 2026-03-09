@@ -162,8 +162,8 @@ export default function HolidayModal({ isOpen, onClose, holiday, companyId, onSu
                     </div>
 
                     <div className="leave-type-modal__actions" style={{ marginTop: '1rem' }}>
-                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                        <button type="submit" className="btn btn-primary" disabled={submitting}>
+                        <button type="button" className="holiday-modal-btn holiday-modal-btn--secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="holiday-modal-btn holiday-modal-btn--primary" disabled={submitting}>
                             {submitting ? <Loader2 className="animate-spin" size={18} /> : (holiday ? 'Update' : 'Create')}
                         </button>
                     </div>

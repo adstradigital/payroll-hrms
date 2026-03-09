@@ -28,6 +28,51 @@
     font-size: 0.875rem;
 }
 
+.settings-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.settings-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.settings-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.settings-btn--primary {
+    background: linear-gradient(135deg, var(--brand-primary), #6366f1);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(79, 70, 229, 0.22);
+}
+
+.settings-btn--primary:hover:not(:disabled) {
+    filter: brightness(1.04);
+    box-shadow: 0 14px 28px rgba(79, 70, 229, 0.28);
+}
+
+[data-theme="dark"] .settings-btn--primary,
+.dark .settings-btn--primary {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #111827;
+    box-shadow: 0 14px 28px rgba(245, 158, 11, 0.24);
+}
+
 .settings-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -221,4 +266,15 @@
 
 .setting-toggle input[type="checkbox"]:checked::before {
     left: 22px;
+}
+
+@media (max-width: 768px) {
+    .settings-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .settings-btn {
+        width: 100%;
+    }
 }

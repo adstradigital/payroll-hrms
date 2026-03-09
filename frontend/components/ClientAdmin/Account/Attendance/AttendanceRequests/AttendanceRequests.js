@@ -322,12 +322,24 @@ function CreateModal({ onClose, onSubmit, submitting, employees }) {
         requestType: 'full_day',
         reason: ''
     });
+    const [formError, setFormError] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (form.employee && form.date) {
-            onSubmit(form);
+        if (!form.employee || !form.date) return;
+
+        if (!form.checkIn && !form.checkOut) {
+            setFormError('Add at least a check-in time or check-out time.');
+            return;
         }
+
+        if (!form.reason.trim()) {
+            setFormError('Reason is required.');
+            return;
+        }
+
+        setFormError('');
+        onSubmit(form);
     };
 
     return (
@@ -339,13 +351,17 @@ function CreateModal({ onClose, onSubmit, submitting, employees }) {
                 </div>
 
                 <form onSubmit={handleSubmit}>
+                    {formError && <div className="form-error-text">{formError}</div>}
                     <div className="form-row">
                         <div className="form-group">
                             <label><User size={14} /> Employee *</label>
                             <select
                                 required
                                 value={form.employee}
-                                onChange={e => setForm({ ...form, employee: e.target.value })}
+                                onChange={e => {
+                                    setForm({ ...form, employee: e.target.value });
+                                    setFormError('');
+                                }}
                                 disabled={submitting}
                             >
                                 <option value="">Select employee</option>
@@ -375,13 +391,16 @@ function CreateModal({ onClose, onSubmit, submitting, employees }) {
 
                     <div className="form-group">
                         <label>Attendance Date *</label>
-                        <input
-                            type="date"
-                            required
-                            value={form.date}
-                            onChange={e => setForm({ ...form, date: e.target.value })}
-                            disabled={submitting}
-                        />
+                            <input
+                                type="date"
+                                required
+                                value={form.date}
+                                onChange={e => {
+                                    setForm({ ...form, date: e.target.value });
+                                    setFormError('');
+                                }}
+                                disabled={submitting}
+                            />
                     </div>
 
                     <div className="form-row">
@@ -390,7 +409,10 @@ function CreateModal({ onClose, onSubmit, submitting, employees }) {
                             <input
                                 type="time"
                                 value={form.checkIn}
-                                onChange={e => setForm({ ...form, checkIn: e.target.value })}
+                                onChange={e => {
+                                    setForm({ ...form, checkIn: e.target.value });
+                                    setFormError('');
+                                }}
                                 disabled={submitting}
                             />
                         </div>
@@ -400,7 +422,10 @@ function CreateModal({ onClose, onSubmit, submitting, employees }) {
                             <input
                                 type="time"
                                 value={form.checkOut}
-                                onChange={e => setForm({ ...form, checkOut: e.target.value })}
+                                onChange={e => {
+                                    setForm({ ...form, checkOut: e.target.value });
+                                    setFormError('');
+                                }}
                                 disabled={submitting}
                             />
                         </div>
@@ -410,7 +435,10 @@ function CreateModal({ onClose, onSubmit, submitting, employees }) {
                         <label>Reason</label>
                         <textarea
                             value={form.reason}
-                            onChange={e => setForm({ ...form, reason: e.target.value })}
+                            onChange={e => {
+                                setForm({ ...form, reason: e.target.value });
+                                setFormError('');
+                            }}
                             placeholder="Enter reason for request"
                             disabled={submitting}
                         />

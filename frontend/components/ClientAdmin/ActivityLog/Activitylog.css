@@ -6,8 +6,7 @@
     color: var(--text-primary);
     overflow: hidden;
     padding: 1rem;
-    background: #050505;
-    /* Deep black for matrix feel */
+    background: var(--bg-primary);
 }
 
 /* Background Orbs */
@@ -853,8 +852,7 @@
 }
 
 .delta-box {
-    background: #000;
-    /* JSON always on deep black */
+    background: var(--bg-tertiary);
     border-radius: var(--radius-xl);
     padding: 1.5rem;
     position: relative;
@@ -867,13 +865,13 @@
     right: 1rem;
     font-size: 0.6rem;
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
 }
 
 .delta-box pre {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 0.85rem;
-    color: #a3a3a3;
+    color: var(--text-secondary);
     max-height: 300px;
     overflow-y: auto;
 }

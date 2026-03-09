@@ -61,6 +61,52 @@
     margin-left: var(--spacing-md);
 }
 
+.leave-types-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.leave-types-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.leave-types-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.leave-types-btn--primary {
+    background: linear-gradient(135deg, var(--brand-primary), #6366f1);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(79, 70, 229, 0.22);
+}
+
+.leave-types-btn--primary:hover:not(:disabled) {
+    filter: brightness(1.04);
+    box-shadow: 0 14px 28px rgba(79, 70, 229, 0.28);
+}
+
+[data-theme="dark"] .leave-types-btn--primary,
+.dark .leave-types-btn--primary {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #111827;
+    box-shadow: 0 14px 28px rgba(245, 158, 11, 0.24);
+}
+
 /* Card View */
 .leave-types-cards {
     display: grid;
@@ -288,7 +334,7 @@
         max-width: none;
     }
 
-    .leave-types-toolbar__right .btn {
+    .leave-types-toolbar__right .leave-types-btn {
         width: 100%;
     }
 }
@@ -345,6 +391,10 @@
 
     .leave-types-cards {
         grid-template-columns: 1fr;
+    }
+
+    .leave-types-btn {
+        width: 100%;
     }
 }
 

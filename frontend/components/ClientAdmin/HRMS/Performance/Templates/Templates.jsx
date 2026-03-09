@@ -322,7 +322,7 @@ export default function Templates() {
                         Export
                     </button>
                     <button 
-                        className="btn btn-primary"
+                        className="btn templates-add-btn"
                         onClick={() => { resetForm(); setShowModal(true); }}
                     >
                         <Plus size={16} />
@@ -499,7 +499,7 @@ export default function Templates() {
                                         placeholder="Describe how this criteria should be evaluated..."
                                     />
                                 </div>
-                                <div className="form-row">
+                                <div className="form-row form-row--criteria-options">
                                     <div className="form-group">
                                         <label>Weightage (%) <span className="required">*</span></label>
                                         <input
@@ -541,10 +541,10 @@ export default function Templates() {
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                                <button type="button" className="btn templates-modal-btn templates-modal-btn--secondary" onClick={() => setShowModal(false)}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary">
+                                <button type="submit" className="btn templates-modal-btn templates-modal-btn--primary">
                                     {editingCriteria ? 'Update Criteria' : 'Create Criteria'}
                                 </button>
                             </div>

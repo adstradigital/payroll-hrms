@@ -134,7 +134,7 @@ export default function LeaveTypes() {
             <div className="leave-types-error">
                 <XCircle size={40} />
                 <p>{error}</p>
-                <button className="btn btn-primary" onClick={fetchContextAndData}>Try Again</button>
+                <button className="leave-types-btn leave-types-btn--primary" onClick={fetchContextAndData}>Try Again</button>
             </div>
         );
     }
@@ -163,7 +163,7 @@ export default function LeaveTypes() {
                 </div>
 
                 <div className="leave-types-toolbar__right">
-                    <button className="btn btn-primary" onClick={handleCreate}>
+                    <button className="leave-types-btn leave-types-btn--primary" onClick={handleCreate}>
                         <Plus size={18} />
                         Add Leave Type
                     </button>
@@ -181,7 +181,7 @@ export default function LeaveTypes() {
                             : 'No leave types match your search.'}
                     </p>
                     {leaveTypes.length === 0 && (
-                        <button className="btn btn-primary" onClick={handleCreate}>
+                        <button className="leave-types-btn leave-types-btn--primary" onClick={handleCreate}>
                             <Plus size={18} />
                             Add Leave Type
                         </button>

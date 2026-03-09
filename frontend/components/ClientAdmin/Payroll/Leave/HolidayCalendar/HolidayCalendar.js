@@ -137,7 +137,7 @@ export default function HolidayCalendar() {
 
                 {isAdmin && (
                     <div className="holiday-toolbar__right">
-                        <button className="btn btn-primary" onClick={handleAdd}>
+                        <button className="holiday-btn holiday-btn--primary" onClick={handleAdd}>
                             <Plus size={18} />
                             Add Holiday
                         </button>

@@ -729,6 +729,11 @@
     color: var(--brand-primary);
 }
 
+.emplist-action-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 .emplist-action-btn--edit:hover {
     background-color: var(--color-success-light);
     color: var(--color-success);
@@ -989,6 +994,31 @@
     background-color: var(--bg-tertiary);
     border-color: var(--border-color);
     color: var(--brand-primary);
+}
+
+.emplist-card-btn-delete {
+    padding: var(--spacing-sm);
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emplist-card-btn-delete:hover {
+    background-color: var(--color-danger-light);
+    border-color: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.emplist-card-btn-edit:disabled,
+.emplist-card-btn-delete:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 /* Grid Empty State */

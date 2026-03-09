@@ -254,6 +254,19 @@ export default function Ratings() {
 
     const [formErrors, setFormErrors] = useState({});
 
+    const getDefaultCategoryForm = useCallback((availableScales = scales) => {
+        const defaultScale = availableScales.find((scale) => scale.is_active) || availableScales[0];
+
+        return {
+            rating_scale: defaultScale?.id || '',
+            name: '',
+            min_score: defaultScale ? Number(defaultScale.min_value) : 0,
+            max_score: defaultScale ? Number(defaultScale.max_value) : 5,
+            description: '',
+            color_code: '#10b981'
+        };
+    }, [scales]);
+
     useEffect(() => {
         loadData();
     }, [activeTab]);
@@ -337,18 +350,26 @@ export default function Ratings() {
         if (!validateCategoryForm()) return;
 
         try {
+            const payload = {
+                ...categoryFormData,
+                rating_scale: String(categoryFormData.rating_scale),
+                min_score: Number(categoryFormData.min_score),
+                max_score: Number(categoryFormData.max_score),
+                description: categoryFormData.description?.trim() || ''
+            };
+
             if (editingItem) {
-                await updateRatingCategory(editingItem.id, categoryFormData);
+                await updateRatingCategory(editingItem.id, payload);
                 showToast('Category updated successfully');
             } else {
-                await createRatingCategory(categoryFormData);
+                await createRatingCategory(payload);
                 showToast('Category created successfully');
             }
             setShowModal(false);
             resetCategoryForm();
             loadData();
         } catch (error) {
-            showToast('Failed to save category', 'error');
+            showToast(error.message || 'Failed to save category', 'error');
             console.error('Failed to save category:', error);
         }
     };
@@ -467,14 +488,7 @@ export default function Ratings() {
 
     const resetCategoryForm = () => {
         setEditingItem(null);
-        setCategoryFormData({
-            rating_scale: '',
-            name: '',
-            min_score: 0,
-            max_score: 5,
-            description: '',
-            color_code: '#10b981'
-        });
+        setCategoryFormData(getDefaultCategoryForm());
         setFormErrors({});
     };
 
@@ -600,9 +614,14 @@ export default function Ratings() {
                 <button 
                     className="btn btn-primary"
                     onClick={() => { 
-                        activeTab === 'scales' ? resetForm() : resetCategoryForm(); 
+                        if (activeTab === 'scales') {
+                            resetForm();
+                        } else {
+                            resetCategoryForm();
+                        }
                         setShowModal(true); 
                     }}
+                    disabled={activeTab === 'categories' && activeScales.length === 0}
                 >
                     <Plus size={18} />
                     Add {activeTab === 'scales' ? 'Scale' : 'Category'}
@@ -773,7 +792,15 @@ export default function Ratings() {
                                         <label>Rating Scale <span className="required">*</span></label>
                                         <select
                                             value={categoryFormData.rating_scale}
-                                            onChange={(e) => setCategoryFormData({...categoryFormData, rating_scale: e.target.value})}
+                                            onChange={(e) => {
+                                                const selectedScale = scales.find((scale) => String(scale.id) === e.target.value);
+                                                setCategoryFormData({
+                                                    ...categoryFormData,
+                                                    rating_scale: e.target.value,
+                                                    min_score: selectedScale ? Number(selectedScale.min_value) : categoryFormData.min_score,
+                                                    max_score: selectedScale ? Number(selectedScale.max_value) : categoryFormData.max_score
+                                                });
+                                            }}
                                             className={formErrors.rating_scale ? 'error' : ''}
                                         >
                                             <option value="">Select a rating scale</option>

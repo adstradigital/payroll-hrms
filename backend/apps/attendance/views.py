@@ -43,6 +43,7 @@ from .serializers import (
     AttendanceBreakSerializer,
     HolidaySerializer,
     AttendanceRegularizationSerializer,
+    AttendanceRegularizationRequestSerializer,
     AttendanceRegularizationActionSerializer,
     AttendanceSummarySerializer,
     AttendanceListSerializer,
@@ -1627,11 +1628,38 @@ def regularization_request_list(request):
             emp_id = request.query_params.get('employee')
             if emp_id: queryset = queryset.filter(employee_id=emp_id)
 
-            serializer = AttendanceRegularizationSerializer(queryset, many=True)
+            serializer = AttendanceRegularizationRequestSerializer(queryset, many=True)
             return Response(serializer.data)
             
         elif request.method == 'POST':
-            serializer = AttendanceRegularizationSerializer(data=request.data)
+            employee_id = request.data.get('employee')
+            attendance_date = request.data.get('attendance_date')
+
+            if not employee_id or not attendance_date:
+                return Response(
+                    {'error': 'employee and attendance_date are required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            employee_queryset = Employee.objects.all()
+            if not user.is_superuser:
+                employee_profile = getattr(user, 'employee_profile', None)
+                if employee_profile:
+                    employee_queryset = employee_queryset.filter(company=employee_profile.company)
+                else:
+                    return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+
+            employee = get_object_or_404(employee_queryset, pk=employee_id)
+            attendance, _ = Attendance.objects.get_or_create(
+                employee=employee,
+                date=attendance_date,
+                defaults={'status': 'absent'}
+            )
+
+            payload = request.data.copy()
+            payload['attendance'] = str(attendance.id)
+
+            serializer = AttendanceRegularizationRequestSerializer(data=payload)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1654,12 +1682,12 @@ def regularization_request_detail(request, pk):
         instance = get_object_or_404(queryset, pk=pk)
 
         if request.method == 'GET':
-            serializer = AttendanceRegularizationSerializer(instance)
+            serializer = AttendanceRegularizationRequestSerializer(instance)
             return Response(serializer.data)
 
         elif request.method in ['PUT', 'PATCH']:
             partial = request.method == 'PATCH'
-            serializer = AttendanceRegularizationSerializer(instance, data=request.data, partial=partial)
+            serializer = AttendanceRegularizationRequestSerializer(instance, data=request.data, partial=partial)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
@@ -1680,7 +1708,7 @@ def regularization_pending(request):
             status='pending'
         ).select_related('employee', 'attendance', 'reviewed_by')
         
-        serializer = AttendanceRegularizationSerializer(pending_requests, many=True)
+        serializer = AttendanceRegularizationRequestSerializer(pending_requests, many=True)
         return Response({
             'count': pending_requests.count(),
             'results': serializer.data
@@ -1714,7 +1742,7 @@ def regularization_approve(request, pk):
             attendance.check_out_time = instance.requested_check_out
         attendance.save()
         
-        serializer = AttendanceRegularizationSerializer(instance)
+        serializer = AttendanceRegularizationRequestSerializer(instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     return safe_api(logic)
@@ -1736,7 +1764,7 @@ def regularization_reject(request, pk):
         instance.reviewer_comments = request.data.get('comments', '')
         instance.save()
         
-        serializer = AttendanceRegularizationSerializer(instance)
+        serializer = AttendanceRegularizationRequestSerializer(instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     return safe_api(logic)

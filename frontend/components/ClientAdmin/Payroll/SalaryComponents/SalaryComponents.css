@@ -809,7 +809,7 @@
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: var(--spacing-md);
-    color: #fff;
+    color: var(--text-primary);
     outline: none;
     transition: border-color var(--transition-fast);
 }

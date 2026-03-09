@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Users } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import SuperSidebar from './Sidebar/SuperSidebar';
 import SuperHeader from './Header/SuperHeader';
 import Organizations from './ClientAccountManagement/Organizations/Organizations';
@@ -12,10 +11,45 @@ import Overview from './Overview/Overview';
 import SuperQuickActions from './QuickActions/SuperQuickActions';
 import './SuperDashboard.css';
 
+const VALID_SUPER_TABS = new Set([
+    'overview',
+    'login-management',
+    'organizations',
+    'org-onboarding',
+    'org-settings',
+    'create-org',
+    'approvals',
+    'users',
+    'user-roles',
+    'user-audit',
+]);
+
 const SuperDashboard = () => {
-    const [activeTab, setActiveTab] = useState('overview');
-    const [sidebarOpen, setSidebarOpen] = useState(true);
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const initialTab = searchParams.get('tab');
+    const [activeTab, setActiveTab] = useState(
+        initialTab && VALID_SUPER_TABS.has(initialTab) ? initialTab : 'overview'
+    );
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+
+    useEffect(() => {
+        const tabFromUrl = searchParams.get('tab');
+        if (tabFromUrl && VALID_SUPER_TABS.has(tabFromUrl) && tabFromUrl !== activeTab) {
+            setActiveTab(tabFromUrl);
+        }
+        if (!tabFromUrl && activeTab !== 'overview') {
+            setActiveTab('overview');
+        }
+    }, [searchParams, activeTab]);
+
+    const handleTabChange = (tab) => {
+        if (!VALID_SUPER_TABS.has(tab)) return;
+
+        setActiveTab(tab);
+        router.replace(`/super-admin/dashboard?tab=${tab}`);
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('access_token');
@@ -56,7 +90,7 @@ const SuperDashboard = () => {
 
             <SuperSidebar
                 activeTab={activeTab}
-                setActiveTab={setActiveTab}
+                setActiveTab={handleTabChange}
                 sidebarOpen={sidebarOpen}
                 setSidebarOpen={setSidebarOpen}
                 handleLogout={handleLogout}
@@ -74,7 +108,7 @@ const SuperDashboard = () => {
                 </div>
 
                 {/* Movable Quick Action Widget */}
-                <SuperQuickActions />
+                <SuperQuickActions onAction={handleTabChange} />
             </div>
         </div>
     );

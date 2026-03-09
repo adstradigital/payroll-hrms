@@ -121,8 +121,14 @@ export default function LeavePage() {
                     background: rgba(var(--primary-rgb), 0.05);
                 }
                 .tab-btn.active {
-                    color: white;
+                    color: black;
                     background: var(--primary-color);
+                }
+                :global([data-theme="dark"]) .tab-btn.active,
+                :global(.dark) .tab-btn.active {
+                    color: #fbbf24;
+                    background: rgba(245, 158, 11, 0.12);
+                    box-shadow: inset 0 -2px 0 #f59e0b;
                 }
             `}</style>
         </Dashboard>

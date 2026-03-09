@@ -22,6 +22,51 @@
     gap: 1rem;
 }
 
+.holiday-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.holiday-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.holiday-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.holiday-btn--primary {
+    background: linear-gradient(135deg, var(--brand-primary), #6366f1);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(79, 70, 229, 0.22);
+}
+
+.holiday-btn--primary:hover:not(:disabled) {
+    filter: brightness(1.04);
+    box-shadow: 0 14px 28px rgba(79, 70, 229, 0.28);
+}
+
+[data-theme="dark"] .holiday-btn--primary,
+.dark .holiday-btn--primary {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #111827;
+    box-shadow: 0 14px 28px rgba(245, 158, 11, 0.24);
+}
+
 .holiday-search {
     position: relative;
     width: 300px;
@@ -233,4 +278,88 @@
 .holiday-form-textarea {
     resize: vertical;
     min-height: 80px;
+}
+
+.holiday-modal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    min-width: 120px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.holiday-modal-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.holiday-modal-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.holiday-modal-btn--secondary {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: #d7deea;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.holiday-modal-btn--secondary:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.holiday-modal-btn--primary {
+    background: linear-gradient(135deg, var(--brand-primary), #6366f1);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(79, 70, 229, 0.22);
+}
+
+.holiday-modal-btn--primary:hover:not(:disabled) {
+    filter: brightness(1.04);
+    box-shadow: 0 14px 28px rgba(79, 70, 229, 0.28);
+}
+
+[data-theme="dark"] .holiday-modal-btn--primary,
+.dark .holiday-modal-btn--primary {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #111827;
+    box-shadow: 0 14px 28px rgba(245, 158, 11, 0.24);
+}
+
+@media (max-width: 768px) {
+    .holiday-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .holiday-toolbar__left,
+    .holiday-toolbar__right {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .holiday-search {
+        width: 100%;
+    }
+
+    .holiday-btn {
+        width: 100%;
+    }
+
+    .holiday-modal-btn {
+        width: 100%;
+        min-width: 0;
+    }
 }

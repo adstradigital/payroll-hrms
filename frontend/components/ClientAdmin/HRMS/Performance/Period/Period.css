@@ -223,6 +223,29 @@
     transform: translateY(-1px);
 }
 
+.period-create-btn {
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-hover) 100%);
+    color: var(--text-inverse);
+    font-weight: var(--font-weight-semibold);
+    box-shadow: 0 14px 30px rgba(59, 130, 246, 0.24);
+}
+
+.period-create-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 34px rgba(59, 130, 246, 0.3);
+    filter: saturate(1.05);
+}
+
+.period-create-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--brand-primary-light), 0 18px 34px rgba(59, 130, 246, 0.28);
+}
+
+.period-create-btn--centered {
+    justify-content: center;
+}
+
 .btn-secondary {
     background: var(--bg-tertiary);
     color: var(--text-primary);
@@ -531,9 +554,18 @@
     width: 100%;
     max-width: 600px;
     max-height: 90vh;
-    overflow-y: auto;
+    overflow: hidden;
     box-shadow: var(--shadow-xl);
     animation: slideInUp var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+}
+
+.modal form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
 }
 
 .modal-header {
@@ -570,6 +602,9 @@
 
 .modal-body {
     padding: var(--spacing-lg);
+    overflow-y: auto;
+    min-height: 0;
+    padding-bottom: calc(var(--spacing-2xl) + 88px);
 }
 
 .form-section {
@@ -664,6 +699,44 @@ input:focus, select:focus, textarea:focus {
     position: sticky;
     bottom: 0;
     background: var(--card-bg);
+    z-index: 5;
+}
+
+.period-modal-btn {
+    min-width: 140px;
+    justify-content: center;
+    font-weight: var(--font-weight-semibold);
+    border-radius: calc(var(--radius-md) + 2px);
+}
+
+.period-modal-btn--secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.period-modal-btn--secondary:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.period-modal-btn--primary {
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-hover) 100%);
+    color: #ffffff;
+    box-shadow: 0 14px 28px rgba(59, 130, 246, 0.24);
+}
+
+.period-modal-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 34px rgba(59, 130, 246, 0.3);
+    filter: saturate(1.05);
+}
+
+.period-modal-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--brand-primary-light);
 }
 
 /* Loading/Empty States */

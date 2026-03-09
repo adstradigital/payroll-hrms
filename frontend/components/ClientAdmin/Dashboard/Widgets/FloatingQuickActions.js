@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Plus, UserPlus, CalendarPlus,
-    DollarSign, Zap, Move
+    DollarSign, Zap
 } from 'lucide-react';
 import './FloatingQuickActions.css';
 
 const FloatingQuickActions = () => {
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [pos, setPos] = useState(null); // {x, y}
     const [isDragging, setIsDragging] = useState(false);
@@ -78,6 +80,18 @@ const FloatingQuickActions = () => {
         ? { left: `${pos.x}px`, top: `${pos.y}px`, bottom: 'auto', right: 'auto' }
         : { bottom: '2rem', right: '2rem' };
 
+    const actions = [
+        { icon: UserPlus, label: 'Add Employee', className: '', path: '/dashboard/employees' },
+        { icon: CalendarPlus, label: 'Leave Request', className: 'item--success', path: '/dashboard/leave?tab=requests' },
+        { icon: DollarSign, label: 'Run Payroll', className: 'item--warning', path: '/dashboard/payroll/run' },
+        { icon: Zap, label: 'Audit Logs', className: 'item--info', path: '/dashboard/logs' },
+    ];
+
+    const handleActionClick = (path) => {
+        setIsOpen(false);
+        router.push(path);
+    };
+
     return (
         <div
             ref={wrapperRef}
@@ -86,22 +100,22 @@ const FloatingQuickActions = () => {
         >
             {/* Action Buttons Stack */}
             <div className="floating-actions__menu">
-                <button className="floating-actions__item" style={{ '--index': 0 }} title="Add Employee">
-                    <UserPlus size={20} />
-                    <span className="floating-actions__tooltip">Add Employee</span>
-                </button>
-                <button className="floating-actions__item item--success" style={{ '--index': 1 }} title="Leave Request">
-                    <CalendarPlus size={20} />
-                    <span className="floating-actions__tooltip">Leave Request</span>
-                </button>
-                <button className="floating-actions__item item--warning" style={{ '--index': 2 }} title="Run Payroll">
-                    <DollarSign size={20} />
-                    <span className="floating-actions__tooltip">Run Payroll</span>
-                </button>
-                <button className="floating-actions__item item--info" style={{ '--index': 3 }} title="Audit Logs">
-                    <Zap size={20} />
-                    <span className="floating-actions__tooltip">Audit Logs</span>
-                </button>
+                {actions.map((action, index) => {
+                    const Icon = action.icon;
+                    return (
+                        <button
+                            key={action.label}
+                            type="button"
+                            className={`floating-actions__item ${action.className}`.trim()}
+                            style={{ '--index': index }}
+                            title={action.label}
+                            onClick={() => handleActionClick(action.path)}
+                        >
+                            <Icon size={20} />
+                            <span className="floating-actions__tooltip">{action.label}</span>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Main Toggle Button */}

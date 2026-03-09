@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Users,
     FileText,
     RefreshCw,
     Settings,
-    Plus,
-    X
+    Plus
 } from 'lucide-react';
 import './SuperQuickActions.css';
 
-const SuperQuickActions = () => {
+const SuperQuickActions = ({ onAction }) => {
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -103,11 +104,20 @@ const SuperQuickActions = () => {
     if (!hasInitialized) return null;
 
     const actions = [
-        { icon: Users, label: 'Add User', color: 'action-blue' },
-        { icon: FileText, label: 'View Logs', color: 'action-emerald' },
-        { icon: RefreshCw, label: 'Sync Data', color: 'action-purple' },
-        { icon: Settings, label: 'Settings', color: 'action-zinc' },
+        { icon: Users, label: 'Add User', color: 'action-blue', tab: 'users', path: '/super-admin/dashboard?tab=users' },
+        { icon: FileText, label: 'View Logs', color: 'action-emerald', tab: 'login-management', path: '/super-admin/dashboard?tab=login-management' },
+        { icon: RefreshCw, label: 'Sync Data', color: 'action-purple', tab: 'overview', path: '/super-admin/dashboard?tab=overview' },
+        { icon: Settings, label: 'Settings', color: 'action-zinc', tab: 'org-settings', path: '/super-admin/dashboard?tab=org-settings' },
     ];
+
+    const handleActionClick = (action) => {
+        if (typeof onAction === 'function' && action.tab) {
+            onAction(action.tab);
+        } else if (action.path) {
+            router.push(action.path);
+        }
+        setIsOpen(false);
+    };
 
     const isUp = placement.includes('bottom');
     const isLeftMenu = placement.includes('right');
@@ -129,7 +139,11 @@ const SuperQuickActions = () => {
                         style={{ transitionDelay: isOpen ? `${idx * 50}ms` : '0ms' }}
                     >
                         <span className="action-label">{action.label}</span>
-                        <button className={`action-btn ${action.color}`}>
+                        <button
+                            type="button"
+                            className={`action-btn ${action.color}`}
+                            onClick={() => handleActionClick(action)}
+                        >
                             <action.icon size={18} />
                         </button>
                     </div>
@@ -137,6 +151,7 @@ const SuperQuickActions = () => {
             </div>
 
             <button
+                type="button"
                 onMouseDown={handleMouseDown}
                 className={`main-fab ${isOpen ? 'active' : ''}`}
                 title="Quick Actions (Drag to Move)"

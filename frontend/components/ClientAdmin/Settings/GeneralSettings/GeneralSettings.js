@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-    Settings as SettingsIcon, Users, Save, Check, AlertCircle, Layers, Search
+    Settings as SettingsIcon, Users, Save, Check, AlertCircle, Layers
 } from 'lucide-react';
 import { getOrganization, updateOrganizationSettings } from '@/api/api_clientadmin';
 import './GeneralSettings.css';
