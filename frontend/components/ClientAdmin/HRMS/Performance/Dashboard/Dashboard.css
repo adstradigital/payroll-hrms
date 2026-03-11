@@ -55,20 +55,19 @@
     margin: 0;
 }
 
-.perf-header__actions {
-    display: flex;
-    gap: var(--spacing-sm);
-    align-items: center;
-}
-
-.period-select {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-    min-height: 42px;
+.perf-header__actions { 
+    display: flex; 
+    gap: var(--spacing-sm); 
+    align-items: center; 
+} 
+.period-select { 
+    background: var(--bg-tertiary); 
+    border: 1px solid var(--border-color); 
+    padding: var(--spacing-sm) var(--spacing-md); 
+    border-radius: var(--radius-md); 
+    color: var(--text-primary); 
+    font-size: var(--font-size-sm); 
+    min-height: 42px; 
 }
 
 .period-select:focus {

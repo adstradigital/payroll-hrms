@@ -3,6 +3,43 @@ from django.utils import timezone
 from datetime import timedelta
 from ..models import PerformanceReview, ReviewPeriod, Goal
 from .rating_calculator import RatingCalculatorService
+from django.contrib.auth import get_user_model
+
+
+def get_user_role(user):
+    """
+    Helper to determine user role for performance module permissions.
+    Returns: 'admin', 'hr', 'manager', or 'employee'
+    """
+    from apps.accounts.permissions import is_client_admin
+    
+    if not user.is_authenticated:
+        return None
+        
+    # 1. Admin Check
+    if is_client_admin(user):
+        return 'admin'
+        
+    try:
+        emp = getattr(user, 'employee_profile', None)
+        if not emp:
+            return None
+            
+        # 2. HR Check (Heuristic based on Department or Designation)
+        if emp.department and 'hum' in emp.department.name.lower():
+            return 'hr'
+        if emp.designation and 'hr' in emp.designation.name.lower():
+            return 'hr'
+            
+        # 3. Manager Check
+        # If they have subordinates, they are a manager
+        if emp.subordinates.exists():
+            return 'manager'
+            
+    except Exception:
+        pass
+        
+    return 'employee'
 
 
 class AnalyticsService:
@@ -16,7 +53,7 @@ class AnalyticsService:
         Get dashboard statistics based on user role
         Returns different data for Admin/HR, Manager, and Employee
         """
-        role = getattr(user, 'role', None)
+        role = get_user_role(user)
         
         if role in ['admin', 'hr']:
             return AnalyticsService._get_admin_dashboard(review_period)
@@ -85,7 +122,7 @@ class AnalyticsService:
         """
         Manager dashboard with team statistics
         """
-        queryset = PerformanceReview.objects.filter(employee__manager=manager)
+        queryset = PerformanceReview.objects.filter(employee__employee_profile__reporting_manager__user=manager)
         
         if review_period:
             queryset = queryset.filter(review_period=review_period)
@@ -119,6 +156,7 @@ class AnalyticsService:
             'total_reviews': total_reviews,
             'completed_reviews': completed_reviews,
             'pending_reviews': pending_reviews,
+            'average_rating': round(avg_rating, 2) if avg_rating else None,
             'average_team_rating': round(avg_rating, 2) if avg_rating else None,
             'team_performance': list(team_performance),
             'pending_actions': pending_actions,
@@ -130,6 +168,8 @@ class AnalyticsService:
         """
         Employee dashboard with personal performance data
         """
+        User = get_user_model()
+        total_employees = User.objects.count()
         queryset = PerformanceReview.objects.filter(employee=employee)
         
         if review_period:
@@ -170,6 +210,7 @@ class AnalyticsService:
         ).aggregate(avg=Avg('overall_rating'))['avg']
         
         return {
+            'total_employees': total_employees,
             'current_review': current_review,
             'performance_history': list(performance_history),
             'average_rating': round(avg_rating, 2) if avg_rating else None,

@@ -90,7 +90,7 @@ class RatingCalculatorService:
         Calculate average rating for all team members under a manager
         """
         team_reviews = PerformanceReview.objects.filter(
-            employee__manager=manager,
+            employee__employee_profile__reporting_manager__user=manager,
             status='completed',
             overall_rating__isnull=False
         )
@@ -130,7 +130,7 @@ class RatingCalculatorService:
             queryset = queryset.filter(employee__department=department)
         
         if manager:
-            queryset = queryset.filter(employee__manager=manager)
+            queryset = queryset.filter(employee__employee_profile__reporting_manager__user=manager)
         
         distribution = {}
         for review in queryset:

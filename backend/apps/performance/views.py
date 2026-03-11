@@ -3,6 +3,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.http import Http404
 from django.db.models import Q
 import logging
 
@@ -34,6 +35,8 @@ from .services import (
 def safe_api(fn):
     try:
         return fn()
+    except Http404 as e:
+        return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         logger.exception(e)
         if hasattr(e, 'detail'):
@@ -244,16 +247,20 @@ def review_period_run_automations(request, pk):
 @permission_classes([IsAuthenticated, CanViewPerformanceReview])
 def performance_review_list(request):
     def logic():
+        from .permissions import get_user_role
+        
         user = request.user
         if request.method == 'GET':
             queryset = PerformanceReview.objects.all()
-            role = getattr(user, 'role', None)
+            role = get_user_role(user)
             
             if role in ['admin', 'hr']:
                 pass
             elif role == 'manager':
-                queryset = queryset.filter(employee__manager=user)
+                # Managers see reviews where they are the reporting manager
+                queryset = queryset.filter(employee__employee_profile__reporting_manager__user=user)
             else:
+                # Employees see only their own reviews
                 queryset = queryset.filter(employee=user)
             
             review_period_id = request.query_params.get('review_period')
@@ -282,43 +289,48 @@ def performance_review_list(request):
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated, CanViewPerformanceReview])
 def performance_review_detail(request, pk):
+    from .permissions import get_user_role
+    
     def logic():
         user = request.user
-        # queryset filtering for retrieval safety
+        role = get_user_role(user)
         queryset = PerformanceReview.objects.all()
-        role = getattr(user, 'role', None)
-        if role not in ['admin', 'hr']:
-            if role == 'manager':
-                queryset = queryset.filter(employee__manager=user)
-            else:
-                queryset = queryset.filter(employee=user)
-        
+
+        # Admin / HR → full access
+        if role in ['admin', 'hr']:
+            pass
+
+        # Manager → only team reviews (where user is the reporting manager)
+        elif role == 'manager':
+            queryset = queryset.filter(
+                employee__employee_profile__reporting_manager__user=user
+            )
+
+        # Employee → only own review
+        else:
+            queryset = queryset.filter(employee=user)
+
         instance = get_object_or_404(queryset, pk=pk)
-        
+
         if request.method == 'GET':
             serializer = PerformanceReviewSerializer(instance)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-            
+            return Response(serializer.data)
+
         elif request.method in ['PUT', 'PATCH']:
-            partial = request.method == 'PATCH'
-            serializer = PerformanceReviewSerializer(instance, data=request.data, partial=partial)
+            serializer = PerformanceReviewSerializer(instance, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
+
         elif request.method == 'DELETE':
-            # Check permission specifically for delete if it was restricted in ViewSet (ViewSet only mentioned Admin/HR in docstring, but permission_classes was CanViewPerformanceReview)
-            # Re-enforcing documentation: delete should be Admin/HR only
+            # Only admin/hr can delete reviews
             if role not in ['admin', 'hr']:
-                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-                
+                return Response({'error': 'Permission denied. Only admins can delete reviews.'}, status=403)
+
             instance.delete()
-            return Response(
-                {'message': 'Performance review deleted successfully'},
-                status=status.HTTP_204_NO_CONTENT
-            )
-            
+            return Response({'message': 'Deleted successfully'}, status=204)
+
     return safe_api(logic)
 
 
@@ -445,16 +457,21 @@ def bulk_create_reviews(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        created_reviews = ReviewWorkflowService.bulk_create_reviews(
+        result = ReviewWorkflowService.bulk_create_reviews(
             review_period_id, 
             employee_ids, 
             request.user
         )
         
+        created_reviews = result['created_reviews']
+        skipped_employees = result['skipped_employees']
+        
         serializer = PerformanceReviewSerializer(created_reviews, many=True)
         return Response({
             'message': f'{len(created_reviews)} reviews created successfully',
-            'reviews': serializer.data
+            'reviews': serializer.data,
+            'skipped_count': len(skipped_employees),
+            'skipped_employees': skipped_employees
         }, status=status.HTTP_201_CREATED)
         
     return safe_api(logic)
@@ -720,7 +737,7 @@ def goal_list(request):
                  pass 
             elif role == 'manager':
                 queryset = queryset.filter(
-                    Q(employee__manager=request.user) | Q(employee__isnull=True)
+                    Q(employee__employee_profile__reporting_manager__user=request.user) | Q(employee__isnull=True)
                 )
             else:
                 # Employees see their own AND unassigned
@@ -780,7 +797,7 @@ def goal_detail(request, pk):
         role = getattr(user, 'role', None)
         if role not in ['admin', 'hr']:
             if role == 'manager':
-                queryset = queryset.filter(employee__manager=user)
+                queryset = queryset.filter(employee__employee_profile__reporting_manager__user=user)
             else:
                 queryset = queryset.filter(employee=user)
                 
