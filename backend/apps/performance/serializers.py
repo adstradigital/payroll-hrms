@@ -234,3 +234,5 @@ class DashboardStatsSerializer(serializers.Serializer):
     completed_goals = serializers.IntegerField(required=False)
     overdue_goals = serializers.IntegerField(required=False)
     goal_completion_rate = serializers.FloatField(required=False)
+
+    total_employees = serializers.IntegerField(required=False)

@@ -312,8 +312,19 @@ class ReviewWorkflowService:
         active_criteria = list(PerformanceCriteria.objects.filter(is_active=True))
         
         created_reviews = []
+        skipped_employees = []
         
         for employee in employees:
+            # Check if employee has a linked user account
+            if not employee.user:
+                skipped_employees.append({
+                    'id': str(employee.id),
+                    'employee_id': employee.employee_id,
+                    'full_name': employee.full_name,
+                    'reason': 'No linked user account'
+                })
+                continue
+            
             # Check if review already exists
             existing_review = PerformanceReview.objects.filter(
                 employee=employee.user,
@@ -327,9 +338,6 @@ class ReviewWorkflowService:
             reviewer = None
             if employee.reporting_manager and employee.reporting_manager.user:
                 reviewer = employee.reporting_manager.user
-            
-            # If manual reviewer ID is provided in context (futureproof), use it. 
-            # But for bulk creation, default to reporting manager is correct.
             
             review = PerformanceReview.objects.create(
                 employee=employee.user,
@@ -361,7 +369,10 @@ class ReviewWorkflowService:
             reference_id=str(review_period.id)
         )
         
-        return created_reviews
+        return {
+            'created_reviews': created_reviews,
+            'skipped_employees': skipped_employees
+        }
     
     @staticmethod
     def get_review_progress(review_period):

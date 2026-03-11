@@ -85,8 +85,9 @@ class CanViewPerformanceReview(permissions.BasePermission):
             return True
         
         # Manager can view their team's reviews
-        if role == 'manager' and hasattr(obj.employee, 'manager'):
-            if obj.employee.manager == user:
+        if role == 'manager':
+            employee_profile = getattr(obj.employee, 'employee_profile', None)
+            if employee_profile and employee_profile.reporting_manager and employee_profile.reporting_manager.user == user:
                 return True
         
         # Employee can view their own
@@ -114,8 +115,9 @@ class CanEditPerformanceReview(permissions.BasePermission):
             return True
         
         # Manager can edit their team's reviews
-        if role == 'manager' and hasattr(obj.employee, 'manager'):
-            if obj.employee.manager == user:
+        if role == 'manager':
+            employee_profile = getattr(obj.employee, 'employee_profile', None)
+            if employee_profile and employee_profile.reporting_manager and employee_profile.reporting_manager.user == user:
                 return True
         
         # Employee can only submit self-assessment
@@ -146,7 +148,11 @@ class CanSubmitManagerReview(permissions.BasePermission):
         if role in ['admin', 'hr']:
             return True
         
-        if obj.reviewer == user or (hasattr(obj.employee, 'manager') and obj.employee.manager == user):
+        employee_profile = getattr(obj.employee, 'employee_profile', None)
+        manager_match = (employee_profile and employee_profile.reporting_manager and
+                         employee_profile.reporting_manager.user == user)
+
+        if obj.reviewer == user or manager_match:
             return True
         
         return False

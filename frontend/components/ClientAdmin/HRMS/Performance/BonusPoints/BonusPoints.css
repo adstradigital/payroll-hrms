@@ -88,6 +88,7 @@
     font-size: 1.5rem;
     font-weight: 700;
     color: white;
+    text-align: center;
     font-family: var(--rv-font-mono);
 }
 
@@ -234,7 +235,7 @@
     cursor: pointer;
 }
 
-.filter-select:focus { border-color: var(--rv-color-gold); }
+.filter-select:focus { border-color: var(--rv-color-gold);}
 
 /* Content Grid/List */
 .bonus-grid {

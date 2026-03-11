@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-    BarChart3, Users, Target, CheckCircle, Clock, TrendingUp, 
-    AlertTriangle, Award, Calendar, ChevronRight, Plus, 
-    Activity, ArrowUpRight
+import {
+    BarChart3, Users, Target, CheckCircle, Clock, TrendingUp,
+    AlertTriangle, Award, Calendar, ChevronRight, Plus,
+    Activity, ArrowUpRight,
+    ChevronDown
 } from 'lucide-react';
 import { getDashboardStats, getReviewPeriods } from '../services/performanceService';
 import './Dashboard.css';
@@ -17,7 +18,7 @@ const FuturisticChart = ({ type = 'donut', data, size = 200 }) => {
     const center = size / 2;
     const radius = (size / 2) - 15;
     const innerRadius = type === 'donut' ? radius * 0.7 : 0;
-    
+
     let currentAngle = -90;
     const total = data.reduce((sum, item) => sum + item.value, 0);
 
@@ -69,7 +70,7 @@ const FuturisticChart = ({ type = 'donut', data, size = 200 }) => {
                         <circle cx={center} cy={center} r={innerRadius} fill="var(--bg-primary)" />
                     )}
                 </svg>
-                
+
                 {type === 'donut' && (
                     <div className="chart-center">
                         <span className="chart-center__value">{total}</span>
@@ -163,15 +164,15 @@ export default function Dashboard() {
     ];
 
     const activities = [
-        { user: "System", action: "Dashboard initialized", time: "Just now", icon: <CheckCircle className="activity-icon--gold" size={14}/> },
-        { user: "Admin", action: "Review period active", time: "Today", icon: <Activity className="activity-icon" size={14}/> },
-        { user: "System", action: "Stats synchronized", time: "1h ago", icon: <Clock className="activity-icon" size={14}/> },
+        { user: "System", action: "Dashboard initialized", time: "Just now", icon: <CheckCircle className="activity-icon--gold" size={14} /> },
+        { user: "Admin", action: "Review period active", time: "Today", icon: <Activity className="activity-icon" size={14} /> },
+        { user: "System", action: "Stats synchronized", time: "1h ago", icon: <Clock className="activity-icon" size={14} /> },
     ];
 
     const metricCards = [
-        { label: "Total Employees", value: stats.total_employees, icon: Users, trend: "Active" },
+        { label: "Total Employees", value: stats.total_employees || 0, icon: Users, trend: "Active" },
         { label: "Total Goals", value: stats.total_goals || 0, icon: Target, trend: "This Period" },
-        { label: "Completed Reviews", value: stats.completed_reviews, icon: CheckCircle, trend: `${stats.completion_percentage}%` },
+        { label: "Completed Reviews", value: stats.completed_reviews || 0, icon: CheckCircle, trend: `${stats.completion_percentage}%` },
         { label: "Avg. Rating", value: stats.average_rating?.toFixed(1) || "0.0", icon: Award, trend: "Out of 5" },
     ];
 
@@ -197,18 +198,16 @@ export default function Dashboard() {
                     <h2 className="perf-header__title">Executive Dashboard</h2>
                 </div>
                 <div className="perf-header__actions">
-                    <select 
-                        className="period-select"
-                        value={selectedPeriod}
-                        onChange={(e) => setSelectedPeriod(e.target.value)}
-                    >
+                    <select className="period-select"
+                        value={selectedPeriod} onChange={(e) =>
+                            setSelectedPeriod(e.target.value)} >
                         {periods.map(period => (
-                            <option key={period.id} value={period.id}>{period.name}</option>
-                        ))}
+                            <option key={period.id} value={period.id}>
+                                {period.name}</option>))}
                     </select>
-                    <button className="perf-action-btn perf-action-btn--primary" onClick={handleCreateReview}>
-                        <Plus size={16} />
-                        New Review
+                    <button className="perf-action-btn perf-action-btn--primary"
+                        onClick={handleCreateReview}>
+                        <Plus size={16} /> New Review
                     </button>
                 </div>
             </div>
@@ -256,11 +255,11 @@ export default function Dashboard() {
                                         </span>
                                     </div>
                                     <div className="progress-item__bar">
-                                        <div 
-                                            className="progress-item__fill" 
-                                            style={{ 
-                                                backgroundColor: item.color, 
-                                                width: `${(item.value / (stats.total_goals || 1)) * 100}%` 
+                                        <div
+                                            className="progress-item__fill"
+                                            style={{
+                                                backgroundColor: item.color,
+                                                width: `${(item.value / (stats.total_goals || 1)) * 100}%`
                                             }}
                                         ></div>
                                     </div>
@@ -279,7 +278,7 @@ export default function Dashboard() {
                             <h4 className="alert-card__title">System Alerts</h4>
                         </div>
                         <p className="alert-card__text">
-                            {stats.overdue_reviews > 0 
+                            {stats.overdue_reviews > 0
                                 ? `${stats.overdue_reviews} overdue reviews require attention.`
                                 : 'No critical issues detected for this review period.'}
                         </p>
@@ -291,7 +290,7 @@ export default function Dashboard() {
                     {/* Activity Card */}
                     <div className="activity-card">
                         <h4 className="activity-card__title">
-                            <Activity size={16} className="activity-card__icon" /> 
+                            <Activity size={16} className="activity-card__icon" />
                             Recent Activity
                         </h4>
                         <div className="activity-list">
@@ -325,14 +324,14 @@ export default function Dashboard() {
                 <div className="chart-card">
                     <h3 className="chart-card__title">Performance Distribution</h3>
                     <div className="chart-card__content chart-card__content--centered">
-                        <FuturisticChart 
+                        <FuturisticChart
                             data={[
                                 { label: 'Excellent', value: 3, color: colors.primary },
                                 { label: 'Good', value: 4, color: colors.tertiary },
                                 { label: 'Needs Work', value: 1, color: colors.danger }
-                            ]} 
-                            type="donut" 
-                            size={180} 
+                            ]}
+                            type="donut"
+                            size={180}
                         />
                     </div>
                 </div>

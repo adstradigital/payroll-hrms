@@ -594,11 +594,13 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
     }, [isOpen, review]);
 
     const loadData = async () => {
+        console.log("EDIT REVIEW OBJECT:", review)
+        console.log("REVIEW ID:", review?.id)
         setLoading(true);
         try {
             const [empRes, reviewDetail] = await Promise.all([
                 getAllEmployees({ page_size: 1000 }),
-                getPerformanceReview(review.id)
+                getPerformanceReview(review?.id)
             ]);
             
             const empList = empRes.data?.results || empRes.data || [];
@@ -835,6 +837,9 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log("Submitting:", formData);
+        console.log("Review Period:", formData.review_period);
+    console.log("Employee IDs:", formData.employee_ids);
         if (!formData.review_period || formData.employee_ids.length === 0) {
             setError('Please select a review period and at least one employee.');
             return;
