@@ -1,12 +1,32 @@
 import axiosInstance from './axiosInstance';
 
 const recruitmentApi = {
+    // Skill Zone
+    getSkillCategories: () => axiosInstance.get('/recruitment/skill-categories/'),
+    createSkillCategory: (data) => axiosInstance.post('/recruitment/skill-categories/', data),
+    deleteSkillCategory: (id) => axiosInstance.delete(`/recruitment/skill-categories/${id}/`),
+    getSkills: () => axiosInstance.get('/recruitment/skills/'),
+    createSkill: (data) => axiosInstance.post('/recruitment/skills/', data),
+    updateSkill: (id, data) => axiosInstance.put(`/recruitment/skills/${id}/`, data),
+    deleteSkill: (id) => axiosInstance.delete(`/recruitment/skills/${id}/`),
+
+    // Recruitment Stages
+    getStages: () => axiosInstance.get('/recruitment/stages/'),
+    createStage: (data) => axiosInstance.post('/recruitment/stages/', data),
+    updateStage: (id, data) => axiosInstance.put(`/recruitment/stages/${id}/`, data),
+    deleteStage: (id) => axiosInstance.delete(`/recruitment/stages/${id}/`),
+    reorderStages: (stageIds) => axiosInstance.patch('/recruitment/stages/reorder/', { stage_ids: stageIds }),
+
+    // Pipeline
+    getPipeline: (params) => axiosInstance.get('/recruitment/pipeline/', { params }),
+
     // Job Openings
-    getJobs: (params) => axiosInstance.get('/recruitment/job-openings/', { params }),
-    getJob: (id) => axiosInstance.get(`/recruitment/job-openings/${id}/`),
-    createJob: (data) => axiosInstance.post('/recruitment/job-openings/', data),
-    updateJob: (id, data) => axiosInstance.put(`/recruitment/job-openings/${id}/`, data),
-    deleteJob: (id) => axiosInstance.delete(`/recruitment/job-openings/${id}/`),
+    getJobs: (params) => axiosInstance.get('/recruitment/jobs/', { params }),
+    getJob: (id) => axiosInstance.get(`/recruitment/jobs/${id}/`),
+    createJob: (data) => axiosInstance.post('/recruitment/jobs/', data),
+    updateJob: (id, data) => axiosInstance.put(`/recruitment/jobs/${id}/`, data),
+    deleteJob: (id) => axiosInstance.delete(`/recruitment/jobs/${id}/`),
+    updateJobStatus: (id, status) => axiosInstance.patch(`/recruitment/jobs/${id}/status/`, { status }),
     getJobStats: () => axiosInstance.get('/recruitment/job-openings/stats/'),
     duplicateJob: (id) => axiosInstance.post(`/recruitment/job-openings/${id}/duplicate/`),
 
@@ -14,18 +34,19 @@ const recruitmentApi = {
     getCandidates: (params) => axiosInstance.get('/recruitment/candidates/', { params }),
     getCandidate: (id) => axiosInstance.get(`/recruitment/candidates/${id}/`),
     createCandidate: (data) => {
-        // Handle file upload if data contains file
-        const config = {};
-        if (data instanceof FormData) {
-            config.headers = { 'Content-Type': 'multipart/form-data' };
-        }
-        return axiosInstance.post('/recruitment/candidates/', data, config);
+        return axiosInstance.post('/recruitment/candidates/', data);
     },
-    updateCandidate: (id, data) => axiosInstance.put(`/recruitment/candidates/${id}/`, data),
+    updateCandidate: (id, data) => {
+        return axiosInstance.put(`/recruitment/candidates/${id}/`, data);
+    },
     deleteCandidate: (id) => axiosInstance.delete(`/recruitment/candidates/${id}/`),
     getCandidateStats: () => axiosInstance.get('/recruitment/candidates/stats/'),
     addCandidateNote: (id, data) => axiosInstance.post(`/recruitment/candidates/${id}/add-note/`, data),
-    updateCandidateStatus: (id, status) => axiosInstance.put(`/recruitment/candidates/${id}/status/`, { status }),
+    updateCandidateStatus: (id, status) => {
+        const payload = typeof status === 'object' ? status : { status };
+        return axiosInstance.put(`/recruitment/candidates/${id}/status/`, payload);
+    },
+    updateCandidateStage: (id, stageId) => axiosInstance.patch(`/recruitment/candidates/${id}/stage/`, { stage_id: stageId }),
     toggleCandidateStar: (id) => axiosInstance.put(`/recruitment/candidates/${id}/toggle-star/`),
     
     // Interviews
@@ -38,9 +59,27 @@ const recruitmentApi = {
     cancelInterview: (id, reason) => axiosInstance.post(`/recruitment/interviews/${id}/cancel/`, { reason }),
     rescheduleInterview: (id, data) => axiosInstance.post(`/recruitment/interviews/${id}/reschedule/`, data),
     submitFeedback: (id, data) => axiosInstance.post(`/recruitment/interviews/${id}/feedback/`, data),
+    updateInterviewStatus: (id, interviewStatus) =>
+        axiosInstance.patch(`/recruitment/interviews/${id}/status/`, { status: interviewStatus }),
+    updateInterviewResult: (id, interviewResult, feedback) =>
+        axiosInstance.patch(`/recruitment/interviews/${id}/result/`, { result: interviewResult, ...(feedback !== undefined ? { feedback } : {}) }),
     
     // Applications
     updateApplicationStage: (id, data) => axiosInstance.put(`/recruitment/applications/${id}/stage/`, data),
+    getApplications: (params) => axiosInstance.get('/recruitment/applications/', { params }),
+    createApplication: (data) => axiosInstance.post('/recruitment/applications/', data),
+    updateApplication: (id, data) => axiosInstance.put(`/recruitment/applications/${id}/`, data),
+    deleteApplication: (id) => axiosInstance.delete(`/recruitment/applications/${id}/`),
+
+    // Surveys
+    getSurveys: (params) => axiosInstance.get('/recruitment/surveys/', { params }),
+    createSurvey: (data) => axiosInstance.post('/recruitment/surveys/', data),
+    updateSurvey: (id, data) => axiosInstance.put(`/recruitment/surveys/${id}/`, data),
+    deleteSurvey: (id) => axiosInstance.delete(`/recruitment/surveys/${id}/`),
+    getSurveyQuestions: (id) => axiosInstance.get(`/recruitment/surveys/${id}/questions/`),
+    addSurveyQuestion: (id, data) => axiosInstance.post(`/recruitment/surveys/${id}/questions/`, data),
+    submitSurveyResponse: (id, data) => axiosInstance.post(`/recruitment/surveys/${id}/responses/`, data),
+    getSurveyResponses: (id, params) => axiosInstance.get(`/recruitment/surveys/${id}/responses/`, { params }),
 };
 
 export default recruitmentApi;

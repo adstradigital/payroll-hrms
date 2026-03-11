@@ -11,11 +11,13 @@ import environ
 
 # Initialize environ
 env = environ.Env(
-    DEBUG=(bool, False)
+    DEBUG=(bool, False),
+    DJANGO_DEBUG=(bool, False),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 # Read .env file
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
@@ -24,7 +26,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 # SECURITY & ENVIRONMENT
 # =============================================================================
 
-DEBUG = env('DEBUG')
+DEBUG = env('DJANGO_DEBUG', default=env('DEBUG'))
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-default')
 
 if DEBUG:

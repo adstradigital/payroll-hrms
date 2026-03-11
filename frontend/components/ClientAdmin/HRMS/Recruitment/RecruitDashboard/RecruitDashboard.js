@@ -1,118 +1,254 @@
 'use client';
 
-import { 
-    Users, Briefcase, UserCheck, UserX, 
-    TrendingUp, Activity, Calendar, MoreHorizontal,
-    PieChart, BarChart
+import { useEffect, useMemo, useState } from 'react';
+import {
+    Users,
+    Briefcase,
+    UserCheck,
+    Activity,
+    Calendar,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import recruitmentApi from '@/api/recruitmentApi';
 import './RecruitDashboard.css';
+import './QuickActions.css';
 
-/**
- * Reusable Chart Component (similar to Performance Dashboard)
- */
-const DashboardChart = ({ type = 'donut', data, size = 180 }) => {
-    const center = size / 2;
-    const radius = (size / 2) - 10;
-    const innerRadius = type === 'donut' ? radius * 0.7 : 0;
-    
-    let currentAngle = -90;
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-
-    return (
-        <div className="chart-container">
-            <div className="chart-wrapper">
-                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="chart-svg">
-                    {data.map((item, idx) => {
-                        if (item.value === 0) return null;
-                        const angle = (item.value / total) * 360;
-                        const startAngle = currentAngle;
-                        const endAngle = currentAngle + angle;
-                        currentAngle = endAngle;
-
-                        const x1 = center + radius * Math.cos((Math.PI * startAngle) / 180);
-                        const y1 = center + radius * Math.sin((Math.PI * startAngle) / 180);
-                        const x2 = center + radius * Math.cos((Math.PI * endAngle) / 180);
-                        const y2 = center + radius * Math.sin((Math.PI * endAngle) / 180);
-
-                        const largeArcFlag = angle > 180 ? 1 : 0;
-                        
-                        // Handle full circle case
-                        const pathData = angle === 360 
-                            ? `M ${center} ${center - radius} A ${radius} ${radius} 0 1 1 ${center} ${center + radius} A ${radius} ${radius} 0 1 1 ${center} ${center - radius}`
-                            : [
-                                `M ${center} ${center}`,
-                                `L ${x1} ${y1}`,
-                                `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-                                'Z'
-                            ].join(' ');
-
-                        return (
-                            <path
-                                key={idx}
-                                d={pathData}
-                                fill={item.color}
-                                className="chart-segment"
-                                stroke="var(--bg-secondary)"
-                                strokeWidth="2"
-                            />
-                        );
-                    })}
-                    {type === 'donut' && (
-                        <circle cx={center} cy={center} r={innerRadius} fill="var(--bg-secondary)" />
-                    )}
-                </svg>
-                {type === 'donut' && (
-                    <div className="chart-center">
-                        <span className="chart-center__value">{total}</span>
-                        <span className="chart-center__label">Total</span>
-                    </div>
-                )}
-            </div>
-            
-            <div className="chart-legend">
-                {data.map((item, idx) => (
-                    <div key={idx} className="chart-legend__item">
-                        <div className="chart-legend__dot" style={{ backgroundColor: item.color }}></div>
-                        <span className="chart-legend__label">{item.label}</span>
-                        <span className="chart-legend__value">{Math.round((item.value / total) * 100)}%</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
+const isCurrentMonth = (value) => {
+    if (!value) return false;
+    const date = new Date(value);
+    const now = new Date();
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
 };
 
+const DEPARTMENT_OPTIONS = [
+    { value: 'ENGINEERING', label: 'Engineering' },
+    { value: 'IT', label: 'IT' },
+    { value: 'MARKETING', label: 'Marketing' },
+    { value: 'SALES', label: 'Sales' },
+    { value: 'HR', label: 'HR' },
+    { value: 'FINANCE', label: 'Finance' },
+    { value: 'OPERATIONS', label: 'Operations' },
+    { value: 'CUSTOMER_SUPPORT', label: 'Customer Support' },
+    { value: 'PRODUCT', label: 'Product' },
+    { value: 'DESIGN', label: 'Design' },
+    { value: 'OTHER', label: 'Other' },
+];
+
+const EMPLOYMENT_TYPE_OPTIONS = [
+    { value: 'FULL_TIME', label: 'Full-time' },
+    { value: 'PART_TIME', label: 'Part-time' },
+    { value: 'CONTRACT', label: 'Contract' },
+    { value: 'INTERNSHIP', label: 'Internship' },
+    { value: 'TEMPORARY', label: 'Temporary' },
+];
+
+const EXPERIENCE_LEVEL_OPTIONS = [
+    { value: 'ENTRY', label: 'Entry Level' },
+    { value: 'MID', label: 'Mid Level' },
+    { value: 'SENIOR', label: 'Senior Level' },
+    { value: 'LEAD', label: 'Lead' },
+    { value: 'MANAGER', label: 'Manager' },
+    { value: 'DIRECTOR', label: 'Director' },
+    { value: 'EXECUTIVE', label: 'Executive' },
+];
+
 export default function RecruitDashboard() {
-    // Mock Data
-    const metrics = [
-        { label: "Total Candidates", value: 124, trend: "+12% this month", icon: Users, color: "primary" },
-        { label: "Active Jobs", value: 8, trend: "3 closing soon", icon: Briefcase, color: "warning" },
-        { label: "Hired", value: 12, trend: "+4 vs last month", icon: UserCheck, color: "success" },
-        { label: "Rejected", value: 45, trend: "36% rejection rate", icon: UserX, color: "danger" },
-    ];
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [candidateStats, setCandidateStats] = useState(null);
+    const [applications, setApplications] = useState([]);
+    const [jobOpenings, setJobOpenings] = useState([]);
+    const [upcomingInterviews, setUpcomingInterviews] = useState([]);
+    const [candidates, setCandidates] = useState([]);
+    const [skills, setSkills] = useState([]);
+    const [activeJobCount, setActiveJobCount] = useState(0);
+    const [jobModalOpen, setJobModalOpen] = useState(false);
+    const [jobSaving, setJobSaving] = useState(false);
+    const [jobError, setJobError] = useState('');
+    const [jobForm, setJobForm] = useState({
+        title: '',
+        department: '',
+        employment_type: '',
+        experience_level: 'MID',
+        location: '',
+        description: '',
+        experience_required: '',
+        openings: 1,
+        required_skills: [],
+    });
 
-    const pipelineData = [
-        { label: 'Screening', value: 45, color: '#3b82f6' },
-        { label: 'Interview', value: 28, color: '#f59e0b' },
-        { label: 'Offer', value: 12, color: '#10b981' },
-    ];
+    const metrics = useMemo(() => {
+        const activeJobs =
+            activeJobCount ||
+            jobOpenings.filter((job) => (job.status || '').toUpperCase() === 'OPEN' || (job.status || '').toUpperCase() === 'ACTIVE').length;
+        const newCandidates = candidates.filter((cand) => isCurrentMonth(cand.created_at)).length || candidateStats?.new_this_month || 0;
+        const pendingReviews = applications.filter(
+            (app) =>
+                (app.stage_details?.name || app.stage_name || '').toUpperCase() === 'SCREENING' ||
+                (app.status || '').toUpperCase() === 'SCREENING'
+        ).length;
+        const hiredThisMonth = applications.filter((app) => (app.status || '').toUpperCase() === 'HIRED' && isCurrentMonth(app.applied_date)).length;
 
-    const sourceData = [
-        { label: 'LinkedIn', value: 65, color: '#0a66c2' },
-        { label: 'Website', value: 30, color: '#4f46e5' },
-        { label: 'Referral', value: 15, color: '#10b981' },
-        { label: 'Agency', value: 10, color: '#f43f5e' },
-    ];
+        return [
+            { label: 'Active Jobs', value: activeJobs, trend: 'Open positions', icon: Briefcase, color: 'primary' },
+            { label: 'New Candidates', value: newCandidates, trend: 'This month', icon: Users, color: 'warning' },
+            { label: 'Pending Reviews', value: pendingReviews, trend: 'In screening', icon: Activity, color: 'info' },
+            { label: 'Hired This Month', value: hiredThisMonth, trend: 'Converted', icon: UserCheck, color: 'success' },
+        ];
+    }, [candidateStats, jobOpenings, applications]);
 
-    const upcomingInterviews = [
-        { id: 1, candidate: "Sarah Wilson", role: "Senior React Dev", time: "10:30 AM", type: "Technical Round", interviewer: "Alex Tech Lead" },
-        { id: 2, candidate: "Mike Johnson", role: "Product Designer", time: "2:00 PM", type: "Portfolio Review", interviewer: "Sarah Design Lead" },
-        { id: 3, candidate: "Emily Davis", role: "HR Manager", time: "4:00 PM", type: "Final HR Round", interviewer: "John HR Head" },
-    ];
+    const fetchDashboardData = async () => {
+        setLoading(true);
+        try {
+            const [
+                candidateStatsResponse,
+                candidatesResponse,
+                interviewsResponse,
+                applicationsResponse,
+                jobsResponse,
+                activeJobsResponse,
+            ] = await Promise.all([
+                recruitmentApi.getCandidateStats(),
+                recruitmentApi.getCandidates({ page_size: 200 }),
+                recruitmentApi.getInterviews({ upcoming: true, page_size: 10 }),
+                recruitmentApi.getApplications({ page_size: 200 }),
+                recruitmentApi.getJobs({ page_size: 12 }),
+                recruitmentApi.getJobs({ status: 'ACTIVE', page_size: 1 }),
+            ]);
+
+            const candidateData = candidateStatsResponse.data?.data;
+            setCandidateStats(candidateData);
+            setCandidates(candidatesResponse.data?.results || candidatesResponse.data?.data || []);
+            setApplications(applicationsResponse.data?.results || applicationsResponse.data?.data || []);
+            setJobOpenings(jobsResponse.data?.results || jobsResponse.data?.data || []);
+            setActiveJobCount(activeJobsResponse.data?.count || 0);
+
+            const upcoming = interviewsResponse.data?.results || interviewsResponse.data?.data || [];
+            setUpcomingInterviews(
+                upcoming.slice(0, 5).map((item) => ({
+                    id: item.id,
+                    candidate: item.candidate_name,
+                    role: item.job_title,
+                    time: new Date(item.interview_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    date: new Date(item.interview_date).toLocaleDateString(),
+                }))
+            );
+        } catch (error) {
+            console.error('Failed to fetch recruitment dashboard data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
+    const openJobModal = async () => {
+        if (skills.length === 0) {
+            try {
+                const skillsResponse = await recruitmentApi.getSkills();
+                setSkills(skillsResponse.data?.data || skillsResponse.data?.results || []);
+            } catch (err) {
+                console.error('Failed to load skills', err);
+            }
+        }
+        setJobModalOpen(true);
+    };
+
+    const handleCreateJob = async () => {
+        if (!jobForm.title || !jobForm.department || !jobForm.employment_type || !jobForm.experience_level) {
+            setJobError('Title, Department, Job Type, and Experience Level are required.');
+            return;
+        }
+        if (!jobForm.location) {
+            setJobError('Location is required.');
+            return;
+        }
+        if (!jobForm.description) {
+            setJobError('Description is required.');
+            return;
+        }
+        if (jobForm.required_skills.length === 0) {
+            setJobError('Select at least one skill.');
+            return;
+        }
+        setJobSaving(true);
+        setJobError('');
+        try {
+            const payload = {
+                ...jobForm,
+                openings: jobForm.openings,
+            };
+            await recruitmentApi.createJob(payload);
+            setJobModalOpen(false);
+            setJobForm({
+                title: '',
+                department: '',
+                employment_type: '',
+                experience_level: 'MID',
+                location: '',
+                description: '',
+                experience_required: '',
+                openings: 1,
+                required_skills: [],
+            });
+            fetchDashboardData();
+        } catch (err) {
+            const firstFieldError = err?.response?.data?.errors && Object.values(err.response.data.errors).flat()?.[0];
+            setJobError(firstFieldError || err?.response?.data?.message || 'Failed to create job.');
+        } finally {
+            setJobSaving(false);
+        }
+    };
+
+    const handleDownloadReport = () => {
+        const lines = [
+            ['Metric', 'Value'],
+            ...metrics.map((m) => [m.label, m.value]),
+            ['Total Jobs', jobOpenings.length],
+            ['Total Applications', applications.length],
+        ];
+        const csv = lines.map((row) => row.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'recruitment_report.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const toggleSkill = (skillId) => {
+        setJobForm((prev) => {
+            const exists = prev.required_skills.includes(skillId);
+            return {
+                ...prev,
+                required_skills: exists ? prev.required_skills.filter((id) => id !== skillId) : [...prev.required_skills, skillId],
+            };
+        });
+    };
 
     return (
         <div className="recruit-dashboard">
-            {/* Metrics Row */}
+            <div className="rd-card" style={{ padding: '1.25rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h2 className="rd-card__title" style={{ marginBottom: '0.25rem' }}>
+                        Recruitment Overview
+                    </h2>
+                    <p className="rd-empty-state" style={{ margin: 0 }}>
+                        Welcome to the recruitment management dashboard.
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="rd-btn-sm rd-btn-sm--ghost" onClick={handleDownloadReport}>
+                        Download Report
+                    </button>
+                    <button className="rd-btn-sm rd-btn-sm--primary" onClick={openJobModal}>
+                        Create Job Posting
+                    </button>
+                </div>
+            </div>
             <div className="rd-metrics">
                 {metrics.map((m, i) => (
                     <div key={i} className={`rd-metric-card rd-metric-card--${m.color}`}>
@@ -132,100 +268,185 @@ export default function RecruitDashboard() {
             </div>
 
             <div className="rd-grid">
-                {/* Visualizations Column */}
                 <div className="rd-charts-col">
-                    {/* Pipeline Status */}
                     <div className="rd-card">
                         <div className="rd-card__header">
-                            <h3 className="rd-card__title">
-                                <BarChart size={18} />
-                                Pipeline Status
-                            </h3>
-                            <button className="rd-icon-btn"><MoreHorizontal size={16} /></button>
+                            <h3 className="rd-card__title">Recent Job Openings</h3>
+                            <button type="button" className="rd-link-btn" onClick={() => router.push('/dashboard/recruitment/job-openings')}>
+                                View All
+                            </button>
                         </div>
-                        <div className="rd-card__content rd-card__content--center">
-                            <DashboardChart data={pipelineData} type="donut" size={200} />
-                        </div>
-                    </div>
-
-                    {/* Application Sources */}
-                    <div className="rd-card">
-                        <div className="rd-card__header">
-                            <h3 className="rd-card__title">
-                                <PieChart size={18} />
-                                Application Sources
-                            </h3>
-                            <button className="rd-icon-btn"><MoreHorizontal size={16} /></button>
-                        </div>
-                        <div className="rd-card__content rd-card__content--center">
-                            <DashboardChart data={sourceData} type="pie" size={200} />
+                        <div className="rd-list">
+                            {(jobOpenings.slice(0, 5) || []).map((job) => (
+                                <div key={job.id} className="rd-interview-item">
+                                    <div className="rd-interview-details">
+                                        <h4 className="rd-candidate-name">{job.title}</h4>
+                                        <p className="rd-role-type">
+                                            {(job.employment_type || job.job_type || '').replaceAll('_', ' ') || '-'} | {job.applications_count || 0} Applicants
+                                        </p>
+                                    </div>
+                                    <span className="rd-badge">{job.status}</span>
+                                </div>
+                            ))}
+                            {!loading && jobOpenings.length === 0 && <p className="rd-empty-state">No jobs found.</p>}
                         </div>
                     </div>
                 </div>
 
-                {/* Activity Column */}
                 <div className="rd-activity-col">
-                    {/* Upcoming Interviews */}
                     <div className="rd-card rd-card--flex">
                         <div className="rd-card__header">
                             <h3 className="rd-card__title">
                                 <Calendar size={18} />
-                                Today's Interviews
+                                Upcoming Interviews
                             </h3>
-                            <span className="rd-badge">3 Scheduled</span>
+                            <span className="rd-badge">{upcomingInterviews.length}</span>
                         </div>
+
                         <div className="rd-list">
-                            {upcomingInterviews.map(interview => (
-                                <div key={interview.id} className="rd-interview-item">
-                                    <div className="rd-interview-time">
-                                        <span>{interview.time}</span>
+                            {loading ? (
+                                <p className="rd-empty-state">Loading interviews...</p>
+                            ) : (
+                                upcomingInterviews.map((interview) => (
+                                    <div key={interview.id} className="rd-interview-item">
+                                        <div className="rd-interview-time">
+                                            <span>{interview.time}</span>
+                                            <small>{interview.date}</small>
+                                        </div>
+                                        <div className="rd-interview-details">
+                                            <h4 className="rd-candidate-name">{interview.candidate}</h4>
+                                            <p className="rd-role-type">{interview.role}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="rd-btn-sm"
+                                            onClick={() => router.push('/dashboard/recruitment/interview')}
+                                        >
+                                            View
+                                        </button>
                                     </div>
-                                    <div className="rd-interview-details">
-                                        <h4 className="rd-candidate-name">{interview.candidate}</h4>
-                                        <p className="rd-role-type">{interview.role} • {interview.type}</p>
-                                        <p className="rd-interviewer">w/ {interview.interviewer}</p>
-                                    </div>
-                                    <button className="rd-btn-sm">Join</button>
-                                </div>
-                            ))}
-                            {upcomingInterviews.length === 0 && (
-                                <p className="rd-empty-state">No interviews scheduled for today.</p>
+                                ))
+                            )}
+
+                            {!loading && upcomingInterviews.length === 0 && (
+                                <p className="rd-empty-state">No interviews scheduled.</p>
                             )}
                         </div>
-                        <div className="rd-card__footer">
-                            <button className="rd-link-btn">View Weekly Schedule</button>
-                        </div>
-                    </div>
 
-                    {/* Recent Activity / Quick Actions - Simplified for now */}
-                    <div className="rd-card">
-                        <div className="rd-card__header">
-                            <h3 className="rd-card__title">
-                                <Activity size={18} />
-                                Quick Actions
-                            </h3>
-                        </div>
-                        <div className="rd-grid-actions">
-                            <button className="rd-action-btn">
-                                <Briefcase size={20} />
-                                <span>Post Job</span>
-                            </button>
-                            <button className="rd-action-btn">
-                                <Users size={20} />
-                                <span>Add Candidate</span>
-                            </button>
-                            <button className="rd-action-btn">
-                                <Calendar size={20} />
-                                <span>Schedule</span>
-                            </button>
-                            <button className="rd-action-btn">
-                                <TrendingUp size={20} />
-                                <span>Reports</span>
+                        <div className="rd-card__footer">
+                            <button type="button" className="rd-link-btn" onClick={() => router.push('/dashboard/recruitment/interview')}>
+                                View Calendar
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+            {jobModalOpen && (
+                <div className="qa-modal-backdrop" onClick={() => setJobModalOpen(false)}>
+                    <div className="qa-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="qa-modal__header">
+                            <div>
+                                <p className="qa-eyebrow">Create Job Posting</p>
+                                <h3>New Job</h3>
+                            </div>
+                            <button className="qa-icon-btn" onClick={() => setJobModalOpen(false)}>
+                                X
+                            </button>
+                        </div>
+                        <div className="qa-modal__body">
+                            <div className="qa-form-grid">
+                                <div className="qa-field">
+                                    <label>Job Title</label>
+                                    <input value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} />
+                                </div>
+                                <div className="qa-field">
+                                    <label>Department</label>
+                                    <select value={jobForm.department} onChange={(e) => setJobForm({ ...jobForm, department: e.target.value })}>
+                                        <option value="">Select department</option>
+                                        {DEPARTMENT_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="qa-field">
+                                    <label>Job Type</label>
+                                    <select value={jobForm.employment_type} onChange={(e) => setJobForm({ ...jobForm, employment_type: e.target.value })}>
+                                        <option value="">Select job type</option>
+                                        {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="qa-field">
+                                    <label>Experience Level</label>
+                                    <select value={jobForm.experience_level} onChange={(e) => setJobForm({ ...jobForm, experience_level: e.target.value })}>
+                                        <option value="">Select level</option>
+                                        {EXPERIENCE_LEVEL_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="qa-field">
+                                    <label>Location</label>
+                                    <input value={jobForm.location} onChange={(e) => setJobForm({ ...jobForm, location: e.target.value })} />
+                                </div>
+                                <div className="qa-field">
+                                    <label>Experience</label>
+                                    <input value={jobForm.experience_required} onChange={(e) => setJobForm({ ...jobForm, experience_required: e.target.value })} />
+                                </div>
+                                <div className="qa-field">
+                                    <label>Vacancies</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={jobForm.openings}
+                                        onChange={(e) => setJobForm({ ...jobForm, openings: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div className="qa-field qa-field--full">
+                                    <label>Description</label>
+                                    <textarea
+                                        rows={3}
+                                        value={jobForm.description}
+                                        onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
+                                    />
+                                </div>
+                                <div className="qa-field qa-field--full">
+                                    <label>Skills</label>
+                                    <div className="qa-skill-group__items">
+                                        {skills.map((skill) => (
+                                            <button
+                                                type="button"
+                                                key={skill.id}
+                                                className={`qa-skill-chip ${jobForm.required_skills.includes(skill.id) ? 'active' : ''}`}
+                                                onClick={() => toggleSkill(skill.id)}
+                                            >
+                                                {skill.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            {jobError && <div className="qa-alert">{jobError}</div>}
+                        </div>
+                        <div className="qa-modal__footer">
+                            <button className="rd-btn-sm" onClick={() => setJobModalOpen(false)}>
+                                Cancel
+                            </button>
+                            <button className="rd-btn-sm rd-btn-sm--primary" onClick={handleCreateJob} disabled={jobSaving}>
+                                {jobSaving ? 'Saving...' : 'Create Job'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+

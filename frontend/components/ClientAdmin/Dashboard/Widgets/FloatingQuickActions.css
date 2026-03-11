@@ -9,6 +9,7 @@
     align-items: center;
     gap: var(--spacing-md);
     transition: transform var(--transition-fast);
+    pointer-events: none;
 }
 
 .floating-actions.dragging {
@@ -53,6 +54,7 @@
     position: relative;
     /* Cascade animation Delay */
     transition-delay: calc(var(--index) * 50ms);
+    pointer-events: auto;
 }
 
 [data-theme="dark"] .floating-actions__item {
@@ -119,6 +121,7 @@
     box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4);
     transition: all var(--transition-normal);
     position: relative;
+    pointer-events: auto;
 }
 
 [data-theme="dark"] .floating-actions__trigger {

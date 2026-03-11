@@ -4,6 +4,23 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
 
+DEFAULT_RECRUITMENT_STAGES = [
+    {"name": "Applied", "sequence": 1, "is_system": True},
+    {"name": "Screening", "sequence": 2, "is_system": False},
+    {"name": "Technical Interview", "sequence": 3, "is_system": False},
+    {"name": "Cultural Fit Round", "sequence": 4, "is_system": False},
+    {"name": "Offer", "sequence": 5, "is_system": True},
+    {"name": "Hired", "sequence": 6, "is_system": True},
+    {"name": "Rejected", "sequence": 7, "is_system": True},
+]
+
+DEFAULT_SKILL_CATEGORIES = [
+    {"name": "Development", "description": "Technical and engineering skills used for software and product roles."},
+    {"name": "Design", "description": "Product, visual, and interaction design skills used in creative roles."},
+    {"name": "Soft Skills", "description": "Communication, leadership, and behavioral skills used across roles."},
+]
+
+
 class JobOpening(models.Model):
     """Job Opening Model"""
     
@@ -42,6 +59,7 @@ class JobOpening(models.Model):
     
     DEPARTMENT_CHOICES = [
         ('ENGINEERING', 'Engineering'),
+        ('IT', 'IT'),
         ('MARKETING', 'Marketing'),
         ('SALES', 'Sales'),
         ('HR', 'HR'),
@@ -67,7 +85,9 @@ class JobOpening(models.Model):
     responsibilities = models.JSONField(default=list, blank=True)
     requirements = models.JSONField(default=list, blank=True)
     skills = models.JSONField(default=list, blank=True)
+    required_skills = models.ManyToManyField('Skill', blank=True, related_name='job_openings')
     benefits = models.JSONField(default=list, blank=True)
+    experience_required = models.CharField(max_length=50, blank=True, default='')
     
     openings = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
@@ -100,6 +120,70 @@ class JobOpening(models.Model):
     
     def __str__(self):
         return f"{self.title} - {self.department}"
+
+
+class RecruitmentStage(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    sequence = models.IntegerField(unique=True)
+    is_system = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sequence"]
+
+    def __str__(self):
+        return self.name
+
+
+def ensure_default_recruitment_stages():
+    if RecruitmentStage.objects.exists():
+        return
+
+    RecruitmentStage.objects.bulk_create(
+        [
+            RecruitmentStage(
+                name=stage["name"],
+                sequence=stage["sequence"],
+                is_system=stage["is_system"],
+            )
+            for stage in DEFAULT_RECRUITMENT_STAGES
+        ]
+    )
+
+
+class SkillCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Skill(models.Model):
+    name = models.CharField(max_length=100)
+    category = models.ForeignKey(SkillCategory, on_delete=models.CASCADE, related_name='skills')
+    description = models.TextField(blank=True, null=True)
+    status = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        unique_together = ['name', 'category']
+
+    def __str__(self):
+        return self.name
+
+
+def ensure_default_skill_categories():
+    for category in DEFAULT_SKILL_CATEGORIES:
+        SkillCategory.objects.get_or_create(
+            name=category['name'],
+            defaults={'description': category['description']},
+        )
 
 
 class Candidate(models.Model):
@@ -163,6 +247,7 @@ class Candidate(models.Model):
     
     # Skills and Education
     skills = models.JSONField(default=list, blank=True)
+    candidate_skills = models.ManyToManyField('Skill', blank=True, related_name='candidate_profiles')
     education = models.JSONField(default=list, blank=True)
     certifications = models.JSONField(default=list, blank=True)
     
@@ -177,9 +262,26 @@ class Candidate(models.Model):
     # Application Details
     source = models.CharField(max_length=30, choices=SOURCE_CHOICES, default='DIRECT_APPLICATION')
     referred_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='referrals')
+    job_applied = models.ForeignKey(
+        JobOpening,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='candidates',
+    )
+    experience = models.CharField(max_length=50, blank=True, default='')
+    notes = models.TextField(blank=True)
+    applied_date = models.DateTimeField(default=timezone.now)
     
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NEW')
+    stage = models.ForeignKey(
+        RecruitmentStage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='candidates'
+    )
     
     # Ratings
     overall_rating = models.DecimalField(
@@ -258,11 +360,21 @@ class Application(models.Model):
     ]
     
     STATUS_CHOICES = [
-        ('ACTIVE', 'Active'),
+        ('APPLIED', 'Applied'),
+        ('SCREENING', 'Screening'),
+        ('INTERVIEW', 'Interview'),
+        ('OFFER', 'Offer'),
         ('HIRED', 'Hired'),
         ('REJECTED', 'Rejected'),
+        ('ACTIVE', 'Active'),
         ('WITHDRAWN', 'Withdrawn'),
         ('ON_HOLD', 'On Hold'),
+    ]
+
+    SOURCE_CHOICES = [
+        ('LINKEDIN', 'LinkedIn'),
+        ('WEBSITE', 'Website'),
+        ('REFERRAL', 'Referral'),
     ]
     
     OFFER_STATUS_CHOICES = [
@@ -277,7 +389,15 @@ class Application(models.Model):
     
     applied_date = models.DateTimeField(default=timezone.now)
     current_stage = models.CharField(max_length=30, choices=STAGE_CHOICES, default='APPLIED')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    stage = models.ForeignKey(
+        RecruitmentStage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='applications_in_stage'
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='APPLIED')
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='WEBSITE')
     
     rating = models.DecimalField(
         max_digits=2, 
@@ -318,6 +438,8 @@ class Interview(models.Model):
         ('IN_PERSON', 'In-Person'),
         ('TECHNICAL', 'Technical'),
         ('HR', 'HR'),
+        ('MANAGERIAL', 'Managerial'),
+        ('FINAL', 'Final'),
         ('BEHAVIORAL', 'Behavioral'),
         ('PANEL', 'Panel'),
         ('CASE_STUDY', 'Case Study'),
@@ -329,6 +451,17 @@ class Interview(models.Model):
         ('CANCELLED', 'Cancelled'),
         ('RESCHEDULED', 'Rescheduled'),
         ('NO_SHOW', 'No Show'),
+    ]
+
+    MODE_CHOICES = [
+        ('ONLINE', 'Online'),
+        ('IN_PERSON', 'In-Person'),
+    ]
+
+    RESULT_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('PASSED', 'Passed'),
+        ('FAILED', 'Failed'),
     ]
     
     RECOMMENDATION_CHOICES = [
@@ -351,8 +484,19 @@ class Interview(models.Model):
     duration_minutes = models.PositiveIntegerField(default=60)
     location = models.CharField(max_length=300, blank=True)
     meeting_link = models.URLField(blank=True)
+
+    interviewer_name = models.CharField(max_length=150, blank=True, default='')
+    interview_mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='ONLINE')
+    location_or_link = models.CharField(max_length=255, blank=True, null=True)
+    result = models.CharField(max_length=20, choices=RESULT_CHOICES, default='PENDING')
+    feedback = models.TextField(blank=True, null=True)
     
-    interviewers = models.ManyToManyField(User, through='InterviewFeedback', related_name='conducted_interviews')
+    interviewers = models.ManyToManyField(
+        User,
+        through='InterviewFeedback',
+        related_name='conducted_interviews',
+        blank=True,
+    )
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
     
@@ -457,7 +601,7 @@ class InterviewFeedback(models.Model):
 class CandidateNote(models.Model):
     """Notes on Candidates"""
     
-    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name='notes')
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name='note_entries')
     content = models.TextField()
     added_by = models.ForeignKey(User, on_delete=models.CASCADE)
     is_private = models.BooleanField(default=False)
@@ -470,3 +614,96 @@ class CandidateNote(models.Model):
     
     def __str__(self):
         return f"Note for {self.candidate.full_name} by {self.added_by.get_full_name()}"
+
+
+class Survey(models.Model):
+    """Recruitment Survey for candidates and interviewers"""
+
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Active'),
+        ('CLOSED', 'Closed'),
+    ]
+
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class SurveyQuestion(models.Model):
+    """Questions belonging to a survey"""
+
+    QUESTION_TYPE_CHOICES = [
+        ('TEXT', 'Text'),
+        ('RATING', 'Rating'),
+        ('YES_NO', 'Yes/No'),
+        ('MULTIPLE_CHOICE', 'Multiple Choice'),
+    ]
+
+    survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name='questions')
+    question_text = models.TextField()
+    question_type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES, default='TEXT')
+    options = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['survey']),
+        ]
+
+    def __str__(self):
+        return f"{self.survey.title} - {self.question_text[:40]}"
+
+
+class SurveyResponse(models.Model):
+    """Response submission for a survey"""
+
+    survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name='responses')
+    candidate = models.ForeignKey(
+        Candidate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='survey_responses'
+    )
+    interviewer_name = models.CharField(max_length=255, blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+        indexes = [
+            models.Index(fields=['survey']),
+            models.Index(fields=['candidate']),
+        ]
+
+    def __str__(self):
+        return f"Response for {self.survey.title} at {self.submitted_at.strftime('%Y-%m-%d %H:%M')}"
+
+
+class SurveyAnswer(models.Model):
+    """Answers to survey questions"""
+
+    response = models.ForeignKey(SurveyResponse, on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey(SurveyQuestion, on_delete=models.CASCADE, related_name='answers')
+    answer_text = models.TextField(blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['response']),
+            models.Index(fields=['question']),
+        ]
+
+    def __str__(self):
+        return f"Answer to '{self.question.question_text[:25]}'"

@@ -1,8 +1,31 @@
 from django.contrib import admin
 from .models import (
-    JobOpening, Candidate, Application, 
-    Interview, InterviewFeedback, CandidateNote
+    JobOpening, Candidate, Application, RecruitmentStage, SkillCategory, Skill,
+    Interview, InterviewFeedback, CandidateNote,
+    Survey, SurveyQuestion, SurveyResponse, SurveyAnswer
 )
+
+
+@admin.register(RecruitmentStage)
+class RecruitmentStageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'sequence', 'is_system', 'created_at')
+    list_filter = ('is_system',)
+    search_fields = ('name',)
+    ordering = ('sequence',)
+
+
+@admin.register(SkillCategory)
+class SkillCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created_at')
+    search_fields = ('name', 'description')
+
+
+@admin.register(Skill)
+class SkillAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'status', 'created_at')
+    list_filter = ('status', 'category')
+    search_fields = ('name', 'description', 'category__name')
+    list_select_related = ('category',)
 
 @admin.register(JobOpening)
 class JobOpeningAdmin(admin.ModelAdmin):
@@ -13,15 +36,15 @@ class JobOpeningAdmin(admin.ModelAdmin):
 
 @admin.register(Candidate)
 class CandidateAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'email', 'status', 'source', 'created_at')
-    list_filter = ('status', 'source')
+    list_display = ('full_name', 'email', 'status', 'stage', 'source', 'created_at')
+    list_filter = ('status', 'stage', 'source')
     search_fields = ('first_name', 'last_name', 'email', 'phone')
     date_hierarchy = 'created_at'
 
 @admin.register(Application)
 class ApplicationAdmin(admin.ModelAdmin):
-    list_display = ('candidate', 'job_opening', 'status', 'current_stage', 'applied_date')
-    list_filter = ('status', 'current_stage')
+    list_display = ('candidate', 'job_opening', 'status', 'current_stage', 'stage', 'source', 'applied_date')
+    list_filter = ('status', 'current_stage', 'source')
     search_fields = ('candidate__first_name', 'candidate__last_name', 'job_opening__title')
     date_hierarchy = 'applied_date'
 
@@ -34,3 +57,7 @@ class InterviewAdmin(admin.ModelAdmin):
 
 admin.site.register(InterviewFeedback)
 admin.site.register(CandidateNote)
+admin.site.register(Survey)
+admin.site.register(SurveyQuestion)
+admin.site.register(SurveyResponse)
+admin.site.register(SurveyAnswer)

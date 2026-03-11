@@ -6,6 +6,7 @@ from django.urls import path, include
 from django.http import JsonResponse
 from django.conf import settings
 from django.conf.urls.static import static
+from apps.recruitment import views as recruitment_views
 
 
 def health_check(request):
@@ -15,6 +16,12 @@ def health_check(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health_check'),
+
+    # Recruitment dashboard endpoints (main dashboard page)
+    path('api/dashboard/stats/', recruitment_views.dashboard_stats, name='dashboard_stats'),
+    path('api/dashboard/pipeline-status/', recruitment_views.pipeline_status, name='pipeline_status'),
+    path('api/dashboard/application-sources/', recruitment_views.application_sources, name='application_sources'),
+    path('api/interviews/today/', recruitment_views.today_interviews, name='today_interviews'),
     
     # Authentication & Accounts APIs
     path('api/account/', include('apps.accounts.urls')),

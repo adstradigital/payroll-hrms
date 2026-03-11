@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Briefcase, Users, GitPullRequest, LayoutDashboard } from 'lucide-react';
+import { Briefcase, Users, GitPullRequest, LayoutDashboard, Workflow } from 'lucide-react';
 import RecruitDashboard from './RecruitDashboard/RecruitDashboard';
 import JobOpenings from './JobOpenings/JobOpenings';
 import Candidates from './Candidates/Candidates';
 import Pipeline from './Pipeline/Pipeline';
+import Stages from './Stages/Stages';
 import './Recruitment.css';
 
 export default function Recruitment() {
@@ -13,9 +14,10 @@ export default function Recruitment() {
 
     const tabs = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'jobs', label: 'Job Openings', icon: Briefcase },
+        { id: 'jobs', label: 'Open Jobs', icon: Briefcase },
         { id: 'candidates', label: 'Candidates', icon: Users },
         { id: 'pipeline', label: 'Hiring Pipeline', icon: GitPullRequest },
+        { id: 'stages', label: 'Stages', icon: Workflow },
     ];
 
     const renderContent = () => {
@@ -28,6 +30,8 @@ export default function Recruitment() {
                 return <Candidates />;
             case 'pipeline':
                 return <Pipeline />;
+            case 'stages':
+                return <Stages />;
             default:
                 return <JobOpenings />;
         }
