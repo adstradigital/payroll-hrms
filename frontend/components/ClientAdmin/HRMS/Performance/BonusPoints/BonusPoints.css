@@ -456,7 +456,33 @@
     font-size: 0.9rem;
 }
 
+.checkbox-label {
+    margin-bottom: 0;
+    color: white;
+}
+
 /* Light Theme Overrides */
+[data-theme="light"] .toast {
+    background: white;
+    color: #111827;
+    border-color: #e5e7eb;
+}
+
+/* Light theme */
+[data-theme="light"] .checkbox-label {
+    color: #111827;
+}
+
+[data-theme="light"] .btn-icon:hover {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+[data-theme="light"] .stat-card--secondary .stat-card__icon {
+    background: #f3f4f6;
+    color: #374151;
+}
+
 [data-theme="light"] .bonus-container {
     background: #f9fafb;
     color: #111827;
@@ -470,6 +496,12 @@
     -webkit-text-fill-color: transparent;
 }
 
+[data-theme="light"] .filter-select {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #111827;
+}
+
 [data-theme="light"] .stat-card,
 [data-theme="light"] .bonus-card,
 [data-theme="light"] .filters-panel,
@@ -481,6 +513,7 @@
 
 [data-theme="light"] .form-input, 
 [data-theme="light"] .form-select, 
+[data-theme="light"] .form-textarea,
 [data-theme="light"] .bonus-search {
     background: #ffffff;
     border-color: #d1d5db;

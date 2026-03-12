@@ -473,7 +473,7 @@ export default function BonusPoints() {
                                         checked={formData.is_active} 
                                         onChange={e => setFormData({...formData, is_active: e.target.checked})} 
                                     />
-                                    <label style={{marginBottom: 0, color: 'white'}}>Is Active</label>
+                                    <label className="checkbox-label">Is Active</label>
                                 </div>
                             </div>
                             <div className="modal-footer">

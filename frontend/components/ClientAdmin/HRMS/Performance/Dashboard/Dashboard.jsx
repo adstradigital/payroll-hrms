@@ -173,7 +173,7 @@ export default function Dashboard() {
         { label: "Total Employees", value: stats.total_employees || 0, icon: Users, trend: "Active" },
         { label: "Total Goals", value: stats.total_goals || 0, icon: Target, trend: "This Period" },
         { label: "Completed Reviews", value: stats.completed_reviews || 0, icon: CheckCircle, trend: `${stats.completion_percentage}%` },
-        { label: "Avg. Rating", value: stats.average_rating?.toFixed(1) || "0.0", icon: Award, trend: "Out of 5" },
+        { label: "Avg. Rating", value: stats.average_rating ? Number(stats.average_rating).toFixed(1) : "0.0", icon: Award, trend: "Out of 5" },
     ];
 
     const handleCreateReview = () => {

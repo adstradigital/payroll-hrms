@@ -67,6 +67,9 @@ class AnalyticsService:
         """
         Admin/HR dashboard with company-wide statistics
         """
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
         queryset = PerformanceReview.objects.all()
         
         if review_period:
@@ -86,11 +89,12 @@ class AnalyticsService:
             review_period__submission_deadline__lt=timezone.now().date()
         ).count()
         
-        # Average rating
-        avg_rating = queryset.filter(
+        # Average rating - use COALESCE to return 0 instead of None
+        avg_rating_result = queryset.filter(
             status='completed',
             overall_rating__isnull=False
-        ).aggregate(avg=Avg('overall_rating'))['avg']
+        ).aggregate(avg=Avg('overall_rating'))
+        avg_rating = avg_rating_result['avg']
         
         # Rating distribution
         rating_distribution = RatingCalculatorService.get_rating_distribution(review_period)
@@ -104,17 +108,39 @@ class AnalyticsService:
         # Trend data (last 6 review periods)
         trend_data = AnalyticsService._get_rating_trends(periods=6)
         
+        # Get total employees count
+        total_employees = User.objects.count()
+        
+        # Get goals statistics for the review period
+        goals_queryset = Goal.objects.all()
+        if review_period:
+            goals_queryset = goals_queryset.filter(review_period=review_period)
+        
+        total_goals = goals_queryset.count()
+        completed_goals = goals_queryset.filter(status='completed').count()
+        goals_on_track = goals_queryset.filter(status__in=['not_started', 'in_progress']).exclude(
+            target_date__lt=timezone.now().date()
+        ).count()
+        goals_delayed = goals_queryset.filter(
+            status__in=['not_started', 'in_progress'],
+            target_date__lt=timezone.now().date()
+        ).count()
+        
         return {
             'total_reviews': total_reviews,
             'completed_reviews': completed_reviews,
             'pending_reviews': pending_reviews,
             'overdue_reviews': overdue_reviews,
-            'average_rating': round(avg_rating, 2) if avg_rating else None,
+            'average_rating': round(avg_rating, 2) if avg_rating else 0,
             'rating_distribution': rating_distribution,
             'recent_reviews': recent_reviews,
             'department_stats': department_stats,
             'trend_data': trend_data,
-            'completion_percentage': round((completed_reviews / total_reviews * 100), 2) if total_reviews > 0 else 0
+            'completion_percentage': round((completed_reviews / total_reviews * 100), 2) if total_reviews > 0 else 0,
+            'total_employees': total_employees,
+            'total_goals': total_goals,
+            'goals_on_track': goals_on_track,
+            'goals_delayed': goals_delayed,
         }
     
     @staticmethod
@@ -122,6 +148,9 @@ class AnalyticsService:
         """
         Manager dashboard with team statistics
         """
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
         queryset = PerformanceReview.objects.filter(employee__employee_profile__reporting_manager__user=manager)
         
         if review_period:
@@ -130,6 +159,7 @@ class AnalyticsService:
             latest_period = ReviewPeriod.objects.filter(status='active').order_by('-start_date').first()
             if latest_period:
                 queryset = queryset.filter(review_period=latest_period)
+                review_period = latest_period
         
         total_reviews = queryset.count()
         completed_reviews = queryset.filter(status='completed').count()
@@ -152,15 +182,41 @@ class AnalyticsService:
         # Pending actions (reviews awaiting manager input)
         pending_actions = queryset.filter(status='self_submitted').count()
         
+        # Get team employees count
+        team_employees = User.objects.filter(
+            employee_profile__reporting_manager__user=manager
+        ).count()
+        
+        # Get team goals statistics
+        team_goals_queryset = Goal.objects.filter(
+            employee__employee_profile__reporting_manager__user=manager
+        )
+        if review_period:
+            team_goals_queryset = team_goals_queryset.filter(review_period=review_period)
+        
+        total_goals = team_goals_queryset.count()
+        completed_goals = team_goals_queryset.filter(status='completed').count()
+        goals_on_track = team_goals_queryset.filter(status__in=['not_started', 'in_progress']).exclude(
+            target_date__lt=timezone.now().date()
+        ).count()
+        goals_delayed = team_goals_queryset.filter(
+            status__in=['not_started', 'in_progress'],
+            target_date__lt=timezone.now().date()
+        ).count()
+        
         return {
             'total_reviews': total_reviews,
             'completed_reviews': completed_reviews,
             'pending_reviews': pending_reviews,
-            'average_rating': round(avg_rating, 2) if avg_rating else None,
-            'average_team_rating': round(avg_rating, 2) if avg_rating else None,
+            'average_rating': round(avg_rating, 2) if avg_rating else 0,
+            'average_team_rating': round(avg_rating, 2) if avg_rating else 0,
             'team_performance': list(team_performance),
             'pending_actions': pending_actions,
-            'completion_percentage': round((completed_reviews / total_reviews * 100), 2) if total_reviews > 0 else 0
+            'completion_percentage': round((completed_reviews / total_reviews * 100), 2) if total_reviews > 0 else 0,
+            'total_employees': team_employees,
+            'total_goals': total_goals,
+            'goals_on_track': goals_on_track,
+            'goals_delayed': goals_delayed,
         }
     
     @staticmethod
@@ -209,11 +265,14 @@ class AnalyticsService:
             overall_rating__isnull=False
         ).aggregate(avg=Avg('overall_rating'))['avg']
         
+        # Get total employees count (for company-wide context)
+        total_employees = User.objects.count()
+        
         return {
             'total_employees': total_employees,
             'current_review': current_review,
             'performance_history': list(performance_history),
-            'average_rating': round(avg_rating, 2) if avg_rating else None,
+            'average_rating': round(avg_rating, 2) if avg_rating else 0,
             'total_goals': total_goals,
             'completed_goals': completed_goals,
             'overdue_goals': overdue_goals,

@@ -200,6 +200,10 @@ h1, h2, h3 { font-weight: 700; color: var(--kr-color-white); }
     margin-top: 1.5rem;
 }
 
+.filter-section select {
+    width: 70%;
+}
+
 .search-wrapper {
     position: relative;
     flex: 1;
