@@ -268,6 +268,12 @@
   padding: 0;
 }
 
+.rd-empty-state {
+  padding: 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
 .rd-interview-item {
   display: flex;
   align-items: center;
@@ -326,6 +332,32 @@
 .rd-btn-sm:hover {
   border-color: var(--brand-primary);
   color: var(--brand-primary);
+}
+
+.rd-btn-sm--ghost {
+  background: transparent;
+}
+
+.rd-btn-sm--ghost:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.rd-btn-sm--primary {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+
+[data-theme="dark"] .rd-btn-sm--primary {
+  color: #000;
+}
+
+.rd-btn-sm--primary:hover {
+  background: var(--brand-primary-hover);
+  border-color: var(--brand-primary-hover);
+  color: #fff;
 }
 
 .rd-card__footer {

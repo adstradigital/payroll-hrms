@@ -17,6 +17,11 @@ const axiosInstance = axios.create({
 // Request Interceptor
 axiosInstance.interceptors.request.use(
     (config) => {
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+            delete config.headers['content-type'];
+        }
+
         // Skip Authorization header for login, register, and public routes
         const isAuthRoute = config.url.includes('/auth/login') ||
             config.url.includes('/auth/register') ||

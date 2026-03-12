@@ -1,15 +1,15 @@
 'use client';
 
-import RecruitDashboard from '@/components/ClientAdmin/HRMS/Recruitment/RecruitDashboard/RecruitDashboard';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
+import RecruitDashboard from '@/components/ClientAdmin/HRMS/Recruitment/RecruitDashboard/RecruitDashboard';
 
-export default function RecruitmentPage() {
+export default function RecruitmentApplicationsPage() {
     return (
         <Dashboard
-            title="Recruitment Dashboard"
-            subtitle="Overview of recruitment activities"
-            breadcrumbs={['Dashboard', 'Recruitment']}
+            title="Recruitment Overview"
+            subtitle="Manage and track all job applications"
+            breadcrumbs={['Dashboard', 'Recruitment', 'Overview']}
         >
             <ModuleGuard module="HRMS" permission="recruitment.view">
                 <RecruitDashboard />

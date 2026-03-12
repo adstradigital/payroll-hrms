@@ -16,7 +16,7 @@ export default function DashboardPage() {
         { title: 'Total Employees', value: '1,248', trend: 'up', trendValue: '12%', icon: Users, color: 'primary' },
         { title: 'On Time Today', value: '95%', trend: 'up', trendValue: '4.2%', icon: Clock, color: 'success' },
         { title: 'On Leave', value: '34', trend: 'down', trendValue: '2%', icon: Calendar, color: 'warning' },
-        { title: 'Total Payroll', value: '₹14.2L', trend: 'up', trendValue: '8.1%', icon: Wallet, color: 'info' },
+        { title: 'Total Payroll', value: 'INR 14.2L', trend: 'up', trendValue: '8.1%', icon: Wallet, color: 'info' },
     ];
 
     return (

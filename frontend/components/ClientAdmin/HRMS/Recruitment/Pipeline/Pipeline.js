@@ -1,76 +1,95 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { 
-    Search, 
-    RefreshCw, 
-    Settings, 
-    Plus, 
-    Briefcase, // Fallback for brand icon
+import { useEffect, useState } from 'react';
+import {
+    Search,
+    RefreshCw,
+    Settings,
     X,
-    Check,
-    User,
     ArrowRight,
     ArrowLeft,
-    MoreVertical,
     Clock,
     MessageSquare,
     ExternalLink,
-    Trash2
 } from 'lucide-react';
 import recruitmentApi from '@/api/recruitmentApi';
 import './Pipeline.css';
 
-const DEFAULT_STAGES = [
-    { id: 'NEW', label: 'New', color: '#71717a' },
-    { id: 'SCREENING', label: 'Screening', color: '#3b82f6' },
-    { id: 'INTERVIEW', label: 'Interview', color: '#fbbf24' },
-    { id: 'OFFERED', label: 'Offer', color: '#10b981' },
-    { id: 'HIRED', label: 'Hired', color: '#8b5cf6' },
-    { id: 'REJECTED', label: 'Rejected', color: '#ef4444' }
-];
+const STAGE_COLORS = ['#64748b', '#3b82f6', '#8b5cf6', '#6366f1', '#10b981', '#16a34a', '#ef4444'];
+
+const decorateStages = (items) =>
+    items.map((stage, index) => ({
+        ...stage,
+        label: stage.name,
+        color: STAGE_COLORS[index % STAGE_COLORS.length],
+    }));
+
+const groupCandidatesByStage = (candidates, stageList) => {
+    const grouped = Object.fromEntries(stageList.map((stage) => [stage.id, []]));
+    const fallbackStage = stageList[0];
+
+    candidates.forEach((candidate) => {
+        const stageId = candidate.stage || candidate.stage_details?.id || fallbackStage?.id;
+        if (!stageId || !grouped[stageId]) {
+            if (fallbackStage) grouped[fallbackStage.id].push(candidate);
+            return;
+        }
+        grouped[stageId].push(candidate);
+    });
+
+    return grouped;
+};
+
+const groupPipelineResponseByStageId = (pipelineResponse, stageList) => {
+    const grouped = Object.fromEntries(stageList.map((stage) => [stage.id, []]));
+    const payload = pipelineResponse?.data?.data || pipelineResponse?.data || {};
+
+    const stageNameToId = new Map(stageList.map((stage) => [String(stage.name).toLowerCase(), stage.id]));
+
+    Object.entries(payload || {}).forEach(([stageName, candidates]) => {
+        const stageId = stageNameToId.get(String(stageName).toLowerCase());
+        if (!stageId) return;
+        grouped[stageId] = (candidates || []).map((candidate) => ({
+            ...candidate,
+            full_name: candidate.full_name || candidate.name || '',
+            stage: stageId,
+            stage_name: candidate.stage_name || stageName,
+        }));
+    });
+
+    return grouped;
+};
 
 export default function Pipeline() {
-    // State for Data
     const [pipelineData, setPipelineData] = useState({});
     const [loading, setLoading] = useState(true);
-    
-    // State for UI/Config
-    const [stages, setStages] = useState(DEFAULT_STAGES);
+    const [stages, setStages] = useState([]);
     const [scale, setScale] = useState(1);
     const [showCustomize, setShowCustomize] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [newStageName, setNewStageName] = useState('');
-
     const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+    const [dragOverStageId, setDragOverStageId] = useState(null);
 
     useEffect(() => {
-        // Load config from localStorage
-        const savedStages = localStorage.getItem('pipelineStages');
         const savedScale = localStorage.getItem('pipelineScale');
-        
-        if (savedStages) {
-            try {
-                // Merge saved stages with default IDs to ensure backend compatibility if needed
-                // For now, simply load them. 
-                // In a real app, you might want to sync this with backend config.
-                 setStages(JSON.parse(savedStages));
-            } catch (e) {
-                console.error("Error parsing saved stages", e);
-            }
-        }
-        
         if (savedScale) setScale(parseFloat(savedScale));
-
-        fetchCandidates();
+        fetchPipeline();
     }, []);
 
-    const fetchCandidates = async () => {
+    useEffect(() => {
+        localStorage.setItem('pipelineScale', scale);
+    }, [scale]);
+
+    const fetchPipeline = async () => {
         setLoading(true);
+
         try {
-            const response = await recruitmentApi.getCandidates();
-            const candidates = response.data.results || [];
-            processCandidates(candidates);
+            const [stagesResponse, pipelineResponse] = await Promise.all([recruitmentApi.getStages(), recruitmentApi.getPipeline()]);
+
+            const nextStages = decorateStages(stagesResponse.data?.data || []);
+
+            setStages(nextStages);
+            setPipelineData(groupPipelineResponseByStageId(pipelineResponse, nextStages));
         } catch (error) {
             console.error('Failed to fetch pipeline:', error);
         } finally {
@@ -78,132 +97,104 @@ export default function Pipeline() {
         }
     };
 
-    const processCandidates = (candidates) => {
-        const grouped = {};
-        const processingIds = new Set();
-        const processingEmails = new Set();
-        
-        // Ensure all current stages exist in grouped data
-        stages.forEach(stage => grouped[stage.id] = []);
-
-        candidates.forEach(candidate => {
-            // Ensure ID exists
-            const safeCandidate = { ...candidate };
-            if (!safeCandidate.id) safeCandidate.id = `temp_${Math.random().toString(36).substr(2, 9)}`;
-
-            // Prevent duplicates by ID
-            if (processingIds.has(safeCandidate.id)) return;
-            
-            // Prevent duplicates by Email (strict uniqueness for view)
-            // If email is missing, we fall back to allowing it (or could dedup by name)
-            if (safeCandidate.email) {
-                if (processingEmails.has(safeCandidate.email)) return;
-                processingEmails.add(safeCandidate.email);
-            }
-
-            processingIds.add(safeCandidate.id);
-
-            // Normalize status
-            const status = safeCandidate.status; 
-            const stageId = stages.find(s => s.id === status) ? status : 'NEW';
-            
-            if (!grouped[stageId]) grouped[stageId] = [];
-            grouped[stageId].push(safeCandidate);
-        });
-        setPipelineData(grouped);
-    };
-
-    const handleSaveConfig = () => {
-        localStorage.setItem('pipelineStages', JSON.stringify(stages));
-        localStorage.setItem('pipelineScale', scale);
-    };
-
-    // Auto-save when config changes
-    useEffect(() => {
-        handleSaveConfig();
-    }, [stages, scale]);
-
     const handleScaleChange = (newScale) => {
-        const s = Math.max(0.5, Math.min(1.8, parseFloat(newScale)));
-        setScale(s);
+        const nextScale = Math.max(0.5, Math.min(1.8, parseFloat(newScale)));
+        setScale(nextScale);
     };
 
-    const handleAddStage = () => {
-        if (!newStageName.trim()) return;
-        const id = newStageName.toUpperCase().replace(/\s+/g, '_');
-        // Simple color rotation
-        const colors = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'];
-        const color = colors[stages.length % colors.length];
-        
-        setStages([...stages, { id, label: newStageName, color }]);
-        setNewStageName('');
-    };
+    const moveCandidateOptimistic = (candidateId, fromStageId, toStage) => {
+        setPipelineData((previous) => {
+            const next = { ...previous };
+            const fromCandidates = [...(next[fromStageId] || [])];
+            const toCandidates = [...(next[toStage.id] || [])];
+            const candidate = fromCandidates.find((item) => item.id === candidateId);
 
-    const handleRemoveStage = (id) => {
-        if (confirm(`Are you sure you want to remove the "${id}" stage? Candidates in this stage may not be visible.`)) {
-            setStages(stages.filter(s => s.id !== id));
-        }
-    };
+            if (!candidate) return previous;
 
-    const handleMoveCandidate = async (e, candidateId, currentStageId, direction = 1) => {
-        if (e && e.stopPropagation) e.stopPropagation();
-        
-        if (!candidateId) return;
-
-        // Find next/prev stage
-        const currentIndex = stages.findIndex(s => s.id === currentStageId);
-        if (currentIndex === -1) return;
-        
-        const targetIndex = currentIndex + direction;
-        
-        // Bounds check
-        if (targetIndex < 0 || targetIndex >= stages.length) return;
-        
-        const targetStage = stages[targetIndex];
-        
-        try {
-            // Optimistic Update
-            setPipelineData(prev => {
-               const newData = { ...prev };
-               
-               // Create safe copies of arrays we will modify
-               const currentCandidates = [...(newData[currentStageId] || [])];
-               const targetCandidates = [...(newData[targetStage.id] || [])];
-
-               const candidateToMove = currentCandidates.find(c => c.id === candidateId);
-               
-               if (candidateToMove) {
-                   // Remove from current
-                   newData[currentStageId] = currentCandidates.filter(c => c.id !== candidateId);
-                   
-                   // Add to next with updated status
-                   targetCandidates.push({ ...candidateToMove, status: targetStage.id });
-                   newData[targetStage.id] = targetCandidates;
-               }
-               return newData;
+            next[fromStageId] = fromCandidates.filter((item) => item.id !== candidateId);
+            toCandidates.push({
+                ...candidate,
+                stage: toStage.id,
+                stage_name: toStage.name,
+                stage_details: toStage,
             });
+            next[toStage.id] = toCandidates;
 
-            await recruitmentApi.updateCandidateStatus(candidateId, targetStage.id);
+            return next;
+        });
+    };
+
+    const persistCandidateMove = async (candidateId, targetStageId) => {
+        await recruitmentApi.updateCandidateStage(candidateId, targetStageId);
+    };
+
+    const handleMoveCandidate = async (event, candidateId, currentStageId, direction = 1) => {
+        if (event?.stopPropagation) event.stopPropagation();
+
+        const currentIndex = stages.findIndex((stage) => stage.id === currentStageId);
+        const targetIndex = currentIndex + direction;
+
+        if (currentIndex === -1 || targetIndex < 0 || targetIndex >= stages.length) {
+            return;
+        }
+
+        const targetStage = stages[targetIndex];
+
+        moveCandidateOptimistic(candidateId, currentStageId, targetStage);
+
+        try {
+            await persistCandidateMove(candidateId, targetStage.id);
         } catch (error) {
-            console.error("Failed to move candidate", error);
-            fetchCandidates(); // Revert on error
+            console.error('Failed to move candidate', error);
+            fetchPipeline();
         }
     };
 
-    // Toggle full screen / customization mode
+    const handleDragStart = (event, candidateId, stageId) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('application/json', JSON.stringify({ candidateId, stageId }));
+    };
+
+    const handleDrop = async (event, targetStageId) => {
+        event.preventDefault();
+        setDragOverStageId(null);
+
+        let payload;
+        try {
+            payload = JSON.parse(event.dataTransfer.getData('application/json') || '{}');
+        } catch {
+            payload = null;
+        }
+
+        const candidateId = payload?.candidateId;
+        const fromStageId = payload?.stageId;
+        if (!candidateId || !fromStageId || fromStageId === targetStageId) return;
+
+        const targetStage = stages.find((stage) => stage.id === targetStageId);
+        if (!targetStage) return;
+
+        moveCandidateOptimistic(candidateId, fromStageId, targetStage);
+
+        try {
+            await persistCandidateMove(candidateId, targetStage.id);
+        } catch (error) {
+            console.error('Failed to move candidate', error);
+            fetchPipeline();
+        }
+    };
+
     const toggleCustomize = (isOpen) => {
         setShowCustomize(isOpen);
         setIsHeaderHidden(isOpen);
     };
 
-    // Helpers
     const getInitials = (name) => {
         if (!name) return '';
-        const parts = name.split(' ');
-        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        const parts = name.split(' ').filter(Boolean);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
     };
-    
+
     const getDaysInStage = (date) => {
         if (!date) return 0;
         const diff = new Date() - new Date(date);
@@ -212,7 +203,6 @@ export default function Pipeline() {
 
     return (
         <div className="pipeline-container">
-            {/* Header */}
             <header className={`pipeline-header-main ${isHeaderHidden ? 'hidden' : ''}`}>
                 <div className="brand">
                     <div className="logo-box">R</div>
@@ -225,67 +215,77 @@ export default function Pipeline() {
                 <div className="controls">
                     <div className="search-container">
                         <Search size={16} />
-                        <input 
-                            type="text" 
-                            placeholder="Find talent..." 
+                        <input
+                            type="text"
+                            placeholder="Find talent..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(event) => setSearchQuery(event.target.value)}
                         />
                     </div>
-                    <button className="btn-icon-only btn" onClick={fetchCandidates} title="Refresh">
+                    <button className="btn-icon-only btn" onClick={fetchPipeline} title="Refresh">
                         <RefreshCw size={16} />
                     </button>
                     <button className="btn btn-outline" onClick={() => toggleCustomize(true)}>
                         <Settings size={16} />
                         Customize View
                     </button>
-                    <button className="btn btn-primary" onClick={() => alert("Add Talent Modal implementation required")}>
-                        <Plus size={16} strokeWidth={3} />
-                        Add Talent
-                    </button>
                 </div>
             </header>
 
-            {/* Board Viewport */}
             <div className={`board-viewport ${isHeaderHidden ? 'full-height' : ''}`}>
-                <div 
-                    className="scale-wrapper" 
-                    style={{ 
+                <div
+                    className="scale-wrapper"
+                    style={{
                         transform: `scale(${scale})`,
-                        width: `${scale * 100}%`, 
+                        width: `${scale * 100}%`,
                     }}
                 >
                     <div className="pipeline-board">
                         {loading ? (
                             <div className="loading-state">Loading pipeline data...</div>
                         ) : (
-                            stages.map(stage => {
+                            stages.map((stage) => {
                                 const candidates = pipelineData[stage.id] || [];
-                                const filteredCandidates = candidates.filter(c => 
-                                    !searchQuery || 
-                                    (c.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                    (c.current_job_title || '').toLowerCase().includes(searchQuery.toLowerCase())
-                                );
+                                 const filteredCandidates = candidates.filter(
+                                     (candidate) =>
+                                         !searchQuery ||
+                                         (candidate.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                         (candidate.job_title || candidate.job || '').toLowerCase().includes(searchQuery.toLowerCase())
+                                 );
 
                                 return (
-                                    <div key={stage.id} className="column">
+                                    <div
+                                        key={stage.id}
+                                        className={`column ${dragOverStageId === stage.id ? 'column--dragover' : ''}`}
+                                        onDragOver={(event) => {
+                                            event.preventDefault();
+                                            setDragOverStageId(stage.id);
+                                        }}
+                                        onDragLeave={() => setDragOverStageId(null)}
+                                        onDrop={(event) => handleDrop(event, stage.id)}
+                                    >
                                         <div className="column-header">
-                                            <div className="status-dot" style={{ backgroundColor: stage.color, color: stage.color }}></div>
+                                            <div className="status-dot" style={{ backgroundColor: stage.color, color: stage.color }} />
                                             <span className="column-title">{stage.label}</span>
                                             <span className="column-count">{filteredCandidates.length}</span>
                                         </div>
+
                                         <div className="cards-container">
-                                            {filteredCandidates.map(candidate => (
-                                                <div key={candidate.id} className="card">
+                                            {filteredCandidates.map((candidate) => (
+                                                <div
+                                                    key={candidate.id}
+                                                    className="card"
+                                                    draggable
+                                                    onDragStart={(event) => handleDragStart(event, candidate.id, stage.id)}
+                                                >
                                                     <div className="card-header">
-                                                        <div className="avatar">
-                                                            {getInitials(candidate.full_name)}
-                                                        </div>
+                                                        <div className="avatar">{getInitials(candidate.full_name)}</div>
                                                         <div className="card-info">
                                                             <h3>{candidate.full_name || 'Unknown Candidate'}</h3>
-                                                            <p>{candidate.current_job_title || 'Applicant'}</p>
+                                                            <p>{candidate.job_title || candidate.job || 'No job assigned'}</p>
                                                         </div>
                                                     </div>
+
                                                     <div className="card-tags">
                                                         <div className="tag">
                                                             <Clock size={12} />
@@ -293,36 +293,43 @@ export default function Pipeline() {
                                                         </div>
                                                         <div className="tag">
                                                             <MessageSquare size={12} />
-                                                            Talk
+                                                            {candidate.stage_name || stage.label}
                                                         </div>
                                                     </div>
+
+                                                    <div className="card-meta">
+                                                        <div className="meta-row">{candidate.experience_display || candidate.experience || ''}</div>
+                                                        {candidate.email && <div className="meta-row meta-row--muted">{candidate.email}</div>}
+                                                    </div>
+
                                                     <div className="card-actions">
-                                                        {stages.findIndex(s => s.id === stage.id) > 0 && (
-                                                            <button 
+                                                        {stages.findIndex((item) => item.id === stage.id) > 0 && (
+                                                            <button
                                                                 className="btn-back"
                                                                 title="Move Back"
-                                                                onClick={(e) => handleMoveCandidate(e, candidate.id, stage.id, -1)}
+                                                                onClick={(event) => handleMoveCandidate(event, candidate.id, stage.id, -1)}
                                                             >
                                                                 <ArrowLeft size={16} />
                                                             </button>
                                                         )}
-                                                        {stages.findIndex(s => s.id === stage.id) < stages.length - 1 && (
-                                                            <button 
+
+                                                        {stages.findIndex((item) => item.id === stage.id) < stages.length - 1 && (
+                                                            <button
                                                                 className="btn-advance"
-                                                                onClick={(e) => handleMoveCandidate(e, candidate.id, stage.id, 1)}
+                                                                onClick={(event) => handleMoveCandidate(event, candidate.id, stage.id, 1)}
                                                             >
                                                                 Advance <ArrowRight size={12} strokeWidth={4} />
                                                             </button>
                                                         )}
+
                                                         <button className="btn-external">
                                                             <ExternalLink size={14} />
                                                         </button>
                                                     </div>
                                                 </div>
                                             ))}
-                                            {filteredCandidates.length === 0 && (
-                                                <div className="empty-state">Empty</div>
-                                            )}
+
+                                            {filteredCandidates.length === 0 && <div className="empty-state">Empty</div>}
                                         </div>
                                     </div>
                                 );
@@ -332,7 +339,6 @@ export default function Pipeline() {
                 </div>
             </div>
 
-            {/* Customize Panel */}
             <div className={`customize-panel ${showCustomize ? 'active' : ''}`}>
                 <div className="panel-header">
                     <h2>Workflow Architect</h2>
@@ -344,59 +350,54 @@ export default function Pipeline() {
                 <div className="scale-control">
                     <div className="section-title">Visual Scaling</div>
                     <div className="scale-info">
-                        <span>UI ZOOM</span>
+                        <span>UI Zoom</span>
                         <span>{Math.round(scale * 100)}%</span>
                     </div>
                     <div className="slider-row">
-                        <button className="btn btn-outline" style={{ padding: '8px' }} onClick={() => handleScaleChange(scale - 0.1)}>-</button>
-                        <input 
-                            type="range" 
-                            min="0.5" 
-                            max="1.8" 
-                            step="0.05" 
-                            value={scale} 
-                            onChange={(e) => handleScaleChange(e.target.value)} 
+                        <button className="btn btn-outline" style={{ padding: '8px' }} onClick={() => handleScaleChange(scale - 0.1)}>
+                            -
+                        </button>
+                        <input
+                            type="range"
+                            min="0.5"
+                            max="1.8"
+                            step="0.05"
+                            value={scale}
+                            onChange={(event) => handleScaleChange(event.target.value)}
                         />
-                        <button className="btn btn-outline" style={{ padding: '8px' }} onClick={() => handleScaleChange(scale + 0.1)}>+</button>
-                    </div>
-                </div>
-
-                <div className="stage-architect">
-                    <div className="section-title">Pipeline Stages</div>
-                    <div className="architect-controls">
-                        {stages.map(stage => (
-                            <div key={stage.id} className="stage-item">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div className="status-dot" style={{ backgroundColor: stage.color, width: '6px', height: '6px' }}></div>
-                                    <span>{stage.label}</span>
-                                </div>
-                                <button onClick={() => handleRemoveStage(stage.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="add-stage-form">
-                        <input 
-                            type="text" 
-                            placeholder="New Stage Name..." 
-                            value={newStageName}
-                            onChange={(e) => setNewStageName(e.target.value)}
-                        />
-                        <button className="btn btn-primary" style={{ padding: '10px' }} onClick={handleAddStage}>
-                            <Plus size={16} />
+                        <button className="btn btn-outline" style={{ padding: '8px' }} onClick={() => handleScaleChange(scale + 0.1)}>
+                            +
                         </button>
                     </div>
                 </div>
 
+                <div className="stage-architect">
+                    <div className="section-title">Active Pipeline Stages</div>
+                    <div className="architect-controls">
+                        {stages.map((stage) => (
+                            <div key={stage.id} className="stage-item">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div className="status-dot" style={{ backgroundColor: stage.color, width: '6px', height: '6px' }} />
+                                    <span>{stage.label}</span>
+                                </div>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700 }}>
+                                    {stage.is_system ? 'System' : 'Custom'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="add-stage-form">
+                        <input type="text" readOnly value="Manage stage names and order from the Stages tab." />
+                    </div>
+                </div>
+
                 <div className="panel-footer">
-                    <button className="btn btn-outline" onClick={() => {
-                        if(confirm("Reset to default stages?")) {
-                            setStages(DEFAULT_STAGES);
-                            setScale(1);
-                        }
-                    }}>Reset Default</button>
-                    <button className="btn btn-primary" onClick={() => toggleCustomize(false)}>Done</button>
+                    <button className="btn btn-outline" onClick={() => setScale(1)}>
+                        Reset Zoom
+                    </button>
+                    <button className="btn btn-primary" onClick={() => toggleCustomize(false)}>
+                        Done
+                    </button>
                 </div>
             </div>
         </div>
