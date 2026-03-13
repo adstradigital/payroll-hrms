@@ -11,6 +11,7 @@ export const translations = {
             attendance: "Attendance",
             leaveManagement: "Leave Management",
             payroll: "Payroll",
+            reimbursements: "Reimbursements",
             bulkUpload: "Bulk Upload",
             systemLogs: "System Logs",
             reports: "Reports",

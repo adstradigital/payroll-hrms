@@ -8,7 +8,9 @@ import {
     Wallet, FileText, Settings, ChevronDown,
     ChevronRight, LogOut, Bell, User, CheckCircle2,
     X, Loader, AlertCircle, HelpCircle, Upload, Activity,
-    Box, Package, TrendingUp, UserCheck
+    Box, Package, TrendingUp, UserCheck,
+    Container,
+    Receipt
 } from 'lucide-react';
 import { usePermissions } from '@/context/PermissionContext';
 import { useAuth } from '@/context/AuthContext';
@@ -32,7 +34,7 @@ const menuItems = [
         icon: User,
         path: '/dashboard/profile',
     },
-        {
+    {
         id: 'recruitment',
         label: 'Recruitment',
         translationKey: 'common.recruitment',
@@ -128,6 +130,53 @@ const menuItems = [
             { id: 'perf-ratings', label: 'Ratings', path: '/dashboard/performance/ratings', adminOnly: true },
             { id: 'perf-reviews', label: 'Reviews', path: '/dashboard/performance/reviews' },
             { id: 'perf-bonus', label: 'Bonus Points', path: '/dashboard/performance/bonus-points', adminOnly: true },
+        ]
+    },
+    {
+        id: 'reimbursements',
+        label: 'Reimbursements',
+        translationKey: 'common.reimbursements',
+        module: 'HRMS',
+        icon: Receipt,
+        path: '/dashboard/reimbursements',
+        children: [
+            {
+                id: 'expense-dashboard',
+                label: 'Dashboard',
+                path: '/dashboard/reimbursements'
+            },
+
+            {
+                id: 'my-expense-claims',
+                label: 'My Expense Claims',
+                path: '/dashboard/reimbursements/my-claims'
+            },
+
+            {
+                id: 'submit-expense-claim',
+                label: 'Submit Expense Claim',
+                path: '/dashboard/reimbursements/submit'
+            },
+
+            {
+                id: 'expense-approvals',
+                label: 'Approvals',
+                path: '/dashboard/reimbursements/approvals',
+                adminOnly: true
+            },
+
+            {
+                id: 'expense-categories',
+                label: 'Categories',
+                path: '/dashboard/reimbursements/categories',
+                adminOnly: true
+            },
+
+            {
+                id: 'expense-reports',
+                label: 'Reports',
+                path: '/dashboard/reimbursements/reports'
+            }
         ]
     },
     {

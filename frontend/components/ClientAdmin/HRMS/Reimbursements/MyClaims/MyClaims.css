@@ -1,0 +1,90 @@
+.my-claims{
+padding:30px;
+}
+
+.claims-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+}
+
+.claims-toolbar{
+display:flex;
+gap:10px;
+}
+
+.search-input{
+padding:10px 14px;
+border-radius:8px;
+border:1px solid var(--border-color);
+background:var(--card-bg);
+width:220px;
+}
+
+.filter-select{
+padding:10px;
+border-radius:8px;
+border:1px solid var(--border-color);
+background:var(--card-bg);
+}
+
+.claims-table-container{
+background:var(--card-bg);
+border:1px solid var(--border-color);
+border-radius:14px;
+overflow:hidden;
+}
+
+.claims-table{
+width:100%;
+border-collapse:collapse;
+}
+
+.claims-table th{
+text-align:left;
+font-size:12px;
+text-transform:uppercase;
+padding:14px;
+color:var(--text-muted);
+}
+
+.claims-table td{
+padding:14px;
+border-top:1px solid var(--border-color);
+}
+
+.category-pill{
+background:#6366f120;
+color:#6366f1;
+padding:4px 10px;
+border-radius:20px;
+font-size:12px;
+}
+
+.amount{
+font-weight:600;
+}
+
+/* STATUS */
+
+.badge{
+padding:4px 10px;
+border-radius:20px;
+font-size:12px;
+}
+
+.badge-pending{
+background:#f59e0b20;
+color:#f59e0b;
+}
+
+.badge-approved{
+background:#22c55e20;
+color:#22c55e;
+}
+
+.badge-rejected{
+background:#ef444420;
+color:#ef4444;
+}

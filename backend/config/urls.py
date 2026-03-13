@@ -3,6 +3,16 @@ URL configuration for config project.
 """
 from django.contrib import admin
 from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('apps.accounts.urls')),
+    path('api/', include('apps.attendance.urls')),
+    path('api/', include('apps.leave.urls')),
+    path('api/', include('apps.payroll.urls')),
+    path('api/', include('apps.recruitment.urls')),
+    path('api/', include('apps.reimbursements.urls')),
+]
 from django.http import JsonResponse
 from django.conf import settings
 from django.conf.urls.static import static

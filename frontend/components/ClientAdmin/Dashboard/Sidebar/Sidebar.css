@@ -26,6 +26,7 @@
     padding: 0 var(--spacing-lg);
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-sidebar);
+    padding: 35.5px;
 }
 
 .sidebar__logo-icon {
