@@ -6,6 +6,12 @@ router = DefaultRouter()
 router.register(r'applications', views.ApplicationViewSet, basename='application')
 
 urlpatterns = [
+    # Settings
+    path('settings/job-postings/', views.recruitment_job_posting_settings, name='recruitment-job-posting-settings'),
+    path('jobs/defaults/', views.recruitment_job_defaults, name='recruitment-job-defaults'),
+    path('interview-templates/', views.interview_template_list_create, name='interview-template-list-create'),
+    path('interview-templates/<int:pk>/', views.interview_template_detail, name='interview-template-detail'),
+
     # Surveys
     path('surveys/', views.survey_list_create, name='survey-list-create'),
     path('surveys/<int:pk>/', views.survey_detail, name='survey-detail'),

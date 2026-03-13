@@ -1,6 +1,17 @@
 import axiosInstance from './axiosInstance';
 
 const recruitmentApi = {
+    // Recruitment Settings
+    getJobPostingSettings: () => axiosInstance.get('/recruitment/settings/job-postings/'),
+    saveJobPostingSettings: (data) => axiosInstance.post('/recruitment/settings/job-postings/', data),
+    getJobDefaults: () => axiosInstance.get('/recruitment/jobs/defaults/'),
+
+    // Interview Templates
+    getInterviewTemplates: () => axiosInstance.get('/recruitment/interview-templates/'),
+    createInterviewTemplate: (data) => axiosInstance.post('/recruitment/interview-templates/', data),
+    updateInterviewTemplate: (id, data) => axiosInstance.put(`/recruitment/interview-templates/${id}/`, data),
+    deleteInterviewTemplate: (id) => axiosInstance.delete(`/recruitment/interview-templates/${id}/`),
+
     // Skill Zone
     getSkillCategories: () => axiosInstance.get('/recruitment/skill-categories/'),
     createSkillCategory: (data) => axiosInstance.post('/recruitment/skill-categories/', data),

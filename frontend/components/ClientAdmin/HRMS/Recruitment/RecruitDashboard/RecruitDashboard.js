@@ -52,6 +52,21 @@ const EXPERIENCE_LEVEL_OPTIONS = [
     { value: 'EXECUTIVE', label: 'Executive' },
 ];
 
+const DEFAULT_EXPERIENCE_TO_MODEL = {
+    FRESHER: { experience_level: 'ENTRY', experience_required: 'Fresher' },
+    ONE_TO_THREE: { experience_level: 'MID', experience_required: '1-3 Years' },
+    THREE_TO_FIVE: { experience_level: 'SENIOR', experience_required: '3-5 Years' },
+    FIVE_PLUS: { experience_level: 'LEAD', experience_required: '5+ Years' },
+};
+
+const toDateInputValue = (date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export default function RecruitDashboard() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
@@ -75,6 +90,8 @@ export default function RecruitDashboard() {
         experience_required: '',
         openings: 1,
         required_skills: [],
+        is_remote: false,
+        application_deadline: '',
     });
 
     const metrics = useMemo(() => {
@@ -153,6 +170,27 @@ export default function RecruitDashboard() {
                 console.error('Failed to load skills', err);
             }
         }
+
+        try {
+            const defaultsRes = await recruitmentApi.getJobDefaults();
+            const defaults = defaultsRes.data?.data || {};
+            const mapped = DEFAULT_EXPERIENCE_TO_MODEL[defaults.default_experience] || null;
+
+            const expiryDays = Number(defaults.default_expiry_days || 0);
+            const expiryDate = expiryDays > 0 ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000) : null;
+
+            setJobForm((current) => ({
+                ...current,
+                employment_type: defaults.default_job_type || current.employment_type,
+                openings: Number(defaults.default_vacancies || current.openings),
+                is_remote: !!defaults.allow_remote,
+                application_deadline: expiryDate ? toDateInputValue(expiryDate) : current.application_deadline,
+                experience_level: mapped?.experience_level || current.experience_level,
+                experience_required: mapped?.experience_required || current.experience_required,
+            }));
+        } catch (defaultsError) {
+            console.error('Failed to load job defaults:', defaultsError);
+        }
         setJobModalOpen(true);
     };
 
@@ -192,6 +230,8 @@ export default function RecruitDashboard() {
                 experience_required: '',
                 openings: 1,
                 required_skills: [],
+                is_remote: false,
+                application_deadline: '',
             });
             fetchDashboardData();
         } catch (err) {
@@ -407,6 +447,24 @@ export default function RecruitDashboard() {
                                         min="1"
                                         value={jobForm.openings}
                                         onChange={(e) => setJobForm({ ...jobForm, openings: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div className="qa-field">
+                                    <label>Remote Option</label>
+                                    <select
+                                        value={jobForm.is_remote ? 'yes' : 'no'}
+                                        onChange={(e) => setJobForm({ ...jobForm, is_remote: e.target.value === 'yes' })}
+                                    >
+                                        <option value="no">No</option>
+                                        <option value="yes">Yes</option>
+                                    </select>
+                                </div>
+                                <div className="qa-field">
+                                    <label>Expiry Date</label>
+                                    <input
+                                        type="date"
+                                        value={jobForm.application_deadline || ''}
+                                        onChange={(e) => setJobForm({ ...jobForm, application_deadline: e.target.value })}
                                     />
                                 </div>
                                 <div className="qa-field qa-field--full">

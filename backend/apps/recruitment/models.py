@@ -21,6 +21,66 @@ DEFAULT_SKILL_CATEGORIES = [
 ]
 
 
+class RecruitmentJobSetting(models.Model):
+    """
+    Singleton settings for recruitment job posting defaults.
+
+    Enforced as a singleton by pinning the primary key to 1.
+    """
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+
+    JOB_TYPE_CHOICES = [
+        ('FULL_TIME', 'Full-time'),
+        ('PART_TIME', 'Part-time'),
+        ('CONTRACT', 'Contract'),
+        ('INTERNSHIP', 'Internship'),
+    ]
+
+    EXPERIENCE_CHOICES = [
+        ('FRESHER', 'Fresher'),
+        ('ONE_TO_THREE', '1-3 Years'),
+        ('THREE_TO_FIVE', '3-5 Years'),
+        ('FIVE_PLUS', '5+ Years'),
+    ]
+
+    CANDIDATE_SOURCE_CHOICES = [
+        ('LINKEDIN', 'LinkedIn'),
+        ('COMPANY_WEBSITE', 'Company Website'),
+        ('REFERRAL', 'Referral'),
+        ('INDEED', 'Indeed'),
+        ('NAUKRI', 'Naukri'),
+    ]
+
+    default_job_type = models.CharField(max_length=20, choices=JOB_TYPE_CHOICES, default='FULL_TIME')
+    default_experience = models.CharField(max_length=20, choices=EXPERIENCE_CHOICES, default='FRESHER')
+
+    allow_remote = models.BooleanField(default=False)
+    default_expiry_days = models.PositiveIntegerField(default=30)
+    default_vacancies = models.PositiveIntegerField(default=1)
+    auto_close_job = models.BooleanField(default=True)
+    allow_multiple_locations = models.BooleanField(default=False)
+
+    candidate_sources = models.JSONField(default=list, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Recruitment Job Posting Setting'
+        verbose_name_plural = 'Recruitment Job Posting Settings'
+
+    def save(self, *args, **kwargs):
+        # Hard-enforce singleton semantics even if someone tries to create another row.
+        self.id = 1
+        return super().save(*args, **kwargs)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _created = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class JobOpening(models.Model):
     """Job Opening Model"""
     
@@ -126,6 +186,7 @@ class RecruitmentStage(models.Model):
     name = models.CharField(max_length=100, unique=True)
     sequence = models.IntegerField(unique=True)
     is_system = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -596,6 +657,42 @@ class InterviewFeedback(models.Model):
     
     def __str__(self):
         return f"Feedback by {self.interviewer.get_full_name()} for {self.interview}"
+
+
+class InterviewTemplate(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    description = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+
+class InterviewQuestion(models.Model):
+    QUESTION_TYPE_CHOICES = [
+        ('RATING', 'Rating (1-5)'),
+        ('TEXT', 'Text'),
+        ('YES_NO', 'Yes/No'),
+        ('DROPDOWN', 'Dropdown'),
+    ]
+
+    template = models.ForeignKey(InterviewTemplate, on_delete=models.CASCADE, related_name='questions')
+    question_text = models.TextField()
+    question_type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES, default='TEXT')
+    order = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ['order', 'id']
+        unique_together = ['template', 'order']
+        indexes = [
+            models.Index(fields=['template', 'order']),
+        ]
+
+    def __str__(self):
+        return f"{self.template.name} - Q{self.order}"
 
 
 class CandidateNote(models.Model):

@@ -2,7 +2,9 @@ from django.contrib import admin
 from .models import (
     JobOpening, Candidate, Application, RecruitmentStage, SkillCategory, Skill,
     Interview, InterviewFeedback, CandidateNote,
-    Survey, SurveyQuestion, SurveyResponse, SurveyAnswer
+    Survey, SurveyQuestion, SurveyResponse, SurveyAnswer,
+    RecruitmentJobSetting,
+    InterviewTemplate, InterviewQuestion,
 )
 
 
@@ -61,3 +63,6 @@ admin.site.register(Survey)
 admin.site.register(SurveyQuestion)
 admin.site.register(SurveyResponse)
 admin.site.register(SurveyAnswer)
+admin.site.register(RecruitmentJobSetting)
+admin.site.register(InterviewTemplate)
+admin.site.register(InterviewQuestion)

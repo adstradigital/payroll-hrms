@@ -19,6 +19,9 @@ import WorkSchedulesSettings from './WorkSchedulesSettings/WorkSchedulesSettings
 import OverTimeSettings from './OverTimeRule/OverTimeSettings';
 import TaxSettings from './TaxSettings/TaxSettings';
 import EmailSettings from './EmailSettings/EmailSettings';
+import RecruitmentJobPostingsSettings from './RecruitmentJobPostingsSettings/RecruitmentJobPostingsSettings';
+import RecruitmentApplicationStagesSettings from './RecruitmentApplicationStagesSettings/RecruitmentApplicationStagesSettings';
+import RecruitmentInterviewTemplatesSettings from './RecruitmentInterviewTemplatesSettings/RecruitmentInterviewTemplatesSettings';
 
 import './Settings.css';
 
@@ -160,6 +163,12 @@ export default function Settings() {
                 return <TaxSettings />;
             case 'email-settings':
                 return <EmailSettings />;
+            case 'job-postings':
+                return <RecruitmentJobPostingsSettings />;
+            case 'application-stages':
+                return <RecruitmentApplicationStagesSettings />;
+            case 'interview-templates':
+                return <RecruitmentInterviewTemplatesSettings />;
             default:
                 return <PlaceholderContent activeItem={activeItem} />;
         }

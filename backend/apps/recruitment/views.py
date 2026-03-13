@@ -21,6 +21,8 @@ from .models import (
     RecruitmentStage,
     SkillCategory,
     Skill,
+    RecruitmentJobSetting,
+    InterviewTemplate,
     ensure_default_recruitment_stages,
     ensure_default_skill_categories,
     Survey,
@@ -34,12 +36,22 @@ from .serializers import (
     InterviewSerializer, InterviewListSerializer, InterviewFeedbackSerializer,
     SurveySerializer, SurveyQuestionSerializer, SurveyResponseSerializer, SurveyResponseCreateSerializer,
     DashboardStatsSerializer, PipelineStatusSerializer, ApplicationSourceSerializer, TodayInterviewSerializer,
+    RecruitmentJobSettingSerializer,
+    InterviewTemplateSerializer,
 )
 
 
 def get_default_recruitment_stage():
     ensure_default_recruitment_stages()
-    return RecruitmentStage.objects.order_by('sequence').first()
+    first_stage = RecruitmentStage.objects.filter(sequence=1).first()
+    if first_stage and first_stage.is_active:
+        return first_stage
+
+    stage = RecruitmentStage.objects.filter(is_active=True).order_by('sequence').first()
+    if stage:
+        return stage
+
+    return first_stage or RecruitmentStage.objects.order_by('sequence').first()
 
 
 def get_recruitment_stage_fallback(stage):
@@ -140,6 +152,140 @@ def normalize_candidate_request_data(request):
             normalized_data[key] = values[-1]
 
     return normalized_data
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def recruitment_job_posting_settings(request):
+    """
+    GET: Retrieve current recruitment job posting defaults (singleton).
+    POST: Update or create settings (singleton).
+    """
+    try:
+        settings_obj = RecruitmentJobSetting.get_solo()
+
+        if request.method == 'GET':
+            serializer = RecruitmentJobSettingSerializer(settings_obj)
+            return Response({'success': True, 'data': serializer.data})
+
+        serializer = RecruitmentJobSettingSerializer(settings_obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {'success': True, 'message': 'Settings saved successfully', 'data': serializer.data},
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {'success': False, 'message': 'Validation error', 'errors': serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    except Exception as e:
+        return Response(
+            {'success': False, 'message': 'An error occurred', 'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def recruitment_job_defaults(request):
+    """
+    Defaults for job creation screens.
+
+    Reads RecruitmentJobSetting (singleton) and returns raw defaults so
+    clients can prefill create-job forms.
+    """
+    try:
+        settings_obj = RecruitmentJobSetting.get_solo()
+        return Response(
+            {
+                'success': True,
+                'data': {
+                    'default_job_type': settings_obj.default_job_type,
+                    'default_experience': settings_obj.default_experience,
+                    'default_vacancies': settings_obj.default_vacancies,
+                    'allow_remote': settings_obj.allow_remote,
+                    'default_expiry_days': settings_obj.default_expiry_days,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {'success': False, 'message': 'An error occurred', 'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def interview_template_list_create(request):
+    """
+    Interview Templates
+
+    GET: List templates (includes nested questions).
+    POST: Create a template with questions.
+    """
+    try:
+        if request.method == 'GET':
+            queryset = InterviewTemplate.objects.prefetch_related('questions').order_by('-created_at')
+            serializer = InterviewTemplateSerializer(queryset, many=True)
+            return Response({'success': True, 'data': serializer.data})
+
+        serializer = InterviewTemplateSerializer(data=request.data)
+        if serializer.is_valid():
+            template = serializer.save()
+            response_serializer = InterviewTemplateSerializer(template)
+            return Response(
+                {'success': True, 'message': 'Interview template created successfully', 'data': response_serializer.data},
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(
+            {'success': False, 'message': 'Failed to create interview template', 'errors': serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as e:
+        return Response(
+            {'success': False, 'message': 'An error occurred', 'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def interview_template_detail(request, pk):
+    """
+    PUT: Update template (and optionally questions).
+    DELETE: Delete template (cascades questions).
+    """
+    try:
+        template = get_object_or_404(InterviewTemplate.objects.prefetch_related('questions'), pk=pk)
+
+        if request.method == 'PUT':
+            serializer = InterviewTemplateSerializer(template, data=request.data)
+            if serializer.is_valid():
+                template = serializer.save()
+                return Response(
+                    {'success': True, 'message': 'Interview template updated successfully', 'data': serializer.data},
+                    status=status.HTTP_200_OK,
+                )
+
+            return Response(
+                {'success': False, 'message': 'Failed to update interview template', 'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        template.delete()
+        return Response({'success': True, 'message': 'Interview template deleted successfully'})
+
+    except Exception as e:
+        return Response(
+            {'success': False, 'message': 'An error occurred', 'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(['GET', 'POST'])
@@ -575,12 +721,29 @@ def recruitment_stage_list_create(request):
 
         serializer = RecruitmentStageSerializer(data=request.data)
         if serializer.is_valid():
-            sequence = serializer.validated_data.get('sequence')
-            if sequence is None:
-                sequence = RecruitmentStage.objects.count() + 1
+            requested_sequence = serializer.validated_data.get('sequence')
+            total = RecruitmentStage.objects.count()
+            desired = total + 1
+            if requested_sequence is not None:
+                try:
+                    desired = int(requested_sequence)
+                except (TypeError, ValueError):
+                    desired = total + 1
+                desired = max(1, min(desired, total + 1))
 
-            serializer.save(sequence=sequence, is_system=False)
             with transaction.atomic():
+                if desired <= total:
+                    # Free up the desired slot without violating the unique constraint mid-way.
+                    max_sequence = RecruitmentStage.objects.aggregate(max_seq=Max('sequence')).get('max_seq') or 0
+                    temp_base = max_sequence + total + 10
+                    bump = list(RecruitmentStage.objects.filter(sequence__gte=desired).order_by('-sequence'))
+                    for stage in bump:
+                        stage.sequence = temp_base + stage.sequence
+                    if bump:
+                        RecruitmentStage.objects.bulk_update(bump, ['sequence'])
+
+                serializer.save(sequence=desired, is_system=False)
+
                 for index, stage in enumerate(RecruitmentStage.objects.order_by('sequence', 'id'), start=1):
                     if stage.sequence != index:
                         stage.sequence = index
@@ -624,18 +787,17 @@ def recruitment_stage_detail(request, pk):
         stage = get_object_or_404(RecruitmentStage, pk=pk)
 
         if request.method == 'PUT':
-            if stage.is_system:
-                return Response(
-                    {
-                        'success': False,
-                        'message': 'System stages cannot be edited',
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
             serializer = RecruitmentStageSerializer(stage, data=request.data, partial=True)
             if serializer.is_valid():
-                serializer.save(sequence=stage.sequence, is_system=stage.is_system)
+                if stage.is_system:
+                    # Allow only activation toggles for system stages.
+                    serializer.save(
+                        sequence=stage.sequence,
+                        is_system=stage.is_system,
+                        name=stage.name,
+                    )
+                else:
+                    serializer.save(sequence=stage.sequence, is_system=stage.is_system)
                 return Response({
                     'success': True,
                     'message': 'Recruitment stage updated successfully',
@@ -841,10 +1003,35 @@ def job_opening_list_create(request):
         
         elif request.method == 'POST':
             # Create new job opening
-            serializer = JobOpeningSerializer(data=request.data)
-            
+            payload = request.data.copy()
+
+            # Apply job posting defaults when the client omits values.
+            try:
+                defaults = RecruitmentJobSetting.get_solo()
+            except Exception:
+                defaults = None
+
+            if defaults is not None:
+                if not payload.get('employment_type'):
+                    payload['employment_type'] = defaults.default_job_type
+
+                if 'is_remote' not in payload:
+                    payload['is_remote'] = defaults.allow_remote
+
+                if not payload.get('openings') and not payload.get('vacancies'):
+                    payload['openings'] = defaults.default_vacancies
+
+                if not payload.get('application_deadline') and defaults.default_expiry_days:
+                    payload['application_deadline'] = (timezone.now().date() + timedelta(days=defaults.default_expiry_days)).isoformat()
+
+                if not payload.get('experience_required'):
+                    experience_label_map = dict(RecruitmentJobSetting.EXPERIENCE_CHOICES)
+                    payload['experience_required'] = experience_label_map.get(defaults.default_experience, '')
+
+            serializer = JobOpeningSerializer(data=payload)
+             
             if serializer.is_valid():
-                serializer.save(created_by=request.user, status=request.data.get('status', 'OPEN'))
+                serializer.save(created_by=request.user, status=payload.get('status', 'OPEN'))
                 return Response(
                     {
                         'success': True,

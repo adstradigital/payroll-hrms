@@ -4,7 +4,9 @@ from django.contrib.auth.models import User
 from .models import (
     JobOpening, Candidate, Application, RecruitmentStage, SkillCategory, Skill,
     Interview, InterviewFeedback, CandidateNote,
-    Survey, SurveyQuestion, SurveyResponse, SurveyAnswer
+    Survey, SurveyQuestion, SurveyResponse, SurveyAnswer,
+    RecruitmentJobSetting,
+    InterviewTemplate, InterviewQuestion,
 )
 
 
@@ -23,11 +25,12 @@ class UserSerializer(serializers.ModelSerializer):
 class RecruitmentStageSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecruitmentStage
-        fields = ['id', 'name', 'sequence', 'is_system', 'created_at']
+        fields = ['id', 'name', 'sequence', 'is_system', 'is_active', 'created_at']
         read_only_fields = ['created_at']
         extra_kwargs = {
-            'sequence': {'required': False},
+            'sequence': {'required': False, 'validators': []},
             'is_system': {'required': False},
+            'is_active': {'required': False},
         }
 
     def validate_name(self, value):
@@ -117,6 +120,160 @@ class JobOpeningSerializer(serializers.ModelSerializer):
                 data['status'] = normalized_status
         return data
 
+
+class RecruitmentJobSettingSerializer(serializers.ModelSerializer):
+    candidate_sources = serializers.ListField(
+        child=serializers.ChoiceField(choices=RecruitmentJobSetting.CANDIDATE_SOURCE_CHOICES),
+        required=False,
+    )
+
+    class Meta:
+        model = RecruitmentJobSetting
+        fields = [
+            'default_job_type',
+            'default_experience',
+            'allow_remote',
+            'default_expiry_days',
+            'default_vacancies',
+            'auto_close_job',
+            'allow_multiple_locations',
+            'candidate_sources',
+            'updated_at',
+        ]
+        read_only_fields = ['updated_at']
+
+    def validate_candidate_sources(self, value):
+        # Normalize and de-duplicate while preserving order.
+        if value is None:
+            return []
+        cleaned = []
+        seen = set()
+        for item in value:
+            if item in seen:
+                continue
+            cleaned.append(item)
+            seen.add(item)
+        return cleaned
+
+
+class InterviewQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewQuestion
+        fields = ['id', 'question_text', 'question_type', 'order']
+        read_only_fields = ['id']
+
+    def validate_question_text(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('Question text is required.')
+        return value
+
+    def validate_question_type(self, value):
+        normalized = str(value).upper()
+        valid = {choice[0] for choice in InterviewQuestion.QUESTION_TYPE_CHOICES}
+        if normalized not in valid:
+            raise serializers.ValidationError('Invalid question type.')
+        return normalized
+
+
+class InterviewTemplateSerializer(serializers.ModelSerializer):
+    questions = InterviewQuestionSerializer(many=True)
+    questions_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InterviewTemplate
+        fields = ['id', 'name', 'description', 'created_at', 'questions_count', 'questions']
+        read_only_fields = ['id', 'created_at', 'questions_count']
+
+    def get_questions_count(self, obj):
+        try:
+            return obj.questions.count()
+        except Exception:
+            return 0
+
+    def validate_name(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('Template name is required.')
+        return value
+
+    def validate_questions(self, value):
+        if not isinstance(value, list) or len(value) == 0:
+            raise serializers.ValidationError('At least one question is required.')
+        return value
+
+    def _normalize_questions_payload(self, questions_payload):
+        normalized = []
+        for index, item in enumerate(questions_payload, start=1):
+            if not isinstance(item, dict):
+                continue
+            text = (item.get('question_text') or '').strip()
+            qtype = str(item.get('question_type') or 'TEXT').upper()
+            order = item.get('order')
+            try:
+                order = int(order) if order is not None else index
+            except (TypeError, ValueError):
+                order = index
+            normalized.append(
+                {
+                    'question_text': text,
+                    'question_type': qtype,
+                    'order': order,
+                }
+            )
+        return normalized
+
+    def _replace_questions(self, template, questions_payload):
+        normalized = self._normalize_questions_payload(questions_payload)
+
+        valid_types = {choice[0] for choice in InterviewQuestion.QUESTION_TYPE_CHOICES}
+        cleaned = []
+        seen_orders = set()
+        for index, item in enumerate(sorted(normalized, key=lambda q: q.get('order') or index), start=1):
+            text = (item.get('question_text') or '').strip()
+            if not text:
+                raise serializers.ValidationError({'questions': f'Question {index} text is required.'})
+            qtype = str(item.get('question_type') or 'TEXT').upper()
+            if qtype not in valid_types:
+                raise serializers.ValidationError({'questions': f'Question {index} has invalid type.'})
+
+            order = item.get('order') or index
+            try:
+                order = int(order)
+            except (TypeError, ValueError):
+                order = index
+            if order <= 0:
+                order = index
+            if order in seen_orders:
+                # Ensure unique order per template by falling back to sequential order.
+                order = index
+            seen_orders.add(order)
+
+            cleaned.append(InterviewQuestion(template=template, question_text=text, question_type=qtype, order=order))
+
+        with transaction.atomic():
+            template.questions.all().delete()
+            InterviewQuestion.objects.bulk_create(cleaned)
+
+    def create(self, validated_data):
+        questions = validated_data.pop('questions', [])
+        with transaction.atomic():
+            template = InterviewTemplate.objects.create(**validated_data)
+            self._replace_questions(template, questions)
+        return template
+
+    def update(self, instance, validated_data):
+        questions = validated_data.pop('questions', None)
+
+        instance.name = validated_data.get('name', instance.name)
+        instance.description = validated_data.get('description', instance.description)
+
+        with transaction.atomic():
+            instance.save(update_fields=['name', 'description'])
+            if questions is not None:
+                self._replace_questions(instance, questions)
+
+        return instance
 
 class JobOpeningListSerializer(serializers.ModelSerializer):
     """Simplified Job Opening Serializer for list view"""

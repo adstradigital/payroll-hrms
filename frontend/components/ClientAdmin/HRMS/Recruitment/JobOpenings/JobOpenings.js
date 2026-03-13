@@ -39,6 +39,14 @@ const EMPLOYMENT_TYPE_OPTIONS = [
     { value: 'INTERNSHIP', label: 'Internship' },
 ];
 
+const EXPERIENCE_DEFAULT_OPTIONS = [
+    { value: 'FRESHER', label: 'Fresher', modelLevel: 'ENTRY' },
+    { value: 'ONE_TO_THREE', label: '1-3 Years', modelLevel: 'MID' },
+    { value: 'THREE_TO_FIVE', label: '3-5 Years', modelLevel: 'SENIOR' },
+    { value: 'FIVE_PLUS', label: '5+ Years', modelLevel: 'LEAD' },
+    { value: 'CUSTOM', label: 'Custom', modelLevel: null },
+];
+
 const STATUS_OPTIONS = [
     { value: 'OPEN', label: 'Open' },
     { value: 'CLOSED', label: 'Closed' },
@@ -50,10 +58,14 @@ const EMPTY_JOB_FORM = {
     description: '',
     required_skills: [],
     experience_required: '',
+    experience_setting: 'CUSTOM',
     vacancies: 1,
     location: '',
     employment_type: 'FULL_TIME',
     status: 'OPEN',
+    is_remote: false,
+    application_deadline: '',
+    experience_level: 'MID',
 };
 
 const getErrorMessage = (error, fallback) => {
@@ -70,6 +82,14 @@ const formatLabel = (value, options) => options.find((option) => option.value ==
 const formatDate = (value) => {
     if (!value) return '-';
     return new Date(value).toLocaleDateString();
+};
+
+const toDateInputValue = (date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 export default function JobOpenings() {
@@ -136,11 +156,40 @@ export default function JobOpenings() {
         [jobs, searchTerm]
     );
 
-    const openCreateModal = () => {
+    const openCreateModal = async () => {
         setEditingJob(null);
         setJobForm(EMPTY_JOB_FORM);
         setIsJobModalOpen(true);
         setError('');
+
+        try {
+            const res = await recruitmentApi.getJobDefaults();
+            const defaults = res.data?.data || {};
+
+            const experienceOption =
+                EXPERIENCE_DEFAULT_OPTIONS.find((opt) => opt.value === defaults.default_experience) ||
+                EXPERIENCE_DEFAULT_OPTIONS.find((opt) => opt.value === 'CUSTOM');
+
+            const expiryDays = Number(defaults.default_expiry_days || 0);
+            const expiryDate = expiryDays > 0 ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000) : null;
+
+            setJobForm((current) => ({
+                ...current,
+                employment_type: defaults.default_job_type || current.employment_type,
+                vacancies: Number(defaults.default_vacancies || current.vacancies),
+                is_remote: !!defaults.allow_remote,
+                application_deadline: expiryDate ? toDateInputValue(expiryDate) : current.application_deadline,
+                experience_setting: experienceOption?.value || 'CUSTOM',
+                experience_required:
+                    experienceOption && experienceOption.value !== 'CUSTOM'
+                        ? experienceOption.label
+                        : current.experience_required,
+                experience_level:
+                    experienceOption && experienceOption.modelLevel ? experienceOption.modelLevel : current.experience_level,
+            }));
+        } catch (defaultsError) {
+            console.error('Failed to load job defaults:', defaultsError);
+        }
     };
 
     const openEditModal = async (jobId) => {
@@ -158,10 +207,14 @@ export default function JobOpenings() {
                 description: job.description || '',
                 required_skills: (job.required_skills_details || []).map((skill) => skill.id),
                 experience_required: job.experience_required || job.experience_level || '',
+                experience_setting: 'CUSTOM',
                 vacancies: job.vacancies || job.openings || 1,
                 location: job.location || '',
                 employment_type: job.employment_type || 'FULL_TIME',
                 status: job.status || 'OPEN',
+                is_remote: !!job.is_remote,
+                application_deadline: job.application_deadline || '',
+                experience_level: job.experience_level || 'MID',
             });
             setIsJobModalOpen(true);
         } catch (fetchError) {
@@ -237,7 +290,9 @@ export default function JobOpenings() {
             employment_type: jobForm.employment_type,
             status: jobForm.status,
             openings: Number(jobForm.vacancies),
-            experience_level: 'MID',
+            experience_level: jobForm.experience_level || 'MID',
+            is_remote: !!jobForm.is_remote,
+            application_deadline: jobForm.application_deadline || null,
         };
 
         try {
@@ -501,14 +556,39 @@ export default function JobOpenings() {
                             </label>
 
                             <label className="open-jobs-field">
-                                <span>Experience Required</span>
+                                <span>Experience Level</span>
+                                <select
+                                    value={jobForm.experience_setting}
+                                    onChange={(event) => {
+                                        const selected = event.target.value;
+                                        const option = EXPERIENCE_DEFAULT_OPTIONS.find((opt) => opt.value === selected);
+
+                                        setJobForm((current) => ({
+                                            ...current,
+                                            experience_setting: selected,
+                                            experience_required:
+                                                option && option.value !== 'CUSTOM' ? option.label : current.experience_required,
+                                            experience_level: option && option.modelLevel ? option.modelLevel : current.experience_level,
+                                        }));
+                                    }}
+                                >
+                                    {EXPERIENCE_DEFAULT_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <label className="open-jobs-field">
+                                <span>Experience Notes</span>
                                 <input
                                     type="text"
                                     value={jobForm.experience_required}
                                     onChange={(event) =>
                                         setJobForm((current) => ({ ...current, experience_required: event.target.value }))
                                     }
-                                    placeholder="e.g. 3-5 years"
+                                    placeholder="e.g. 3-5 years, React + Next.js"
                                 />
                             </label>
 
@@ -545,6 +625,30 @@ export default function JobOpenings() {
                                             {option.label}
                                         </option>
                                     ))}
+                                </select>
+                            </label>
+
+                            <label className="open-jobs-field">
+                                <span>Expiry Date</span>
+                                <input
+                                    type="date"
+                                    value={jobForm.application_deadline || ''}
+                                    onChange={(event) =>
+                                        setJobForm((current) => ({ ...current, application_deadline: event.target.value }))
+                                    }
+                                />
+                            </label>
+
+                            <label className="open-jobs-field">
+                                <span>Remote Option</span>
+                                <select
+                                    value={jobForm.is_remote ? 'yes' : 'no'}
+                                    onChange={(event) =>
+                                        setJobForm((current) => ({ ...current, is_remote: event.target.value === 'yes' }))
+                                    }
+                                >
+                                    <option value="no">No</option>
+                                    <option value="yes">Yes</option>
                                 </select>
                             </label>
 
