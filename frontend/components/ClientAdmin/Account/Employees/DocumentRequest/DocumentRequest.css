@@ -510,6 +510,24 @@
     background: var(--card-bg);
 }
 
+.modal-close-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
 .doc-modal-label {
     display: block;
     margin-bottom: 0.5rem;
@@ -759,4 +777,27 @@
     .doc-search-box {
         width: 100%;
     }
+}
+
+/* Light Theme */
+[data-theme="light"] .modal-close-btn {
+    color: #333;
+}
+
+[data-theme="light"] .doc-modal-label {
+    color: #000;
+}
+
+[data-theme="light"] .doc-modal-field {
+    color: #000;
+    background: #fff;
+}
+
+[data-theme="light"] .doc-modal-field::placeholder {
+    color: #555;
+}
+
+[data-theme="light"] .doc-modal-field option {
+    color: #000;
+    background: #fff;
 }

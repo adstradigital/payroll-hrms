@@ -73,6 +73,7 @@ export default function BiometricDevices() {
     }, [searchTerm, devices]);
 
     const handleAddDevice = async () => {
+        console.log("Sending device:", newDevice);
         try {
             setIsLoading(true);
             const response = await biometricApi.addDevice(newDevice);

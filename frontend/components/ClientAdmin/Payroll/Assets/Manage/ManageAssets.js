@@ -103,7 +103,12 @@ export default function ManageAssets() {
             if (editMode) {
                 await updateAsset(formData.id, formData);
             } else {
-                await createAsset(formData);
+                const payload = {
+                    ...formData,
+                    status: formData.status.replace('-', '_')
+                };
+
+                await createAsset(payload);
             }
             setShowModal(false);
             fetchAssets();
@@ -192,7 +197,7 @@ export default function ManageAssets() {
                             category: (row['Category'] || 'other').toLowerCase(),
                             model: row['Model'] || '',
                             serial_number: row['Serial Number'] || '',
-                            status: (row['Status'] || 'available').toLowerCase()
+                            status: (row['Status'] || 'available').toLowerCase().replace(' ', '_')
                         };
                         await createAsset(payload);
                         successCount++;
@@ -249,7 +254,7 @@ export default function ManageAssets() {
                             <option value="all">All Status</option>
                             <option value="allocated">Allocated</option>
                             <option value="available">Available</option>
-                            <option value="in-repair">In Repair</option>
+                            <option value="in_repair">In Repair</option>
                             <option value="lost">Lost</option>
                         </select>
                     </div>
@@ -310,7 +315,7 @@ export default function ManageAssets() {
                                 </td>
                                 <td>
                                     <span className={`ma-status-label ma-status-label--${asset.status}`}>
-                                        {asset.status.replace('-', ' ')}
+                                        {asset.status.replace('_', ' ')}
                                     </span>
                                 </td>
                                 <td className="ma-td-user">{asset.assigned_to_details ? asset.assigned_to_details.full_name : '-'}</td>
@@ -401,7 +406,7 @@ export default function ManageAssets() {
                                     >
                                         <option value="available">Available</option>
                                         <option value="allocated">Allocated</option>
-                                        <option value="in-repair">In Repair</option>
+                                        <option value="in_repair">In Repair</option>
                                         <option value="lost">Lost</option>
                                     </select>
                                 </div>

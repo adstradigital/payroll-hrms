@@ -612,3 +612,29 @@
         display: none;
     }
 }
+
+[data-theme="light"] .pd-month-selector-wrapper {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+}
+
+[data-theme="light"] .pd-month-input {
+    color: #111827;
+}
+
+[data-theme="light"] .pd-month-input::-webkit-calendar-picker-indicator {
+    filter: none;
+    opacity: 0.7;
+}
+
+[data-theme="light"] .pd-btn--refresh {
+    background: #ffffff;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+}
+
+[data-theme="light"] .pd-btn--refresh:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    transform: rotate(30deg);
+}

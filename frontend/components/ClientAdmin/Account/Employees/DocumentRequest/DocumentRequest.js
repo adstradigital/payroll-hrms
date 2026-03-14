@@ -756,7 +756,7 @@ function NewRequestModal({ direction, employees, documentTypes, onClose, onSucce
             <div className="review-modal" style={{ maxWidth: '500px', height: 'auto', maxHeight: '90vh' }}>
                 <div className="modal-header">
                     <h3>{direction === 'admin_to_employee' ? 'Request from Employee' : 'New Document'}</h3>
-                    <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
+                    <button className='modal-close-btn' onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
