@@ -12,6 +12,7 @@ import GeneralSettings from './GeneralSettings/GeneralSettings';
 import IntegrationsSettings from './IntegrationsSettings/IntegrationsSettings';
 import SecuritySettings from './SecuritySettings/SecuritySettings';
 import LeaveSettings from './LeaveSettings/LeaveSettings';
+import LeaveTypesSettings from './LeaveTypesSettings/LeaveTypesSettings';
 import WorkShiftSettings from './WorkShiftSettings/WorkShiftSettings';
 import AttendanceSettings from './AttendanceSettings/AttendanceSettings';
 import HolidaySettings from './HolidaySettings/HolidaySettings';
@@ -19,6 +20,12 @@ import WorkSchedulesSettings from './WorkSchedulesSettings/WorkSchedulesSettings
 import OverTimeSettings from './OverTimeRule/OverTimeSettings';
 import TaxSettings from './TaxSettings/TaxSettings';
 import EmailSettings from './EmailSettings/EmailSettings';
+import CompanyInfoSettings from './CompanyInfoSettings/CompanyInfoSettings';
+import DepartmentsSettings from './DepartmentsSettings/DepartmentsSettings';
+import DesignationsSettings from './DesignationsSettings/DesignationsSettings';
+import EmployeeFieldsSettings from './EmployeeFieldsSettings/EmployeeFieldsSettings';
+import DocumentTypesSettings from './DocumentTypesSettings/DocumentTypesSettings';
+import OnboardingTemplatesSettings from './OnboardingTemplatesSettings/OnboardingTemplatesSettings';
 import RecruitmentJobPostingsSettings from './RecruitmentJobPostingsSettings/RecruitmentJobPostingsSettings';
 import RecruitmentApplicationStagesSettings from './RecruitmentApplicationStagesSettings/RecruitmentApplicationStagesSettings';
 import RecruitmentInterviewTemplatesSettings from './RecruitmentInterviewTemplatesSettings/RecruitmentInterviewTemplatesSettings';
@@ -149,6 +156,8 @@ export default function Settings() {
                 return <SecuritySettings />;
             case 'leave-settings':
                 return <LeaveSettings />;
+            case 'leave-types':
+                return <LeaveTypesSettings />;
             case 'work-shifts':
                 return <WorkShiftSettings />;
             case 'attendance-settings':
@@ -163,6 +172,18 @@ export default function Settings() {
                 return <TaxSettings />;
             case 'email-settings':
                 return <EmailSettings />;
+            case 'company-info':
+                return <CompanyInfoSettings />;
+            case 'departments':
+                return <DepartmentsSettings />;
+            case 'designations':
+                return <DesignationsSettings />;
+            case 'employee-fields':
+                return <EmployeeFieldsSettings />;
+            case 'document-types':
+                return <DocumentTypesSettings />;
+            case 'onboarding':
+                return <OnboardingTemplatesSettings />;
             case 'job-postings':
                 return <RecruitmentJobPostingsSettings />;
             case 'application-stages':

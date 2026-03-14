@@ -35,6 +35,9 @@ urlpatterns = [
     
     # Authentication & Accounts APIs
     path('api/account/', include('apps.accounts.urls')),
+
+    # Settings APIs
+    path('api/settings/', include('apps.hrms.urls')),
     
     # Subscription APIs
     path('api/subscriptions/', include('apps.subscriptions.urls')),
