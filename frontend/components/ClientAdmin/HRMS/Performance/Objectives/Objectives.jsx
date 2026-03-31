@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { 
-    Search, Plus, Target, Edit2, Trash2, CheckCircle, Clock, 
-    Calendar, TrendingUp, X, ChevronDown, MoreVertical, 
-    LayoutTemplate, Grid, Printer, Users, GripVertical, Check, 
-    ChevronLeft, ChevronRight, RotateCcw, Zap, Star, 
+import {
+    Search, Plus, Target, Edit2, Trash2, CheckCircle, Clock,
+    Calendar, TrendingUp, X, ChevronDown, MoreVertical,
+    LayoutTemplate, Grid, Printer, Users, GripVertical, Check,
+    ChevronLeft, ChevronRight, RotateCcw, Zap, Star,
     MessageSquare, Paperclip, Eye, Filter, SortAsc,
     Activity, Award, Sparkles, Timer, Flag, AlertCircle,
     GitBranch, Hash, Maximize2, Minimize2, Copy, Share2,
@@ -32,11 +32,11 @@ export default function Objectives() {
     const [selectedPriority, setSelectedPriority] = useState('all');
     const [sortBy, setSortBy] = useState('date');
     const [showFilters, setShowFilters] = useState(false);
-    
+
     // Drag state for smooth sizing
     const [dragWidth, setDragWidth] = useState(0);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    
+
     // Ref for direct DOM manipulation during drag
     const dragPreviewRef = useRef(null);
 
@@ -49,11 +49,11 @@ export default function Objectives() {
     ]);
     const [editingColumnId, setEditingColumnId] = useState(null);
     const [tempColumnTitle, setTempColumnTitle] = useState('');
-    
+
     // Quick Create State
     const [quickCreateColumn, setQuickCreateColumn] = useState(null);
     const [quickTitle, setQuickTitle] = useState('');
-    
+
     const emptyImage = typeof Image !== 'undefined' ? new Image() : null;
     if (emptyImage) emptyImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -103,7 +103,7 @@ export default function Objectives() {
             if (!o.target_date) return false;
             return new Date(o.target_date) < new Date() && o.status !== 'completed';
         }).length;
-        
+
         const productivityScore = total > 0 ? Math.round((completed / total) * 100) : 0;
 
         setAnalytics({
@@ -148,7 +148,7 @@ export default function Objectives() {
     const handleClaim = async (id) => {
         try {
             await claimGoal(id);
-            loadObjectives(); 
+            loadObjectives();
         } catch (error) {
             console.error('Failed to claim goal:', error);
             alert('Failed to claim goal');
@@ -157,7 +157,7 @@ export default function Objectives() {
 
     const handleEdit = (objective) => {
         setEditingObjective(objective);
-        setFormData({ 
+        setFormData({
             ...objective,
             priority: objective.priority || 'medium',
             tags: objective.tags || [],
@@ -181,7 +181,7 @@ export default function Objectives() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!formData.title.trim()) {
             alert('Title is required');
             return;
@@ -192,12 +192,12 @@ export default function Objectives() {
         }
 
         try {
-            const payload = { 
-                ...formData, 
+            const payload = {
+                ...formData,
                 review_period: selectedPeriod,
                 progress_percentage: formData.status === 'completed' ? 100 : formData.progress_percentage
             };
-            
+
             if (formData.assignToMe === false) {
                 payload.employee_id = null;
             } else {
@@ -207,13 +207,13 @@ export default function Objectives() {
 
             if (editingObjective) {
                 if (formData.assignToMe === false) {
-                   payload.employee_id = null;
+                    payload.employee_id = null;
                 }
                 await updateGoal(editingObjective.id, payload);
             } else {
                 await createGoal(payload);
             }
-            
+
             setShowModal(false);
             resetForm();
             loadObjectives();
@@ -231,13 +231,13 @@ export default function Objectives() {
     const handleTaskDragStart = (e, objective) => {
         setDraggedItem(objective);
         const rect = e.currentTarget.getBoundingClientRect();
-        
+
         setDragWidth(rect.width);
-        
+
         const offsetX = e.clientX - rect.left;
         const offsetY = e.clientY - rect.top;
         setDragOffset({ x: offsetX, y: offsetY });
-        
+
         e.dataTransfer.effectAllowed = 'move';
         if (e.dataTransfer.setDragImage && emptyImage) {
             e.dataTransfer.setDragImage(emptyImage, 0, 0);
@@ -247,7 +247,7 @@ export default function Objectives() {
 
     const handleTaskDrag = (e) => {
         if (e.clientX === 0 && e.clientY === 0) return;
-        
+
         if (dragPreviewRef.current) {
             const x = e.clientX - dragOffset.x;
             const y = e.clientY - dragOffset.y;
@@ -288,7 +288,7 @@ export default function Objectives() {
         if (draggedItem !== null) {
             if (draggedItem.status !== targetColumnId) {
                 const newProgress = targetColumnId === 'completed' ? 100 : (targetColumnId === 'not_started' ? 0 : draggedItem.progress_percentage);
-                
+
                 // Optimistic update
                 setObjectives(prev => prev.map(o => o.id === draggedItem.id ? {
                     ...o,
@@ -376,7 +376,7 @@ export default function Objectives() {
 
         try {
             // Send only the fields needed for the update
-            await updateGoal(objective.id, { 
+            await updateGoal(objective.id, {
                 title: objective.title,
                 description: objective.description || 'No description',
                 target_date: objective.target_date,
@@ -412,7 +412,7 @@ export default function Objectives() {
 
     const handleQuickCreate = async (columnId) => {
         if (!quickTitle.trim()) return;
-        
+
         const defaultDate = new Date();
         defaultDate.setDate(defaultDate.getDate() + 7);
 
@@ -442,7 +442,7 @@ export default function Objectives() {
     });
 
     const getStatusClass = (status) => {
-        switch(status) {
+        switch (status) {
             case 'completed': return 'status-badge--success';
             case 'in_progress': return 'status-badge--warning';
             case 'cancelled': return 'status-badge--danger';
@@ -457,7 +457,7 @@ export default function Objectives() {
     };
 
     const getStatusIcon = (status) => {
-        switch(status) {
+        switch (status) {
             case 'completed': return <CheckCircle size={12} />;
             case 'in_progress': return <Activity size={12} />;
             default: return <Clock size={12} />;
@@ -465,7 +465,7 @@ export default function Objectives() {
     };
 
     const getPriorityColor = (priority) => {
-        switch(priority) {
+        switch (priority) {
             case 'critical': return '#dc2626';
             case 'high': return '#ea580c';
             case 'medium': return '#D4AF37';
@@ -475,7 +475,7 @@ export default function Objectives() {
     };
 
     const getPriorityIcon = (priority) => {
-        switch(priority) {
+        switch (priority) {
             case 'critical': return <Zap size={12} />;
             case 'high': return <Flag size={12} />;
             case 'medium': return <AlertCircle size={12} />;
@@ -487,10 +487,10 @@ export default function Objectives() {
     return (
         <div className={`objectives-enhanced ${focusMode ? 'focus-mode' : ''}`}>
             {/* Drag Preview */}
-            <div 
+            <div
                 ref={dragPreviewRef}
                 className="drag-preview"
-                style={{ 
+                style={{
                     display: draggedItem && !draggedColumn ? 'block' : 'none',
                     width: dragWidth > 0 ? `${dragWidth}px` : '308px'
                 }}
@@ -499,7 +499,7 @@ export default function Objectives() {
                     <div className="kanban-card">
                         <div className="kanban-card__header">
                             {draggedItem.priority && draggedItem.priority !== 'medium' && (
-                                <div 
+                                <div
                                     className="priority-indicator"
                                     style={{ background: getPriorityColor(draggedItem.priority) }}
                                     title={draggedItem.priority}
@@ -532,7 +532,7 @@ export default function Objectives() {
                             <span className="card-date">
                                 {draggedItem.target_date ? new Date(draggedItem.target_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
                             </span>
-                            
+
                             {!draggedItem.employee && (
                                 <div className="btn-claim-small">
                                     <Zap size={10} />
@@ -562,26 +562,26 @@ export default function Objectives() {
                         <p>Strategic Execution Platform</p>
                     </div>
                 </div>
-                
+
                 <div className="command-bar__actions">
-                    <button 
-                        onClick={() => setShowInsights(!showInsights)} 
+                    <button
+                        onClick={() => setShowInsights(!showInsights)}
                         className={`command-btn ${showInsights ? 'command-btn--active' : ''}`}
                     >
                         <BarChart3 size={18} />
                         <span>Insights</span>
                     </button>
-                    
-                    <button 
-                        onClick={() => setFocusMode(!focusMode)} 
+
+                    <button
+                        onClick={() => setFocusMode(!focusMode)}
                         className="command-btn focus-toggle-btn"
                     >
                         {focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                         <span>{focusMode ? 'Exit' : 'Focus'}</span>
                     </button>
-                    
+
                     <div className="command-divider"></div>
-                    
+
                     <button onClick={() => { resetForm(); setShowModal(true); }} className="command-btn command-btn--primary">
                         <Plus size={20} />
                         <span>New Objective</span>
@@ -594,7 +594,7 @@ export default function Objectives() {
                 <div className="insights-panel">
                     <div className="insights-grid">
                         <div className="insight-card">
-                            <div className="insight-card__icon" style={{background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'}}>
+                            <div className="insight-card__icon" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}>
                                 <Target size={20} />
                             </div>
                             <div className="insight-card__content">
@@ -604,7 +604,7 @@ export default function Objectives() {
                         </div>
 
                         <div className="insight-card">
-                            <div className="insight-card__icon" style={{background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'}}>
+                            <div className="insight-card__icon" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
                                 <CheckCircle size={20} />
                             </div>
                             <div className="insight-card__content">
@@ -614,7 +614,7 @@ export default function Objectives() {
                         </div>
 
                         <div className="insight-card">
-                            <div className="insight-card__icon" style={{background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'}}>
+                            <div className="insight-card__icon" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
                                 <Activity size={20} />
                             </div>
                             <div className="insight-card__content">
@@ -624,7 +624,7 @@ export default function Objectives() {
                         </div>
 
                         <div className="insight-card">
-                            <div className="insight-card__icon" style={{background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'}}>
+                            <div className="insight-card__icon" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' }}>
                                 <Sparkles size={20} />
                             </div>
                             <div className="insight-card__content">
@@ -665,7 +665,7 @@ export default function Objectives() {
                 </div>
 
                 <div className="control-panel__right">
-                    <button 
+                    <button
                         onClick={() => setShowFilters(!showFilters)}
                         className={`control-btn ${showFilters ? 'control-btn--active' : ''}`}
                     >
@@ -753,8 +753,8 @@ export default function Objectives() {
                     {viewMode === 'grid' && (
                         <div className="objectives-grid-enhanced">
                             {filteredObjectives.map((obj, index) => (
-                                <div 
-                                    key={obj.id} 
+                                <div
+                                    key={obj.id}
                                     className="objective-card-enhanced"
                                     style={{ animationDelay: `${index * 50}ms` }}
                                 >
@@ -765,9 +765,9 @@ export default function Objectives() {
                                                 {getStatusLabel(obj.status)}
                                             </span>
                                             {obj.priority && obj.priority !== 'medium' && (
-                                                <span 
+                                                <span
                                                     className="priority-badge"
-                                                    style={{ 
+                                                    style={{
                                                         background: getPriorityColor(obj.priority) + '20',
                                                         color: getPriorityColor(obj.priority),
                                                         borderColor: getPriorityColor(obj.priority)
@@ -778,15 +778,15 @@ export default function Objectives() {
                                                 </span>
                                             )}
                                         </div>
-                                        
+
                                         <div className="objective-card-enhanced__menu">
-                                            <button 
+                                            <button
                                                 onClick={() => setActiveMenu(activeMenu === obj.id ? null : obj.id)}
                                                 className="menu-trigger"
                                             >
                                                 <MoreVertical size={16} />
                                             </button>
-                                            
+
                                             {activeMenu === obj.id && (
                                                 <>
                                                     <div className="menu-backdrop" onClick={() => setActiveMenu(null)} />
@@ -809,7 +809,7 @@ export default function Objectives() {
                                     <h3 className="objective-card-enhanced__title" onClick={() => handleEdit(obj)}>
                                         {obj.title}
                                     </h3>
-                                    
+
                                     {obj.description && (
                                         <p className="objective-card-enhanced__description">{obj.description}</p>
                                     )}
@@ -820,9 +820,9 @@ export default function Objectives() {
                                             <span className="progress-value">{obj.progress_percentage || 0}%</span>
                                         </div>
                                         <div className="progress-track">
-                                            <div 
+                                            <div
                                                 className="progress-fill"
-                                                style={{ 
+                                                style={{
                                                     width: `${obj.progress_percentage || 0}%`,
                                                     background: obj.progress_percentage === 100 ? '#10b981' : '#3b82f6'
                                                 }}
@@ -843,7 +843,7 @@ export default function Objectives() {
                                         </div>
 
                                         {!obj.employee && (
-                                            <button 
+                                            <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleClaim(obj.id);
@@ -901,13 +901,13 @@ export default function Objectives() {
                                                     </span>
                                                 </div>
                                                 <div className="column-actions">
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleStartEditColumn(col)}
                                                         className="column-action-btn"
                                                     >
                                                         <Edit2 size={12} />
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleDeleteColumn(col.id)}
                                                         onMouseDown={(e) => e.stopPropagation()}
                                                         className="column-action-btn column-action-btn--danger"
@@ -938,7 +938,7 @@ export default function Objectives() {
                                                 >
                                                     <div className="kanban-card__header">
                                                         {obj.priority && obj.priority !== 'medium' && (
-                                                            <div 
+                                                            <div
                                                                 className="priority-indicator"
                                                                 style={{ background: getPriorityColor(obj.priority) }}
                                                                 title={obj.priority}
@@ -980,9 +980,9 @@ export default function Objectives() {
                                                         <span className="card-date">
                                                             {obj.target_date ? new Date(obj.target_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
                                                         </span>
-                                                        
+
                                                         {!obj.employee && (
-                                                            <button 
+                                                            <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleClaim(obj.id);
@@ -995,13 +995,13 @@ export default function Objectives() {
                                                     </div>
                                                 </div>
                                             ))}
-                                            
+
                                         {filteredObjectives.filter(o => o.status === col.id).length === 0 && (
                                             <div className="kanban-empty">
                                                 {draggedItem ? 'Drop here' : 'No items'}
                                             </div>
                                         )}
-                                        
+
                                         {quickCreateColumn === col.id ? (
                                             <div className="quick-add-form">
                                                 <input
@@ -1066,7 +1066,7 @@ export default function Objectives() {
                             </div>
                             <div className="modal-actions-section">
                                 {editingObjective && (
-                                    <button 
+                                    <button
                                         onClick={() => handleDelete(editingObjective.id)}
                                         className="modal-action-btn delete"
                                     >
@@ -1079,30 +1079,30 @@ export default function Objectives() {
                             </div>
                         </div>
 
-                        <form onSubmit={handleSubmit}>
+                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                             <div className="modal-content-enhanced">
                                 <div className="modal-main-section">
                                     <div className="title-section">
+                                        <label className="section-label">Objective Title</label>
                                         <input
                                             type="text"
-                                            placeholder="Objective title..."
+                                            placeholder="E.g., Increase Q3 Sales Revenue"
                                             value={formData.title}
-                                            onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                            className="title-input"
+                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                            className="title-input-enhanced"
                                         />
                                     </div>
 
                                     <div className="description-section">
-                                        <label>
-                                            <MessageSquare size={14} />
+                                        <label className="section-label">
                                             Description
                                         </label>
                                         <textarea
                                             placeholder="Describe the objective, key deliverables, and success criteria..."
                                             value={formData.description}
-                                            onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             className="description-input"
-                                            rows={6}
+                                            rows={8}
                                         />
                                     </div>
                                 </div>
@@ -1112,7 +1112,7 @@ export default function Objectives() {
                                         <span className="sidebar-group__label">Status</span>
                                         <select
                                             value={formData.status}
-                                            onChange={(e) => setFormData({...formData, status: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                             className="sidebar-select"
                                         >
                                             {columns.map(col => (
@@ -1125,7 +1125,7 @@ export default function Objectives() {
                                         <span className="sidebar-group__label">Priority</span>
                                         <select
                                             value={formData.priority}
-                                            onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                                             className="sidebar-select"
                                         >
                                             <option value="low">Low</option>
@@ -1145,18 +1145,18 @@ export default function Objectives() {
                                             <input
                                                 type="date"
                                                 value={formData.target_date}
-                                                onChange={(e) => setFormData({...formData, target_date: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
                                                 className="date-input"
                                             />
                                         </div>
-                                        
+
                                         {editingObjective && editingObjective.employee && (
                                             <div className="detail-field">
                                                 <label className="checkbox-label">
                                                     <input
                                                         type="checkbox"
                                                         checked={formData.assignToMe === false}
-                                                        onChange={(e) => setFormData({...formData, assignToMe: !e.target.checked})}
+                                                        onChange={(e) => setFormData({ ...formData, assignToMe: !e.target.checked })}
                                                     />
                                                     Unassign from me
                                                 </label>
@@ -1174,7 +1174,7 @@ export default function Objectives() {
                                             min="0"
                                             max="100"
                                             value={formData.progress_percentage}
-                                            onChange={(e) => setFormData({...formData, progress_percentage: parseInt(e.target.value)})}
+                                            onChange={(e) => setFormData({ ...formData, progress_percentage: parseInt(e.target.value) })}
                                             className="progress-range"
                                         />
                                     </div>

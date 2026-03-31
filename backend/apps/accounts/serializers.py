@@ -5,9 +5,11 @@ from .models import (
     Organization, Company, Department, Designation, Employee,
     EmployeeDocument, EmployeeEducation, EmployeeExperience,
     InviteCode, NotificationPreference, Role, Module, Permission,
-    DataScope, RolePermission, DesignationPermission, SecurityProfile
+    DataScope, RolePermission, DesignationPermission, SecurityProfile, UserOTP
 )
 from apps.audit.utils import log_activity
+from django.utils import timezone
+import random
 
 
 class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -53,6 +55,16 @@ class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Custom JWT Serializer to include user info and roles"""
     def validate(self, attrs):
+        try:
+            return self._validate_impl(attrs)
+        except Exception as e:
+            import traceback
+            with open('login_debug.log', 'a') as f:
+                f.write(f"\n[{timezone.now()}] LOGIN ERROR: {str(e)}\n")
+                f.write(traceback.format_exc())
+            raise e
+
+    def _validate_impl(self, attrs):
         data = super().validate(attrs)
         
         # Import here to avoid circular imports
@@ -105,6 +117,39 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             sub = Subscription.objects.filter(organization=org.get_root_parent()).first()
             if sub:
                 data['user']['subscription_plan'] = 'both' if sub.package.package_type == 'free_trial' else 'enterprise'
+
+        # Check for 2FA enforcement
+        if org and org.settings.get('two_factor_enabled', False) and user_is_admin:
+            # ... (OTP generation logic) ...
+            otp_code = random.randint(100000, 999999)
+            expires_at = timezone.now() + timezone.timedelta(minutes=10)
+            otp_profile, created = UserOTP.objects.get_or_create(
+                user=self.user,
+                defaults={'expires_at': expires_at}
+            )
+            otp_profile.set_otp(otp_code)
+            from .emails import send_2fa_otp
+            send_2fa_otp(self.user.email, f"{self.user.first_name} {self.user.last_name}".strip(), otp_code)
+            return {
+                'two_factor_required': True,
+                'user_id': str(self.user.id),
+                'email': self.user.email
+            }
+
+        # Check for Password Expiry policy
+        if org and org.settings.get('password_expiry', False):
+            # Get or create security profile to check password age
+            security_profile, _ = SecurityProfile.objects.get_or_create(user=self.user)
+            if security_profile.password_updated_at:
+                expiry_days = 90 # Default 90 days
+                expiry_delta = timezone.now() - security_profile.password_updated_at
+                if expiry_delta.days >= expiry_days:
+                    return {
+                        'password_expired': True,
+                        'message': 'Your password has expired. Please change it to continue.',
+                        'user_id': str(self.user.id),
+                        'email': self.user.email
+                    }
 
         # Log Login Activity
         request = self.context.get('request')
@@ -168,12 +213,17 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             'logo', 'website', 'is_parent', 'parent', 'parent_name',
             'is_active', 'is_verified', 'verified_at', 'employee_count',
             'active_employees',            'total_departments', 'established_date',
-            'industry', 'settings', 'enable_tax_management', 'enable_global_search', 'created_at', 'updated_at',
-            'created_by', 'updated_by'
+            'industry', 'settings', 'enable_tax_management', 'enable_global_search',
+            'two_factor_enabled', 'session_timeout', 'ip_whitelist', 
+            'strong_password', 'password_expiry',
+            'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
         read_only_fields = [
             'id', 'slug', 'verified_at', 'active_employees', 'total_departments',
-            'enable_tax_management', 'enable_global_search', 'created_at', 'updated_at', 'created_by', 'updated_by'
+            'enable_tax_management', 'enable_global_search', 
+            'two_factor_enabled', 'session_timeout', 'ip_whitelist',
+            'strong_password', 'password_expiry',
+            'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
     
     def get_active_employees(self, obj):
@@ -193,6 +243,21 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
         if obj.settings and isinstance(obj.settings, dict):
             return obj.settings.get('enable_global_search', True)
         return True
+
+    def get_two_factor_enabled(self, obj):
+        return obj.settings.get('two_factor_enabled', False) if obj.settings else False
+
+    def get_session_timeout(self, obj):
+        return obj.settings.get('session_timeout', 30) if obj.settings else 30
+
+    def get_ip_whitelist(self, obj):
+        return obj.settings.get('ip_whitelist', '') if obj.settings else ''
+
+    def get_strong_password(self, obj):
+        return obj.settings.get('strong_password', False) if obj.settings else False
+
+    def get_password_expiry(self, obj):
+        return obj.settings.get('password_expiry', False) if obj.settings else False
 
 
 class OrganizationWithSubsidiariesSerializer(OrganizationDetailSerializer):
@@ -385,6 +450,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
     designation_name = serializers.CharField(source='designation.name', read_only=True)
     full_name = serializers.CharField(read_only=True)
+    has_security_pin = serializers.SerializerMethodField()
     
     class Meta:
         model = Employee
@@ -392,11 +458,17 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             'id', 'user', 'employee_id', 'full_name', 'first_name', 'last_name',
             'email', 'phone', 'company', 'company_name', 'department',
             'department_name', 'designation', 'designation_name', 'status',
-            'employment_type', 'is_admin', 'date_of_joining', 'profile_photo'
+            'employment_type', 'is_admin', 'date_of_joining', 'profile_photo',
+            'has_security_pin', 'custom_fields'
         ]
         read_only_fields = [
-            'id', 'full_name', 'company_name', 'department_name', 'designation_name'
+            'id', 'full_name', 'company_name', 'department_name', 'designation_name', 'has_security_pin'
         ]
+
+    def get_has_security_pin(self, obj):
+        if obj.user and hasattr(obj.user, 'security_profile'):
+            return bool(obj.user.security_profile.pin_hash)
+        return False
 
 
 class EmployeeDetailSerializer(serializers.ModelSerializer):
@@ -432,16 +504,19 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
             'current_ctc', 'basic_salary', 'emergency_contact_name',
             'emergency_contact_relation', 'emergency_contact_phone',
             'notice_period_days', 'is_remote_employee', 'work_location',
-            'skills', 'highest_qualification', 'notes', 'tenure_in_days',
-            'subordinates_count', 'created_at', 'updated_at', 'created_by', 'updated_by'
+            'skills', 'highest_qualification', 'notes', 'custom_fields', 'tenure_in_days',
+            'subordinates_count', 'created_at', 'updated_at', 'created_by', 'updated_by',
+            'onboarding_template', 'onboarding_status', 'onboarding_template_name'
         ]
         read_only_fields = [
             'id', 'full_name', 'age', 'tenure_in_days', 'is_on_probation',
             'company_name', 'department_name', 'designation_name',
             'reporting_manager_name', 'subordinates_count',
             'created_at', 'updated_at', 'created_by', 'updated_by',
-            'company', 'employee_id', 'user'
+            'company', 'employee_id', 'user', 'onboarding_template_name'
         ]
+    
+    onboarding_template_name = serializers.CharField(source='onboarding_template.name', read_only=True)
     
     def get_subordinates_count(self, obj):
         return obj.get_subordinates_count()

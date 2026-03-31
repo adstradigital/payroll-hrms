@@ -15,17 +15,18 @@ import {
     approveDocumentRequest,
     rejectDocumentRequest,
     submitDocumentForRequest,
-    getAllEmployees
+    getAllEmployees,
+    getDocumentTypes
 } from '@/api/api_clientadmin';
 import './DocumentRequest.css';
 
 // Constants
-const ADMIN_REQUEST_TYPES = [
+const DEFAULT_ADMIN_TYPES = [
     'ID Proof', 'Address Proof', 'Education Certificate', 'Experience Letter',
     'PAN Card', 'Aadhar Card', 'Passport', 'Bank Details', 'Photo', 'Other'
 ];
 
-const EMPLOYEE_REQUEST_TYPES = [
+const DEFAULT_EMPLOYEE_TYPES = [
     'Payslip', 'Experience Letter', 'Offer Letter', 'Salary Certificate',
     'Employment Verification', 'Relieving Letter', 'Bonafide Certificate', 'Other'
 ];
@@ -36,6 +37,7 @@ export default function AdvancedDocumentRequest() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [employees, setEmployees] = useState([]);
+    const [configuredTypes, setConfiguredTypes] = useState([]);
 
     // UI State
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -54,7 +56,18 @@ export default function AdvancedDocumentRequest() {
     useEffect(() => {
         fetchRequests();
         fetchEmployees();
+        fetchDocumentTypes();
     }, [activeTab]);
+
+    const fetchDocumentTypes = async () => {
+        try {
+            const res = await getDocumentTypes({ is_active: true });
+            const types = (res.data?.results || res.data || []).map(t => t.name);
+            setConfiguredTypes(types);
+        } catch (err) {
+            console.error("Error fetching document types:", err);
+        }
+    };
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -499,7 +512,10 @@ export default function AdvancedDocumentRequest() {
                 <NewRequestModal
                     direction={activeTab}
                     employees={employees}
-                    documentTypes={activeTab === 'admin_to_employee' ? ADMIN_REQUEST_TYPES : EMPLOYEE_REQUEST_TYPES}
+                    documentTypes={Array.from(new Set([
+                        ...(activeTab === 'admin_to_employee' ? DEFAULT_ADMIN_TYPES : DEFAULT_EMPLOYEE_TYPES),
+                        ...configuredTypes
+                    ]))}
                     onClose={() => setShowNewRequestModal(false)}
                     onSuccess={() => { setShowNewRequestModal(false); fetchRequests(); }}
                 />

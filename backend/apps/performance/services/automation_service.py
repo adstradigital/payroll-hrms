@@ -33,9 +33,10 @@ class AutomationService:
         except ReviewPeriod.DoesNotExist:
             return {'error': 'Review period not found'}
         
-        # Get all active employees
+        # Get all active employees who have a linked user account
         active_employees = Employee.objects.filter(
-            status='active'
+            status='active',
+            user__isnull=False
         ).select_related('user', 'reporting_manager')
         
         # Get active performance criteria to attach to each review

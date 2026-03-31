@@ -23,21 +23,10 @@ export function AuthProvider({ children }) {
             try {
                 const parsedUser = JSON.parse(savedUser);
                 console.log('AuthContext - User loaded:', parsedUser);
-                console.log('AuthContext - User role:', parsedUser.role);
                 setUser(parsedUser);
             } catch (err) {
                 console.error('Failed to parse user cookie', err);
             }
-        } else if (!accessToken) {
-            // DEV MODE fallback - only use if no real auth exists
-            console.log('AuthContext - Using DEV fallback user');
-            setUser({
-                name: 'Dev Admin',
-                email: 'admin@example.com',
-                company: 'HR Nexus Demo',
-                subscription_plan: 'both',
-                role: 'admin'
-            });
         }
         setLoading(false);
     }, []);

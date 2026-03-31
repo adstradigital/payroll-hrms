@@ -40,7 +40,7 @@ const authFetch = async (url, options = {}) => {
     };
 
     const response = await fetch(url, { ...options, headers });
-    
+
     if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Request failed' }));
         throw new Error(formatApiError(error));
@@ -91,7 +91,8 @@ export const deleteReviewPeriod = async (id) => {
 
 export const activateReviewPeriod = async (id) => {
     return authFetch(`${PERFORMANCE_BASE}/review-periods/${id}/activate/`, {
-        method: 'POST'
+        method: 'POST',
+        body: JSON.stringify({ auto_create_reviews: true })
     });
 };
 

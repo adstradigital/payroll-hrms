@@ -90,7 +90,7 @@ INSTALLED_APPS = [
     'apps.assets',
     'apps.performance',
     'apps.recruitment',
-    'apps.reimbursements',
+    'apps.expenses',
 ]
 
 # Custom User Model - uncomment if you create a custom User class

@@ -134,8 +134,8 @@ export default function EmployeeList({ onAdd, onEdit, onView, refreshTrigger }) 
             e.full_name,
             e.employee_id,
             e.email,
-            e.department?.name || e.department,
-            e.designation?.name || e.designation,
+            e.department_name || e.department?.name || e.department,
+            e.designation_name || e.designation?.name || e.designation,
             e.status
         ]);
 
@@ -187,8 +187,8 @@ export default function EmployeeList({ onAdd, onEdit, onView, refreshTrigger }) 
         return colors[(id || 0) % colors.length];
     };
 
-    const getDeptName = (emp) => emp.department?.name || (typeof emp.department === 'string' ? emp.department : 'N/A');
-    const getDesignation = (emp) => emp.designation?.name || (typeof emp.designation === 'string' ? emp.designation : 'N/A');
+    const getDeptName = (emp) => emp.department_name || emp.department?.name || (typeof emp.department === 'string' ? emp.department : 'N/A');
+    const getDesignation = (emp) => emp.designation_name || emp.designation?.name || (typeof emp.designation === 'string' ? emp.designation : 'N/A');
 
     // --- Render ---
     return (
@@ -441,24 +441,24 @@ export default function EmployeeList({ onAdd, onEdit, onView, refreshTrigger }) 
                                 </div>
                             </div>
 
-                             <div className="emplist-card-actions">
-                                 <button onClick={() => onView && onView(emp.id)} className="emplist-card-btn-profile">
-                                     Profile
-                                 </button>
-                                 <button onClick={() => onEdit(emp.id)} className="emplist-card-btn-edit">
-                                     <Edit2 size={18} />
-                                 </button>
-                                 <button
-                                     onClick={() => handleDelete(emp)}
-                                     className="emplist-card-btn-delete"
-                                     title="Delete"
-                                     disabled={deletingEmployeeId === emp.id}
-                                 >
-                                     <Trash2 size={18} />
-                                 </button>
-                             </div>
-                         </div>
-                     ))}
+                            <div className="emplist-card-actions">
+                                <button onClick={() => onView && onView(emp.id)} className="emplist-card-btn-profile">
+                                    Profile
+                                </button>
+                                <button onClick={() => onEdit(emp.id)} className="emplist-card-btn-edit">
+                                    <Edit2 size={18} />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(emp)}
+                                    className="emplist-card-btn-delete"
+                                    title="Delete"
+                                    disabled={deletingEmployeeId === emp.id}
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
 
                     {employees.length === 0 && (
                         <div className="emplist-grid-empty">

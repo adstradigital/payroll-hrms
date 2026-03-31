@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
-import EmployeeProfile from '@/components/ClientAdmin/Account/Employees/Employee Profile/EmployeeProfile';
+import EmployeeProfile from '@/components/ClientAdmin/Account/Employees/EmployeeProfile/EmployeeProfile';
 
 export default function EmployeeProfilePage() {
     const params = useParams();

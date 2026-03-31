@@ -11,6 +11,8 @@ urlpatterns = [
     path('jobs/defaults/', views.recruitment_job_defaults, name='recruitment-job-defaults'),
     path('interview-templates/', views.interview_template_list_create, name='interview-template-list-create'),
     path('interview-templates/<int:pk>/', views.interview_template_detail, name='interview-template-detail'),
+    path('rejection-reasons/', views.rejection_reason_list_create, name='rejection-reason-list-create'),
+    path('rejection-reasons/<int:pk>/', views.rejection_reason_detail, name='rejection-reason-detail'),
 
     # Surveys
     path('surveys/', views.survey_list_create, name='survey-list-create'),

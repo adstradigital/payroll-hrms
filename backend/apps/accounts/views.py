@@ -10,6 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
 from datetime import timedelta
+import json
 import logging
 import secrets
 
@@ -31,7 +32,8 @@ from .serializers import (
     SecurityProfileSerializer, SetPinSerializer, VerifyPinSerializer
 )
 from .permissions import is_client_admin, require_admin, require_permission, PermissionChecker
-from .utils import get_employee_or_none, get_employee_org_id
+from .utils import get_employee_or_none, get_employee_org_id, get_employee_org
+from .validators import validate_password_complexity
 
 logger = logging.getLogger(__name__)
 
@@ -86,12 +88,20 @@ def register_organization(request):
             employee_count_map = {'1-50': 50, '51-200': 200, '201-1000': 1000, '1000+': 10000}
             max_employees = employee_count_map.get(employee_count_range, 50)
             
+            # Validate password complexity
+            validate_password_complexity(password)
+            
             username = email.split('@')[0] + '_' + secrets.token_hex(4)
             user = User.objects.create_user(
                 username=username, email=email, password=password,
                 first_name=full_name.split()[0] if full_name else '',
                 last_name=' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else ''
             )
+            
+            # Update password age tracking
+            security_profile, _ = SecurityProfile.objects.get_or_create(user=user)
+            security_profile.password_updated_at = timezone.now()
+            security_profile.save()
             
             trial_package, _ = Package.objects.get_or_create(
                 package_type='free_trial',
@@ -227,11 +237,19 @@ def activate_employee(request):
             return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
         
         with transaction.atomic():
+            # Validate password complexity against organization settings
+            validate_password_complexity(password, organization=invite.organization)
+            
             username = email.split('@')[0] + '_' + secrets.token_hex(4)
             user = User.objects.create_user(
                 username=username, email=email, password=password,
                 first_name=invite.first_name, last_name=invite.last_name
             )
+            
+            # Update password age tracking
+            security_profile, _ = SecurityProfile.objects.get_or_create(user=user)
+            security_profile.password_updated_at = timezone.now()
+            security_profile.save()
             
             employee_id = f"EMP-{invite.organization.id.hex[:8].upper()}-{secrets.token_hex(3).upper()}"
             employee = Employee.objects.create(
@@ -446,6 +464,7 @@ def organization_detail(request):
                 'industry': organization.industry, 'is_verified': organization.is_verified,
                 'enable_tax_management': enable_tax_management,
                 'enable_global_search': enable_global_search,
+                'settings': organization.settings,
                 'subsidiaries': [{'id': str(sub.id), 'name': sub.name, 'slug': sub.slug} for sub in subsidiaries]
             }
             return Response({'success': True, 'organization': data}, status=status.HTTP_200_OK)
@@ -461,18 +480,33 @@ def organization_detail(request):
                 if field in request.data:
                     setattr(organization, field, request.data[field])
             
+            # Handle logo upload
+            if 'logo' in request.FILES:
+                organization.logo = request.FILES['logo']
+            elif 'logo_delete' in request.data and request.data['logo_delete'] == 'true':
+                organization.logo = None
+            
             # Handle settings updates - support both individual fields and settings object
-            if 'settings' in request.data and isinstance(request.data['settings'], dict):
-                # Frontend sends settings object
-                try:
-                    if not organization.settings:
-                        organization.settings = {}
-                    # Update settings from the settings object
-                    for key, value in request.data['settings'].items():
-                        organization.settings[key] = bool(value) if isinstance(value, bool) else value
-                except Exception as settings_error:
-                    logger.error(f"Error updating settings: {str(settings_error)}")
-                    return Response({'error': 'Failed to update settings'}, status=status.HTTP_400_BAD_REQUEST)
+            if 'settings' in request.data:
+                settings_data = request.data['settings']
+                if isinstance(settings_data, str):
+                    try:
+                        settings_data = json.loads(settings_data)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+                if isinstance(settings_data, dict):
+                    # Frontend sends settings object
+                    try:
+                        # Use a copy to ensure Django detects the change in JSONField
+                        updated_settings = organization.settings.copy() if organization.settings else {}
+                        # Update settings from the settings object
+                        for key, value in settings_data.items():
+                            updated_settings[key] = bool(value) if isinstance(value, bool) else value
+                        organization.settings = updated_settings
+                    except Exception as settings_error:
+                        logger.error(f"Error updating settings: {str(settings_error)}")
+                        return Response({'error': 'Failed to update settings'}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 # Handle individual setting fields for backward compatibility
                 if 'enable_tax_management' in request.data:
@@ -1233,8 +1267,22 @@ def employee_list_create(request):
                 date_of_joining=request.data.get('date_of_joining') or timezone.now().date(),
                 status='active', 
                 is_admin=request.data.get('is_admin', False),
+                onboarding_template_id=request.data.get('onboarding_template') if request.data.get('onboarding_template') else None,
                 created_by=request.user
             )
+
+            # Initialize Onboarding Steps if template is provided
+            if emp.onboarding_template:
+                from apps.hrms.models import OnboardingStep, EmployeeOnboardingStep
+                steps = OnboardingStep.objects.filter(template=emp.onboarding_template).order_by('step_order')
+                for step in steps:
+                    EmployeeOnboardingStep.objects.create(
+                        employee=emp,
+                        template_step=step
+                    )
+                emp.onboarding_status = 'pending'
+                emp.save()
+
             logger.info(f"[employee_create] ✓ SUCCESS: Created employee {emp.full_name} (ID: {emp.id})")
             
             # Log activity
@@ -1272,10 +1320,9 @@ def employee_detail(request, pk):
             # Create a mutable copy of data
             data = request.data.copy()
             
-            # Clean empty strings for Foreign Keys/Date fields to avoid validation errors
             nullable_fields = ['department', 'designation', 'reporting_manager', 'date_of_birth', 
                              'date_of_joining', 'confirmation_date', 'resignation_date', 
-                             'last_working_date', 'termination_date']
+                             'last_working_date', 'termination_date', 'onboarding_template']
             
             for field in nullable_fields:
                 if field in data and (data[field] == '' or data[field] == 'null'):
@@ -1285,11 +1332,28 @@ def employee_detail(request, pk):
             if 'bank_ifsc' in data:
                 data['bank_ifsc_code'] = data.pop('bank_ifsc')
 
+            # Check if onboarding template is being assigned for the first time
+            old_template = emp.onboarding_template
+            
             from .serializers import EmployeeDetailSerializer
             serializer = EmployeeDetailSerializer(emp, data=data, partial=(request.method == 'PATCH'))
             
             if serializer.is_valid():
-                serializer.save(updated_by=request.user)
+                emp = serializer.save(updated_by=request.user)
+                
+                # If a template was just assigned (and didn't have one before), initialize steps
+                if emp.onboarding_template and not old_template:
+                    from apps.hrms.models import OnboardingStep, EmployeeOnboardingStep
+                    # Check if steps already exist to avoid duplicates if re-assigning same template (though not old_template handles this)
+                    if not emp.onboarding_steps.exists():
+                        steps = OnboardingStep.objects.filter(template=emp.onboarding_template).order_by('step_order')
+                        for step in steps:
+                            EmployeeOnboardingStep.objects.create(
+                                employee=emp,
+                                template_step=step
+                            )
+                        emp.onboarding_status = 'pending'
+                        emp.save()
                 
                 # Handle User Account Creation/Update
                 enable_login = request.data.get('enable_login')
@@ -1311,6 +1375,9 @@ def employee_detail(request, pk):
                         
                         if not User.objects.filter(username=username).exists():
                              try:
+                                # Validate password complexity against organization settings
+                                validate_password_complexity(password, organization=emp.company)
+                                
                                 user = User.objects.create_user(
                                     username=username, 
                                     email=emp.email, 
@@ -1320,13 +1387,30 @@ def employee_detail(request, pk):
                                 )
                                 emp.user = user
                                 emp.save()
+                                
+                                # Update password age tracking
+                                security_profile, _ = SecurityProfile.objects.get_or_create(user=user)
+                                security_profile.password_updated_at = timezone.now()
+                                security_profile.save()
                              except Exception as e:
                                 logger.error(f"Failed to create user for employee {emp.id}: {e}")
+                                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
                     else:
                         # Employee already has a user account, update password if provided
                         if password:
-                            emp.user.set_password(password)
-                            emp.user.save()
+                            try:
+                                # Validate password complexity against organization settings
+                                validate_password_complexity(password, organization=emp.company)
+                                
+                                emp.user.set_password(password)
+                                emp.user.save()
+                                
+                                # Update password age tracking
+                                security_profile, _ = SecurityProfile.objects.get_or_create(user=emp.user)
+                                security_profile.password_updated_at = timezone.now()
+                                security_profile.save()
+                            except Exception as e:
+                                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
                 
                 # Log activity
                 log_activity(
@@ -1926,6 +2010,67 @@ def set_security_pin(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_admin()
+def admin_set_security_pin(request):
+    """Admin feature: Set or reset 4-digit PIN for another user"""
+    try:
+        # Support both user_id and employee_id (UUID)
+        user_id = request.data.get('user_id')
+        employee_id = request.data.get('employee_id')
+        pin = request.data.get('pin') or request.data.get('new_pin')
+        confirm_pin = request.data.get('confirm_pin')
+        
+        if not pin or not confirm_pin:
+            return Response({'error': 'PIN and Confirm PIN are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if pin != confirm_pin:
+            return Response({'error': 'PINs do not match'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if not pin.isdigit() or len(pin) != 4:
+            return Response({'error': 'PIN must be a 4-digit number'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Identify target user
+        target_user = None
+        if user_id:
+            target_user = User.objects.filter(id=user_id).first()
+        elif employee_id:
+            employee = Employee.objects.filter(id=employee_id).first()
+            if employee:
+                target_user = employee.user
+        
+        if not target_user:
+            return Response({'error': 'Target user not found or has no active account'}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Security Check: Ensure the target user belongs to the same organization
+        admin_org_id = get_employee_org_id(request.user)
+        target_org_id = get_employee_org_id(target_user)
+        
+        if admin_org_id != target_org_id:
+            logger.warning(f"Admin {request.user.id} tried to set PIN for user {target_user.id} in different org")
+            return Response({'error': 'Unauthorized: User belongs to a different organization'}, status=status.HTTP_403_FORBIDDEN)
+            
+        profile, _ = SecurityProfile.objects.get_or_create(user=target_user)
+        profile.set_pin(pin)
+        profile.is_pin_enabled = True
+        profile.save()
+        
+        log_activity(
+            user=request.user,
+            action_type='UPDATE',
+            module='SECURITY',
+            description=f"Admin updated security PIN for user {target_user.username}",
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return Response({'success': True, 'message': f'Security PIN for {target_user.username} has been updated.'})
+        
+    except Exception as e:
+        logger.error(f"Error in admin_set_security_pin: {str(e)}")
+        return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def verify_security_pin(request):
     """Verify user 4-digit PIN"""
     try:
@@ -1953,3 +2098,171 @@ def verify_security_pin(request):
     except Exception as e:
         logger.error(f"Error in verify_security_pin: {str(e)}")
         return Response({'error': 'Failed to verify security PIN'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_2fa(request):
+    """
+    Verify the 2FA OTP code and return full JWT tokens.
+    """
+    user_id = request.data.get('user_id')
+    otp_code = request.data.get('otp_code')
+    
+    if not user_id or not otp_code:
+        return Response({'error': 'Missing user_id or otp_code'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    user = get_object_or_404(User, id=user_id)
+    otp_profile = getattr(user, 'otp_profile', None)
+    
+    if not otp_profile or not otp_profile.is_valid():
+        return Response({'error': 'Verification code expired. Please login again.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    if not otp_profile.verify_otp(otp_code):
+        return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    # Success: Clear OTP profile
+    otp_profile.delete()
+    
+    # Generate tokens
+    from rest_framework_simplejwt.tokens import RefreshToken
+    refresh = RefreshToken.for_user(user)
+    
+    # Get employee profile for role info
+    from .permissions import is_client_admin, is_org_creator
+    employee = getattr(user, 'employee_profile', None)
+    user_is_admin = is_client_admin(user)
+    user_is_org_creator = is_org_creator(user)
+    
+    if user_is_org_creator:
+        role_name = 'Administrator'
+    elif employee and employee.is_admin:
+        role_name = 'Admin'
+    elif employee and employee.designation:
+        role_name = employee.designation.name
+    else:
+        role_name = 'Employee'
+        
+    # Log Activity
+    log_activity(
+        user=user,
+        action_type='LOGIN',
+        module='AUTH',
+        description=f"User {user.username} completed 2FA login",
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+    
+    return Response({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+        'user': {
+            'id': str(user.id),
+            'email': user.email,
+            'name': f"{user.first_name} {user.last_name}".strip() or user.username,
+            'role': 'admin' if user_is_admin else 'employee',
+            'role_name': role_name,
+            'is_admin': user_is_admin,
+            'is_org_creator': user_is_org_creator,
+            'is_superuser': user.is_superuser,
+            'subscription_plan': 'both'
+        }
+    })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """
+    Allow user to change their own password.
+    Enforces complexity and updates password_updated_at.
+    """
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+    confirm_password = request.data.get('confirm_password')
+    
+    if not all([old_password, new_password, confirm_password]):
+        return Response({'error': 'All password fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    if new_password != confirm_password:
+        return Response({'error': 'New passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    if not request.user.check_password(old_password):
+        return Response({'error': 'Incorrect old password'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    try:
+        # Get organization for complexity rules
+        organization = get_employee_org(request.user)
+            
+        # Validate complexity
+        validate_password_complexity(new_password, organization=organization)
+        
+        # Set new password
+        request.user.set_password(new_password)
+        request.user.save()
+        
+        # Update password age tracking
+        security_profile, _ = SecurityProfile.objects.get_or_create(user=request.user)
+        security_profile.password_updated_at = timezone.now()
+        security_profile.save()
+        
+        log_activity(
+            user=request.user,
+            action_type='UPDATE',
+            module='SECURITY',
+            description="User changed their own password",
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return Response({'success': True, 'message': 'Password changed successfully'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_expired_password(request):
+    """
+    Allow users with expired passwords to reset them during login.
+    Requires email and old password for verification.
+    """
+    email = request.data.get('email')
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+    confirm_password = request.data.get('confirm_password')
+    
+    if not all([email, old_password, new_password, confirm_password]):
+        return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    if new_password != confirm_password:
+        return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    user = User.objects.filter(email__iexact=email).first()
+    if not user or not user.check_password(old_password):
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+    try:
+        # Get organization for complexity rules
+        organization = get_employee_org(user)
+            
+        # Validate complexity
+        validate_password_complexity(new_password, organization=organization)
+        
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+        
+        # Update password age tracking
+        security_profile, _ = SecurityProfile.objects.get_or_create(user=user)
+        security_profile.password_updated_at = timezone.now()
+        security_profile.save()
+        
+        log_activity(
+            user=user,
+            action_type='UPDATE',
+            module='SECURITY',
+            description="User reset their expired password during login",
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        return Response({'success': True, 'message': 'Password reset successfully. Please login with your new password.'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+

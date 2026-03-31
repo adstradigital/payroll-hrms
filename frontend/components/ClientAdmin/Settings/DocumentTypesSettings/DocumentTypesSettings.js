@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Plus, Pencil, Trash2, X, Save, RefreshCcw } from 'lucide-react';
 import axiosInstance from '@/api/axiosInstance';
+import { asString, normalizeBoolean, getApiErrorMessage } from '@/utils/settingsUtils';
 
 import './DocumentTypesSettings.css';
 
@@ -15,17 +16,7 @@ const EMPTY_FORM = Object.freeze({
     is_active: true,
 });
 
-function asString(value) {
-    if (value === null || value === undefined) return '';
-    return String(value);
-}
-
-function normalizeBoolean(value, fallback = false) {
-    if (value === true || value === false) return value;
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    return fallback;
-}
+// Helper functions moved to /utils/settingsUtils.js
 
 function normalizeDocumentTypes(raw) {
     const list = Array.isArray(raw) ? raw : [];
@@ -40,17 +31,6 @@ function normalizeDocumentTypes(raw) {
         }));
 }
 
-function getApiErrorMessage(error) {
-    const detail = error?.response?.data?.detail;
-    if (detail) return String(detail);
-    const data = error?.response?.data;
-    if (data && typeof data === 'object') {
-        const firstKey = Object.keys(data)[0];
-        const firstVal = data?.[firstKey];
-        if (firstVal) return Array.isArray(firstVal) ? String(firstVal?.[0]) : String(firstVal);
-    }
-    return String(error?.message || 'Something went wrong');
-}
 
 function DocumentTypeModal({ open, initialValue, onClose, onSave, saving }) {
     const [form, setForm] = useState(EMPTY_FORM);
@@ -317,7 +297,13 @@ export default function DocumentTypesSettings() {
                     {loading ? (
                         <div className="dts-empty">Loading document types…</div>
                     ) : sorted?.length === 0 ? (
-                        <div className="dts-empty">No document types configured yet.</div>
+                        <div className="dts-empty" style={{ textAlign: 'center', padding: '3rem 1.25rem' }}>
+                            <FileText size={32} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                            <div>No document types configured yet.</div>
+                            <p className="dts-muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                                Define document requirements for employee records.
+                            </p>
+                        </div>
                     ) : (
                         <div className="dts-table-wrap">
                             <table className="dts-table">

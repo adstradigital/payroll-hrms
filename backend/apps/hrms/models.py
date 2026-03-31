@@ -1,6 +1,9 @@
 import uuid
 
 from django.db import models
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 from apps.accounts.models import Organization
 
@@ -26,6 +29,7 @@ class EmployeeCustomField(models.Model):
     field_name = models.CharField(max_length=120)
     field_key = models.SlugField(max_length=140)
     field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES, default=FIELD_TYPE_TEXT)
+    description = models.TextField(blank=True, null=True, help_text="Optional hint or instruction for the employee.")
 
     is_required = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -106,3 +110,25 @@ class OnboardingStep(models.Model):
 
     def __str__(self):
         return f"{self.template.name}: {self.step_order}. {self.step_name}"
+
+
+class EmployeeOnboardingStep(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    employee = models.ForeignKey('accounts.Employee', on_delete=models.CASCADE, related_name='onboarding_steps')
+    template_step = models.ForeignKey(OnboardingStep, on_delete=models.CASCADE)
+
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('employee', 'template_step')
+        ordering = ['template_step__step_order', 'created_at']
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.template_step.step_name}"

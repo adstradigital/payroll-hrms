@@ -16,11 +16,26 @@ import logging
 logger = logging.getLogger(__name__)
 
 def get_client_company(user):
-    """Helper to get company from user context"""
+    """Helper to get company from user context with robust fallbacks"""
+    # 1. Primary: Linked Employee Profile
     if hasattr(user, 'employee_profile') and user.employee_profile:
         return user.employee_profile.company
-    elif hasattr(user, 'organization') and user.organization:
+        
+    # 2. Secondary: Direct organization link if exists
+    if hasattr(user, 'organization') and user.organization:
         return user.organization
+        
+    # 3. Tertiary: Fallback for owners/admins if data was wiped
+    from apps.accounts.models import Organization
+    # Try to find an organization created by this user
+    owned_org = Organization.objects.filter(created_by=user).first()
+    if owned_org:
+        return owned_org
+        
+    # 4. Quaternary: Any organization for superusers ONLY when no other options exist
+    if user.is_superuser:
+        return Organization.objects.first()
+        
     return None
 
 from apps.accounts.models import Employee
@@ -40,6 +55,7 @@ from .serializers import (
     TaxSlabSerializer, TaxDeclarationSerializer, PayrollSettingsSerializer,
     LoanSerializer, EMISerializer
 )
+from .services.tds_calculator import TDSCalculator
 
 
 @api_view(['GET', 'POST'])
@@ -966,6 +982,28 @@ def tax_dashboard_stats(request):
         logger.error(f"Error in tax_dashboard_stats: {str(e)}", exc_info=True)
         return Response({'error': str(e)}, status=500)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def tax_comparison(request):
+    """Side-by-side comparison of tax regimes"""
+    try:
+        company = get_client_company(request.user)
+        annual_income = Decimal(str(request.data.get('annual_income', 0)))
+        declaration_amount = Decimal(str(request.data.get('declaration_amount', 0)))
+        
+        if annual_income <= 0:
+            return Response({'error': 'Valid annual income is required'}, status=400)
+            
+        comparison = TDSCalculator.compare_regimes(
+            company_id=company.id,
+            annual_income=annual_income,
+            declaration_amount=declaration_amount
+        )
+        return Response(comparison)
+    except Exception as e:
+        logger.error(f"Error in tax_comparison: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
 @api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def payroll_settings_detail(request):
@@ -1661,6 +1699,139 @@ def adhoc_payment_stats(request):
     
     except Exception as e:
         logger.error(f"Error in adhoc_payment_stats: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def calculate_ctc(request):
+    """
+    Calculate CTC breakdown based on provided gross or basic salary.
+    """
+    try:
+        company = get_client_company(request.user)
+        if not company:
+            return Response({'error': 'Company not found'}, status=400)
+        
+        settings = PayrollSettings.objects.filter(company=company).first()
+        if not settings:
+            return Response({'error': 'Payroll settings not found. Please configure them in Tax Management.'}, status=400)
+        
+        # Inputs: monthly_gross OR annual_ctc OR basic_salary
+        monthly_gross = Decimal(str(request.data.get('monthly_gross', 0)))
+        annual_ctc = Decimal(str(request.data.get('annual_ctc', 0)))
+        basic_salary = Decimal(str(request.data.get('basic_salary', 0)))
+        
+        # If annual_ctc is provided, convert to monthly gross (approx)
+        if annual_ctc > 0 and monthly_gross == 0:
+            # Simplified reverse calculation: Gross = CTC / (1 + Employer Contribution Rate)
+            # For this calculator, we'll assume a standard employer share or simplify.
+            employer_rate = Decimal('0')
+            if settings.pf_enabled and settings.pf_include_employer_share_in_ctc:
+                employer_rate += settings.pf_contribution_rate_employer / 100
+            if settings.esi_enabled:
+                employer_rate += settings.esi_contribution_rate_employer / 100
+            
+            monthly_gross = (annual_ctc / 12) / (1 + employer_rate)
+
+        if monthly_gross == 0 and basic_salary > 0:
+            # Assume local standard: Basic is 50% of Gross
+            monthly_gross = basic_salary / Decimal('0.5')
+        elif monthly_gross > 0 and basic_salary == 0:
+            basic_salary = monthly_gross * Decimal('0.5')
+            
+        # Standard Components Breakdown (Simulated)
+        hra = basic_salary * Decimal('0.4') # 40% of basic
+        conveyance = Decimal('1600')
+        medical = Decimal('1250')
+        other_allowance = monthly_gross - (basic_salary + hra + conveyance + medical)
+        if other_allowance < 0:
+            other_allowance = 0
+            
+        # 1. Earnings (Monthly)
+        earnings = [
+            {'name': 'Basic Salary', 'amount': str(basic_salary.quantize(Decimal('0.01')))},
+            {'name': 'HRA', 'amount': str(hra.quantize(Decimal('0.01')))},
+            {'name': 'Conveyance Allowance', 'amount': str(conveyance.quantize(Decimal('0.01')))},
+            {'name': 'Medical Allowance', 'amount': str(medical.quantize(Decimal('0.01')))},
+            {'name': 'Other Allowances', 'amount': str(other_allowance.quantize(Decimal('0.01')))},
+        ]
+        
+        # 2. Employer Contributions (Monthly)
+        employer_pf = Decimal(0)
+        if settings.pf_enabled:
+            pf_base = basic_salary
+            if settings.pf_is_restricted_basic:
+                pf_base = min(pf_base, settings.pf_wage_ceiling)
+            employer_pf = (pf_base * settings.pf_contribution_rate_employer / 100).quantize(Decimal('0.01'))
+            
+        employer_esi = Decimal(0)
+        if settings.esi_enabled and monthly_gross <= settings.esi_wage_ceiling:
+            employer_esi = (monthly_gross * settings.esi_contribution_rate_employer / 100).quantize(Decimal('0.01'))
+            
+        employer_contributions = [
+            {'name': 'Employer PF ({}%)'.format(settings.pf_contribution_rate_employer), 'amount': str(employer_pf)},
+            {'name': 'Employer ESI ({}%)'.format(settings.esi_contribution_rate_employer), 'amount': str(employer_esi)},
+        ]
+        
+        # 3. Employee Deductions (Monthly)
+        employee_pf = Decimal(0)
+        if settings.pf_enabled:
+            pf_base = basic_salary
+            if settings.pf_is_restricted_basic:
+                pf_base = min(pf_base, settings.pf_wage_ceiling)
+            employee_pf = (pf_base * settings.pf_contribution_rate_employee / 100).quantize(Decimal('0.01'))
+            
+        employee_esi = Decimal(0)
+        if settings.esi_enabled and monthly_gross <= settings.esi_wage_ceiling:
+            employee_esi = (monthly_gross * settings.esi_contribution_rate_employee / 100).quantize(Decimal('0.01'))
+            
+        pt = Decimal('200') # Typical Professional Tax
+        
+        # TDS Estimation (Simplified)
+        annual_taxable = (monthly_gross * 12) - Decimal('50000') # Standard deduction
+        estimated_annual_tds = Decimal(0)
+        if annual_taxable > 1500000: estimated_annual_tds = (annual_taxable - 1500000) * Decimal('0.3') + Decimal('150000')
+        elif annual_taxable > 1200000: estimated_annual_tds = (annual_taxable - 1200000) * Decimal('0.2') + Decimal('90000')
+        elif annual_taxable > 900000: estimated_annual_tds = (annual_taxable - 900000) * Decimal('0.15') + Decimal('45000')
+        
+        monthly_tds = (estimated_annual_tds / 12).quantize(Decimal('0.01'))
+        
+        deductions = [
+            {'name': 'Employee PF ({}%)'.format(settings.pf_contribution_rate_employee), 'amount': str(employee_pf)},
+            {'name': 'Employee ESI ({}%)'.format(settings.esi_contribution_rate_employee), 'amount': str(employee_esi)},
+            {'name': 'Professional Tax', 'amount': str(pt)},
+            {'name': 'Estimated TDS', 'amount': str(monthly_tds)},
+        ]
+        
+        # Summary
+        total_earnings = monthly_gross
+        pf_admin = (pf_base * settings.pf_admin_charges_rate / 100).quantize(Decimal('0.01')) if settings.pf_enabled else Decimal(0)
+        pf_edli = (pf_base * settings.pf_edli_rate / 100).quantize(Decimal('0.01')) if settings.pf_enabled else Decimal(0)
+
+        total_employer_cost = total_earnings + employer_pf + employer_esi + pf_admin + pf_edli
+        total_deductions = employee_pf + employee_esi + pt + monthly_tds
+        take_home = total_earnings - total_deductions
+        
+        return Response({
+            'monthly': {
+                'gross_earnings': str(total_earnings.quantize(Decimal('0.01'))),
+                'breakdown': earnings,
+                'employer_contributions': employer_contributions,
+                'deductions': deductions,
+                'total_employer_cost': str(total_employer_cost.quantize(Decimal('0.01'))),
+                'total_deductions': str(total_deductions.quantize(Decimal('0.01'))),
+                'net_take_home': str(take_home.quantize(Decimal('0.01'))),
+            },
+            'annual': {
+                'ctc': str((total_employer_cost * 12).quantize(Decimal('0.01'))),
+                'gross': str((total_earnings * 12).quantize(Decimal('0.01'))),
+                'take_home': str((take_home * 12).quantize(Decimal('0.01'))),
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in calculate_ctc: {str(e)}", exc_info=True)
         return Response({'error': str(e)}, status=500)
 
 

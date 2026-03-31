@@ -48,37 +48,17 @@ export default function Dashboard() {
 
     // --- State Management ---
     const [stats, setStats] = useState({
-        attendance_percentage: 85,
-        on_time: 142,
-        late_come: 12,
-        total_employees: 160
+        attendance_percentage: 0,
+        on_time: 0,
+        late_come: 0,
+        total_employees: 0
     });
-    const [analyticsData, setAnalyticsData] = useState([
-        { label: 'Mon', percentage: 78 },
-        { label: 'Tue', percentage: 82 },
-        { label: 'Wed', percentage: 95 },
-        { label: 'Thu', percentage: 88 },
-        { label: 'Fri', percentage: 70 },
-        { label: 'Sat', percentage: 45 },
-        { label: 'Sun', percentage: 20 },
-    ]);
+    const [analyticsData, setAnalyticsData] = useState([]);
     const [analyticsPeriod, setAnalyticsPeriod] = useState('Week');
-    const [offlineEmployees, setOfflineEmployees] = useState([
-        { name: 'Sarah Connor', status: 'Offline', avatar: 'SC', dept: 'Engineering' },
-        { name: 'John Doe', status: 'Offline', avatar: 'JD', dept: 'HR' },
-        { name: 'Miles Dyson', status: 'Offline', avatar: 'MD', dept: 'Management' },
-    ]);
-    const [onBreak, setOnBreak] = useState([
-        { name: 'Ellen Ripley', break_start: '12:45 PM', avatar: 'ER' },
-        { name: 'Arthur Dallas', break_start: '01:15 PM', avatar: 'AD' }
-    ]);
+    const [offlineEmployees, setOfflineEmployees] = useState([]);
+    const [onBreak, setOnBreak] = useState([]);
     const [toValidate, setToValidate] = useState([]);
-    const [deptOvertime, setDeptOvertime] = useState([
-        { department: 'Engineering', overtime_hours: 45, color: '#6366f1' },
-        { department: 'Sales', overtime_hours: 30, color: '#8b5cf6' },
-        { department: 'HR', overtime_hours: 15, color: '#ec4899' },
-        { department: 'Finance', overtime_hours: 10, color: '#f59e0b' },
-    ]);
+    const [deptOvertime, setDeptOvertime] = useState([]);
 
     const [loading, setLoading] = useState(true);
     const [bulkValidating, setBulkValidating] = useState(false);
@@ -86,26 +66,77 @@ export default function Dashboard() {
     const [validationError, setValidationError] = useState('');
 
     useEffect(() => {
-        const fetchAttendanceToValidate = async () => {
+        const fetchAllDashboardData = async () => {
             setLoading(true);
             try {
-                const res = await attendanceApi.getAttendanceToValidate();
-                const records = res.data?.records || [];
+                // Prepare concurrent requests
+                const [
+                    statsRes,
+                    analyticsRes,
+                    offlineRes,
+                    onBreakRes,
+                    overtimeRes,
+                    validationRes
+                ] = await Promise.all([
+                    attendanceApi.getDashboardStats(),
+                    attendanceApi.getAnalyticsData(analyticsPeriod === 'Week' ? 'Day' : analyticsPeriod),
+                    attendanceApi.getOfflineEmployees({ page_size: 10 }),
+                    attendanceApi.getOnBreakEmployees(),
+                    attendanceApi.getDepartmentOvertime(),
+                    attendanceApi.getAttendanceToValidate()
+                ]);
+
+                // 1. Update Core Stats
+                if (statsRes.data) {
+                    setStats({
+                        attendance_percentage: statsRes.data.attendance_percentage || 0,
+                        on_time: statsRes.data.on_time || 0,
+                        late_come: statsRes.data.late_come || 0,
+                        total_employees: statsRes.data.total_employees || 0
+                    });
+                }
+
+                // 2. Update Analytics Chart
+                if (analyticsRes.data?.data) {
+                    setAnalyticsData(analyticsRes.data.data);
+                }
+
+                // 3. Update Offline List
+                if (offlineRes.data?.employees) {
+                    setOfflineEmployees(offlineRes.data.employees);
+                }
+
+                // 4. Update On Break
+                if (onBreakRes.data?.employees) {
+                    setOnBreak(onBreakRes.data.employees.map(b => ({
+                        ...b,
+                        // Format the break_start timestamp if available
+                        break_start_display: b.break_start 
+                            ? new Date(b.break_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : 'Joined'
+                    })));
+                }
+
+                // 5. Update Overtime
+                if (overtimeRes.data?.data) {
+                    setDeptOvertime(overtimeRes.data.data);
+                }
+
+                // 6. Update Validations
+                const records = validationRes.data?.records || [];
                 setToValidate(records.map(normalizeValidationRecord));
                 setValidationError('');
+
             } catch (error) {
-                console.error('Failed to fetch attendance validations:', error);
-                setValidationError(
-                    error?.response?.data?.error || 'Failed to load pending attendance validations.'
-                );
-                setToValidate([]);
+                console.error('Failed to load dashboard data:', error);
+                setValidationError('Some dashboard metrics could not be loaded.');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchAttendanceToValidate();
-    }, []);
+        fetchAllDashboardData();
+    }, [analyticsPeriod]);
 
     const handleValidate = async (id) => {
         setValidatingIds(prev => [...prev, id]);
@@ -243,7 +274,7 @@ export default function Dashboard() {
                         <button className="text-btn">View All</button>
                     </div>
                     <div className="scroll-list">
-                        {offlineEmployees.map((emp, idx) => (
+                        {offlineEmployees.length > 0 ? offlineEmployees.map((emp, idx) => (
                             <div key={idx} className="list-item">
                                 <div className="avatar-circle">{emp.avatar}</div>
                                 <div className="item-meta">
@@ -253,7 +284,9 @@ export default function Dashboard() {
                                 <span className="status-indicator status-indicator--offline">Away</span>
                                 <button className="icon-btn"><MoreVertical size={16} /></button>
                             </div>
-                        ))}
+                        )) : (
+                            <div className="empty-list-placeholder">All staff are accounted for.</div>
+                        )}
                     </div>
                 </section>
             </div>
@@ -352,15 +385,17 @@ export default function Dashboard() {
                         <Coffee size={18} className="text-muted" />
                     </div>
                     <div className="break-grid">
-                        {onBreak.map((b, i) => (
+                        {onBreak.length > 0 ? onBreak.map((b, i) => (
                             <div key={i} className="break-card">
                                 <div className="avatar-sm">{b.avatar}</div>
                                 <div className="break-info">
                                     <span className="name">{b.name}</span>
-                                    <span className="time">Since {b.break_start}</span>
+                                    <span className="time">Since {b.break_start_display}</span>
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <div className="empty-list-placeholder">No employees currently on break.</div>
+                        )}
                     </div>
                 </section>
 
@@ -383,13 +418,15 @@ export default function Dashboard() {
                             </div>
                         </div>
                         <div className="viz-legend">
-                            {deptOvertime.map((d, i) => (
+                            {deptOvertime.length > 0 ? deptOvertime.map((d, i) => (
                                 <div key={i} className="legend-row">
                                     <span className="dot" style={{ backgroundColor: d.color }}></span>
                                     <span className="label">{d.department}</span>
                                     <span className="value">{d.overtime_hours}h</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <div className="empty-list-placeholder">No overtime recorded.</div>
+                            )}
                         </div>
                     </div>
                 </section>

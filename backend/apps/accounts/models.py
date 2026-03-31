@@ -391,6 +391,27 @@ class Employee(BaseModel):
     # Notes
     notes = models.TextField(blank=True)
 
+    # Custom Fields (Dynamic metadata)
+    custom_fields = models.JSONField(default=dict, blank=True)
+
+    # Onboarding Integration
+    onboarding_template = models.ForeignKey(
+        'hrms.OnboardingTemplate',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='onboarded_employees'
+    )
+    onboarding_status = models.CharField(
+        max_length=20,
+        choices=(
+            ('pending', 'Pending'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+        ),
+        default='pending'
+    )
+
     class Meta:
         indexes = [
             models.Index(fields=['company', 'status']),
@@ -1124,6 +1145,7 @@ class SecurityProfile(BaseModel):
     )
     
     last_pin_change = models.DateTimeField(null=True, blank=True)
+    password_updated_at = models.DateTimeField(default=timezone.now)
     failed_attempts = models.PositiveSmallIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
     
@@ -1164,3 +1186,33 @@ class SecurityProfile(BaseModel):
         
         self.save()
         return is_correct
+
+
+class UserOTP(models.Model):
+    """Temporary OTP storage for 2FA login verification"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='otp_profile')
+    otp_hash = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    
+    def __str__(self):
+        return f"OTP for {self.user.username}"
+
+    def is_valid(self):
+        """Check if OTP is still valid (not expired)"""
+        return timezone.now() < self.expires_at
+
+    def set_otp(self, otp_code):
+        """Hash the 6-digit code and set expiry"""
+        from django.contrib.auth.hashers import make_password
+        self.otp_hash = make_password(str(otp_code))
+        self.expires_at = timezone.now() + timezone.timedelta(minutes=10)
+        self.save()
+
+    def verify_otp(self, otp_code):
+        """Verify the 6-digit code"""
+        from django.contrib.auth.hashers import check_password
+        if not self.is_valid():
+            return False
+        return check_password(str(otp_code), self.otp_hash)

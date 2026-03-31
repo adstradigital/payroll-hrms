@@ -45,6 +45,7 @@ export const SUPERADMIN_ENDPOINTS = {
 export const CLIENTADMIN_ENDPOINTS = {
     // Auth
     LOGIN: `${BASE_URL}/account/auth/login/`,
+    VERIFY_2FA: `${BASE_URL}/account/auth/login/verify-2fa/`,
     REGISTER: `${BASE_URL}/account/auth/register/`,
     SUBMIT_REGISTRATION: `${BASE_URL}/account/registrations/submit/`,
     LOGOUT: `${BASE_URL}/account/auth/logout/`,
@@ -75,9 +76,13 @@ export const CLIENTADMIN_ENDPOINTS = {
     // Requests
     DOCUMENT_REQUESTS: `${BASE_URL}/account/employees/document-requests/`,
     SHIFT_REQUESTS: `${BASE_URL}/account/employees/shift-requests/`,
+    SHIFT_REQUEST_APPROVE: (id) => `${BASE_URL}/account/employees/shift-requests/${id}/approve/`,
+    SHIFT_REQUEST_REJECT: (id) => `${BASE_URL}/account/employees/shift-requests/${id}/reject/`,
     WORK_TYPE_REQUESTS: `${BASE_URL}/account/employees/work-type-requests/`,
-    REIMBURSEMENT_REQUESTS: `${BASE_URL}/account/employees/reimbursement-requests/`,
-    REIMBURSEMENT_REQUEST_DETAIL: (id) => `${BASE_URL}/account/employees/reimbursement-requests/${id}/`,
+    WORK_TYPE_REQUEST_APPROVE: (id) => `${BASE_URL}/account/employees/work-type-requests/${id}/approve/`,
+    WORK_TYPE_REQUEST_REJECT: (id) => `${BASE_URL}/account/employees/work-type-requests/${id}/reject/`,
+    EXPENSE_REQUESTS: `${BASE_URL}/account/employees/expense-requests/`,
+    EXPENSE_REQUEST_DETAIL: (id) => `${BASE_URL}/account/employees/expense-requests/${id}/`,
     ENCASHMENT_REQUESTS: `${BASE_URL}/account/employees/encashment-requests/`,
     ENCASHMENT_REQUEST_DETAIL: (id) => `${BASE_URL}/account/employees/encashment-requests/${id}/`,
 
@@ -121,6 +126,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     PAYROLL_GENERATE: `${BASE_URL}/payroll/periods/generate/`,
     PAYROLL_SETTINGS: `${BASE_URL}/payroll/settings/`,
     PAYROLL_REPORTS: `${BASE_URL}/payroll/reports/`,
+    ADHOC_PAYMENTS: `${BASE_URL}/payroll/adhoc-payments/`,
 
     // Loans & Advances
     LOANS: `${BASE_URL}/payroll/loans/`,
@@ -157,6 +163,11 @@ export const CLIENTADMIN_ENDPOINTS = {
     SECURITY_PROFILE: `${BASE_URL}/account/security/profile/`,
     SET_SECURITY_PIN: `${BASE_URL}/account/security/pin/set/`,
     VERIFY_SECURITY_PIN: `${BASE_URL}/account/security/pin/verify/`,
+    SECURITY_PIN_ADMIN_SET: `${BASE_URL}/account/security/pin/admin-set/`,
+
+    // Settings
+    SETTINGS_BACKUP: `${BASE_URL}/settings/backup/`,
+    SETTINGS_BACKUP_DOWNLOAD: `${BASE_URL}/settings/backup/download/`,
 
     // Assets
     ASSETS: `${BASE_URL}/assets/inventory/`,
@@ -183,6 +194,12 @@ export const CLIENTADMIN_ENDPOINTS = {
     REVIEW_APPROVE: (id) => `${BASE_URL}/performance/reviews/${id}/approve/`,
     REVIEW_REJECT: (id) => `${BASE_URL}/performance/reviews/${id}/reject/`,
     REVIEW_BULK_CREATE: `${BASE_URL}/performance/reviews/bulk_create/`,
+    BONUS_CALCULATE: `${BASE_URL}/performance/bonus-mappings/calculate_bonus/`,
+
+    // Recruitment
+    RECRUITMENT: `${BASE_URL}/recruitment/`,
+    INTERVIEWS: `${BASE_URL}/recruitment/interviews/`,
+    INTERVIEW_DETAIL: (id) => `${BASE_URL}/recruitment/interviews/${id}/`,
 };
 
 export default BASE_URL;

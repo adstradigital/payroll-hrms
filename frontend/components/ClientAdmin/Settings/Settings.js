@@ -25,10 +25,13 @@ import DepartmentsSettings from './DepartmentsSettings/DepartmentsSettings';
 import DesignationsSettings from './DesignationsSettings/DesignationsSettings';
 import EmployeeFieldsSettings from './EmployeeFieldsSettings/EmployeeFieldsSettings';
 import DocumentTypesSettings from './DocumentTypesSettings/DocumentTypesSettings';
-import OnboardingTemplatesSettings from './OnboardingTemplatesSettings/OnboardingTemplatesSettings';
+// import OnboardingTemplatesSettings from './OnboardingTemplatesSettings/OnboardingTemplatesSettings';
 import RecruitmentJobPostingsSettings from './RecruitmentJobPostingsSettings/RecruitmentJobPostingsSettings';
 import RecruitmentApplicationStagesSettings from './RecruitmentApplicationStagesSettings/RecruitmentApplicationStagesSettings';
 import RecruitmentInterviewTemplatesSettings from './RecruitmentInterviewTemplatesSettings/RecruitmentInterviewTemplatesSettings';
+import RecruitmentSkillsSettings from './RecruitmentSkillsSettings/RecruitmentSkillsSettings';
+import RecruitmentRejectionReasonsSettings from './RecruitmentRejectionReasonsSettings/RecruitmentRejectionReasonsSettings';
+import DateTimeSettings from './DateTimeSettings/DateTimeSettings';
 
 import './Settings.css';
 
@@ -64,7 +67,9 @@ const settingsMenu = [
         items: [
             { id: 'job-postings', label: 'Job Postings' },
             { id: 'application-stages', label: 'Application Stages' },
-            { id: 'interview-templates', label: 'Interview Templates' }
+            { id: 'interview-templates', label: 'Interview Templates' },
+            { id: 'skills-categories', label: 'Skills & Categories' },
+            { id: 'rejection-reasons', label: 'Rejection Reasons' }
         ]
     },
     {
@@ -73,8 +78,7 @@ const settingsMenu = [
         icon: Users,
         items: [
             { id: 'employee-fields', label: 'Employee Fields' },
-            { id: 'document-types', label: 'Document Types' },
-            { id: 'onboarding', label: 'Onboarding Templates' }
+            { id: 'document-types', label: 'Document Types' }
         ]
     },
     {
@@ -182,14 +186,20 @@ export default function Settings() {
                 return <EmployeeFieldsSettings />;
             case 'document-types':
                 return <DocumentTypesSettings />;
-            case 'onboarding':
-                return <OnboardingTemplatesSettings />;
+            // case 'onboarding':
+            //     return <OnboardingTemplatesSettings />;
             case 'job-postings':
                 return <RecruitmentJobPostingsSettings />;
             case 'application-stages':
                 return <RecruitmentApplicationStagesSettings />;
             case 'interview-templates':
                 return <RecruitmentInterviewTemplatesSettings />;
+            case 'skills-categories':
+                return <RecruitmentSkillsSettings />;
+            case 'rejection-reasons':
+                return <RecruitmentRejectionReasonsSettings />;
+            case 'date-time-format':
+                return <DateTimeSettings />;
             default:
                 return <PlaceholderContent activeItem={activeItem} />;
         }

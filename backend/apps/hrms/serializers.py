@@ -6,6 +6,7 @@ from .models import (
     EmployeeDocumentType,
     OnboardingTemplate,
     OnboardingStep,
+    EmployeeOnboardingStep,
 )
 
 
@@ -21,6 +22,7 @@ class EmployeeCustomFieldSerializer(serializers.ModelSerializer):
             'field_type',
             'is_required',
             'is_active',
+            'description',
             'options',
             'created_at',
             'updated_at',
@@ -182,3 +184,25 @@ class OnboardingStepSerializer(serializers.ModelSerializer):
         if ivalue < 1:
             raise serializers.ValidationError('Step order must be >= 1.')
         return ivalue
+
+
+class EmployeeOnboardingStepSerializer(serializers.ModelSerializer):
+    step_name = serializers.CharField(source='template_step.step_name', read_only=True)
+    step_order = serializers.IntegerField(source='template_step.step_order', read_only=True)
+
+    class Meta:
+        model = EmployeeOnboardingStep
+        fields = (
+            'id',
+            'employee',
+            'template_step',
+            'step_name',
+            'step_order',
+            'is_completed',
+            'completed_at',
+            'completed_by',
+            'notes',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = ('id', 'created_at', 'updated_at', 'step_name', 'step_order')

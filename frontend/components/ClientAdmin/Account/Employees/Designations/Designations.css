@@ -285,9 +285,16 @@
 }
 
 .card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
     margin-bottom: 0.5rem;
-    padding-right: 3rem;
-    /* Space for badge */
+}
+
+.title-group {
+    flex: 1;
+    min-width: 0; /* Important for ellipsis in flex child */
 }
 
 .card-title {
@@ -295,6 +302,9 @@
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .card-code {
@@ -305,15 +315,14 @@
 }
 
 .level-badge {
-    position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
     font-size: 0.7rem;
     font-weight: 700;
     padding: 2px 8px;
     border-radius: 4px;
     border: 1px solid currentColor;
     text-transform: uppercase;
+    white-space: nowrap;
+    height: fit-content;
 }
 
 /* Levels using variables or specific colors */

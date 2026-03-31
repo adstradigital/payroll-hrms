@@ -20,6 +20,12 @@ const recruitmentApi = {
     createSkill: (data) => axiosInstance.post('/recruitment/skills/', data),
     updateSkill: (id, data) => axiosInstance.put(`/recruitment/skills/${id}/`, data),
     deleteSkill: (id) => axiosInstance.delete(`/recruitment/skills/${id}/`),
+    
+    // Rejection Reasons
+    getRejectionReasons: () => axiosInstance.get('/recruitment/rejection-reasons/'),
+    createRejectionReason: (data) => axiosInstance.post('/recruitment/rejection-reasons/', data),
+    updateRejectionReason: (id, data) => axiosInstance.put(`/recruitment/rejection-reasons/${id}/`, data),
+    deleteRejectionReason: (id) => axiosInstance.delete(`/recruitment/rejection-reasons/${id}/`),
 
     // Recruitment Stages
     getStages: () => axiosInstance.get('/recruitment/stages/'),

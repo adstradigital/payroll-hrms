@@ -36,3 +36,16 @@ def get_employee_org_id(user):
             
     return None
 
+def get_employee_org(user):
+    """Safely get the company/organization object for a user."""
+    employee = get_employee_or_none(user)
+    if employee:
+        return employee.company
+    
+    # Fallback for organization creators
+    if user and user.is_authenticated:
+        # Avoid circular import
+        from .models import Organization
+        return Organization.objects.filter(created_by=user).first()
+            
+    return None

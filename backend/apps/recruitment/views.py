@@ -28,6 +28,7 @@ from .models import (
     Survey,
     SurveyQuestion,
     SurveyResponse,
+    RejectionReason,
 )
 from .serializers import (
     JobOpeningSerializer, JobOpeningListSerializer,
@@ -38,6 +39,7 @@ from .serializers import (
     DashboardStatsSerializer, PipelineStatusSerializer, ApplicationSourceSerializer, TodayInterviewSerializer,
     RecruitmentJobSettingSerializer,
     InterviewTemplateSerializer,
+    RejectionReasonSerializer,
 )
 
 
@@ -410,6 +412,94 @@ def survey_detail(request, pk):
             },
             status=status.HTTP_404_NOT_FOUND,
         )
+    except Exception as e:
+        return Response(
+            {
+                'success': False,
+                'message': 'An error occurred',
+                'error': str(e),
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def rejection_reason_list_create(request):
+    """
+    GET: List all standardized rejection reasons.
+    POST: Create a new rejection reason.
+    """
+    try:
+        if request.method == 'GET':
+            queryset = RejectionReason.objects.order_by('reason_text')
+            serializer = RejectionReasonSerializer(queryset, many=True)
+            return Response({'success': True, 'data': serializer.data})
+
+        serializer = RejectionReasonSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    'success': True,
+                    'message': 'Rejection reason created successfully',
+                    'data': serializer.data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(
+            {
+                'success': False,
+                'message': 'Failed to create rejection reason',
+                'errors': serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as e:
+        return Response(
+            {
+                'success': False,
+                'message': 'An error occurred',
+                'error': str(e),
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def rejection_reason_detail(request, pk):
+    """
+    PUT: Update a rejection reason.
+    DELETE: Delete a rejection reason.
+    """
+    try:
+        reason = get_object_or_404(RejectionReason, pk=pk)
+
+        if request.method == 'PUT':
+            serializer = RejectionReasonSerializer(reason, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {
+                        'success': True,
+                        'message': 'Rejection reason updated successfully',
+                        'data': serializer.data,
+                    }
+                )
+
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Failed to update rejection reason',
+                    'errors': serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reason.delete()
+        return Response({'success': True, 'message': 'Rejection reason deleted successfully'})
     except Exception as e:
         return Response(
             {

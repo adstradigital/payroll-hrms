@@ -252,6 +252,33 @@
     outline: none;
 }
 
+.report-date-selector {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    padding: 0 var(--spacing-lg);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.report-date-selector:focus-within {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 4px rgba(var(--brand-primary-rgb), 0.1);
+}
+
+.report-date-selector input {
+    background: transparent;
+    border: none;
+    padding: 12px 0;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--brand-primary);
+    outline: none;
+    cursor: pointer;
+}
+
 .filter-btn {
     display: flex;
     align-items: center;
@@ -419,6 +446,34 @@
     color: var(--text-tertiary);
     border-radius: 6px;
     border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.report-card-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.view-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
 }
 
 .generate-btn {

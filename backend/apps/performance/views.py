@@ -66,8 +66,27 @@ def performance_dashboard(request):
                     {'error': 'Review period not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
+
+        target_user = request.user
+        employee_param = request.query_params.get('employee')
         
-        stats = AnalyticsService.get_dashboard_stats(request.user, review_period)
+        if employee_param and get_user_role(request.user) in ['admin', 'hr']:
+            from apps.accounts.models import Employee
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            # 1. Try to get Employee by UUID
+            try:
+                employee = Employee.objects.filter(id=employee_param).first()
+                if employee and employee.user:
+                    target_user = employee.user
+                else:
+                    # 2. Try to get User by ID
+                    target_user = User.objects.get(id=employee_param)
+            except (ValueError, User.DoesNotExist):
+                return Response({'detail': 'Employee or User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        stats = AnalyticsService.get_dashboard_stats(target_user, review_period)
         serializer = DashboardStatsSerializer(stats)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -255,7 +274,14 @@ def performance_review_list(request):
             role = get_user_role(user)
             
             if role in ['admin', 'hr']:
-                pass
+                employee_param = request.query_params.get('employee')
+                if employee_param:
+                    from apps.accounts.models import Employee
+                    # If it's a UUID, it's likely an Employee ID
+                    if '-' in str(employee_param):
+                        queryset = queryset.filter(employee__employee_profile__id=employee_param)
+                    else:
+                        queryset = queryset.filter(employee_id=employee_param)
             elif role == 'manager':
                 # Managers see reviews where they are the reporting manager
                 queryset = queryset.filter(employee__employee_profile__reporting_manager__user=user)
@@ -733,8 +759,13 @@ def goal_list(request):
             
             # RE-WRITING QUERYSET LOGIC:
             if role in ['admin', 'hr']:
-                 # Admin sees all
-                 pass 
+                 employee_param = request.query_params.get('employee')
+                 if employee_param:
+                     from apps.accounts.models import Employee
+                     if '-' in str(employee_param):
+                         queryset = queryset.filter(employee__employee_profile__id=employee_param)
+                     else:
+                         queryset = queryset.filter(employee_id=employee_param)
             elif role == 'manager':
                 queryset = queryset.filter(
                     Q(employee__employee_profile__reporting_manager__user=request.user) | Q(employee__isnull=True)

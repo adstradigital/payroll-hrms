@@ -81,20 +81,20 @@ class PerformanceReview(BaseModel):
     
     # Self Assessment
     self_assessment = models.TextField(blank=True, null=True)
-    self_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
-                                     validators=[MinValueValidator(0), MaxValueValidator(5)])
+    self_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                     validators=[MinValueValidator(0)])
     self_submitted_at = models.DateTimeField(null=True, blank=True)
     
     # Manager Review
     manager_feedback = models.TextField(blank=True, null=True)
-    manager_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
-                                        validators=[MinValueValidator(0), MaxValueValidator(5)])
+    manager_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                        validators=[MinValueValidator(0)])
     strengths = models.TextField(blank=True, null=True)
     areas_for_improvement = models.TextField(blank=True, null=True)
     
     # Final Rating
-    overall_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
-                                        validators=[MinValueValidator(0), MaxValueValidator(5)])
+    overall_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                        validators=[MinValueValidator(0)])
     rating_category = models.CharField(max_length=50, blank=True, null=True)  # Excellent, Good, etc.
     goal_completion_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
                                         help_text="Average goal completion percentage from objectives")
@@ -128,8 +128,8 @@ class RatingScale(BaseModel):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
-    min_value = models.DecimalField(max_digits=3, decimal_places=2, default=0)
-    max_value = models.DecimalField(max_digits=3, decimal_places=2, default=5)
+    min_value = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    max_value = models.DecimalField(max_digits=5, decimal_places=2, default=5)
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     
@@ -149,8 +149,8 @@ class RatingCategory(BaseModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     rating_scale = models.ForeignKey(RatingScale, on_delete=models.CASCADE, related_name='categories')
     name = models.CharField(max_length=100)  # Excellent, Good, Satisfactory, etc.
-    min_score = models.DecimalField(max_digits=3, decimal_places=2)
-    max_score = models.DecimalField(max_digits=3, decimal_places=2)
+    min_score = models.DecimalField(max_digits=5, decimal_places=2)
+    max_score = models.DecimalField(max_digits=5, decimal_places=2)
     description = models.TextField(blank=True, null=True)
     color_code = models.CharField(max_length=7, default='#000000')  # Hex color for UI
     
@@ -195,10 +195,10 @@ class CriteriaRating(BaseModel):
                                           related_name='criteria_ratings')
     criteria = models.ForeignKey(PerformanceCriteria, on_delete=models.CASCADE)
     
-    self_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
-                                     validators=[MinValueValidator(0), MaxValueValidator(5)])
-    manager_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
-                                        validators=[MinValueValidator(0), MaxValueValidator(5)])
+    self_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                     validators=[MinValueValidator(0)])
+    manager_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                        validators=[MinValueValidator(0)])
     
     comments = models.TextField(blank=True, null=True)
     
@@ -219,8 +219,8 @@ class BonusMapping(BaseModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200)
     rating_scale = models.ForeignKey(RatingScale, on_delete=models.CASCADE, related_name='bonus_mappings')
-    min_rating = models.DecimalField(max_digits=3, decimal_places=2)
-    max_rating = models.DecimalField(max_digits=3, decimal_places=2)
+    min_rating = models.DecimalField(max_digits=5, decimal_places=2)
+    max_rating = models.DecimalField(max_digits=5, decimal_places=2)
     bonus_percentage = models.DecimalField(max_digits=5, decimal_places=2,
                                           validators=[MinValueValidator(0), MaxValueValidator(100)])
     is_active = models.BooleanField(default=True)
@@ -266,10 +266,10 @@ class Goal(BaseModel):
     achievement_notes = models.TextField(blank=True, null=True)
     
     # Rating
-    self_achievement_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
-                                                  validators=[MinValueValidator(0), MaxValueValidator(5)])
-    manager_achievement_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
-                                                     validators=[MinValueValidator(0), MaxValueValidator(5)])
+    self_achievement_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                                  validators=[MinValueValidator(0)])
+    manager_achievement_rating = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                                     validators=[MinValueValidator(0)])
     
     class Meta:
         db_table = 'goals'

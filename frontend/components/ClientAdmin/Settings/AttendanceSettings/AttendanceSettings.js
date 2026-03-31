@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Clock, AlertTriangle, CheckCircle, Settings, Save,
-    Calendar, UserCheck, FileText, Bell, Shield, Timer
+    Calendar, UserCheck, FileText, Bell, Shield, Timer,
+    Globe, Lock, Power
 } from 'lucide-react';
 import OverTimeSettings from '../OverTimeRule/OverTimeSettings';
+import { getAttendancePolicies, updateAttendancePolicy, createAttendancePolicy } from '@/api/api_clientadmin';
 import './AttendanceSettings.css';
 
 export default function AttendanceSettings() {
@@ -54,18 +56,140 @@ export default function AttendanceSettings() {
         notifyOnApproval: true
     });
 
-    // Overtime Settings is now managed by the OverTimeSettings component
+    // Advanced Settings
+    const [advancedSettings, setAdvancedSettings] = useState({
+        ipRestrictionEnabled: false,
+        allowedIps: '',
+        autoClockoutEnabled: false,
+        autoClockoutTime: '22:00',
+        maxRegularizationAttempts: 5
+    });
 
     const [notification, setNotification] = useState(null);
     const [activeSection, setActiveSection] = useState('late');
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [policyId, setPolicyId] = useState(null);
+
+    const fetchPolicy = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await getAttendancePolicies({ is_active: 'true' });
+            if (response.data && response.data.length > 0) {
+                const policy = response.data[0];
+                setPolicyId(policy.id);
+                
+                // Map Backend to Frontend State
+                setLateSettings(prev => ({
+                    ...prev,
+                    graceMinutes: policy.grace_period_minutes || 0,
+                    lateThresholds: policy.late_thresholds || prev.lateThresholds
+                }));
+
+                setEarlySettings(prev => ({
+                    ...prev,
+                    earlyThresholds: policy.early_thresholds || prev.earlyThresholds
+                }));
+
+                setAdvancedSettings({
+                    ipRestrictionEnabled: policy.ip_restriction_enabled || false,
+                    allowedIps: policy.allowed_ips || '',
+                    autoClockoutEnabled: policy.auto_clockout_enabled || false,
+                    autoClockoutTime: policy.auto_clockout_time || '22:00',
+                    maxRegularizationAttempts: policy.max_regularization_attempts_per_month || 5
+                });
+
+                setRequestSettings({
+                    enableAttendanceRequests: policy.enable_attendance_requests ?? true,
+                    allowCheckInCorrection: policy.allow_checkin_correction ?? true,
+                    allowCheckOutCorrection: policy.allow_checkout_correction ?? true,
+                    allowMissedAttendance: policy.allow_missed_attendance ?? true,
+                    requireProof: policy.require_proof ?? false,
+                    maxRequestsPerMonth: policy.max_requests_per_month ?? 5,
+                    requestDeadlineDays: policy.request_deadline_days ?? 7,
+                    autoApproveAfterDays: policy.auto_approve_after_days ?? 0,
+                    notifyManager: true, // Default local only for now if not in model
+                    notifyEmployee: true
+                });
+            }
+        } catch (error) {
+            console.error('Failed to fetch attendance policy:', error);
+            if (error.response) {
+                console.error('Response data:', error.response.data);
+                console.error('Response status:', error.response.status);
+            }
+            showNotification('Failed to load settings', 'error');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchPolicy();
+    }, [fetchPolicy]);
 
     const showNotification = (message, type) => {
         setNotification({ message, type });
         setTimeout(() => setNotification(null), 3000);
     };
 
-    const handleSave = (section) => {
-        showNotification(`${section} settings saved successfully`, 'success');
+    const handleSave = async (section) => {
+        try {
+            setSaving(true);
+            const data = {
+                name: 'Default Attendance Policy',
+                policy_type: 'company',
+                working_days: '5_days',
+                work_start_time: '09:00:00',
+                work_end_time: '18:00:00',
+                effective_from: new Date().toISOString().split('T')[0],
+                grace_period_minutes: lateSettings.graceMinutes,
+                late_thresholds: lateSettings.lateThresholds,
+                early_thresholds: earlySettings.earlyThresholds,
+                ip_restriction_enabled: advancedSettings.ipRestrictionEnabled,
+                allowed_ips: advancedSettings.allowedIps,
+                auto_clockout_enabled: advancedSettings.autoClockoutEnabled,
+                auto_clockout_time: advancedSettings.autoClockoutTime,
+                max_regularization_attempts_per_month: advancedSettings.maxRegularizationAttempts,
+                
+                // Add Request Settings
+                enable_attendance_requests: requestSettings.enableAttendanceRequests,
+                allow_checkin_correction: requestSettings.allowCheckInCorrection,
+                allow_checkout_correction: requestSettings.allowCheckOutCorrection,
+                allow_missed_attendance: requestSettings.allowMissedAttendance,
+                require_proof: requestSettings.requireProof,
+                max_requests_per_month: requestSettings.maxRequestsPerMonth,
+                request_deadline_days: requestSettings.requestDeadlineDays,
+                auto_approve_after_days: requestSettings.autoApproveAfterDays
+            };
+
+            if (policyId) {
+                await updateAttendancePolicy(policyId, data);
+                showNotification(`${section} settings updated successfully`, 'success');
+            } else {
+                const response = await createAttendancePolicy(data);
+                if (response.data && response.data.id) {
+                    setPolicyId(response.data.id);
+                    showNotification(`${section} settings initialized successfully`, 'success');
+                }
+            }
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            let errorMessage = 'Failed to save changes';
+            if (error.response?.data) {
+                const data = error.response.data;
+                if (typeof data === 'object') {
+                    const firstKey = Object.keys(data)[0];
+                    const firstVal = data[firstKey];
+                    errorMessage = Array.isArray(firstVal) ? firstVal[0] : (data.error || String(firstVal));
+                } else if (typeof data === 'string') {
+                    errorMessage = data;
+                }
+            }
+            showNotification(errorMessage, 'error');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const penaltyOptions = [
@@ -122,6 +246,13 @@ export default function AttendanceSettings() {
                 >
                     <Calendar size={16} />
                     Overtime
+                </button>
+                <button
+                    className={`att-tab ${activeSection === 'advanced' ? 'active' : ''}`}
+                    onClick={() => setActiveSection('advanced')}
+                >
+                    <Shield size={16} />
+                    Advanced Rules
                 </button>
             </div>
 
@@ -265,9 +396,12 @@ export default function AttendanceSettings() {
                         )}
                     </div>
                     <div className="att-card-footer">
-                        <button className="att-btn-primary" onClick={() => handleSave('Late coming')}>
-                            <Save size={16} />
-                            Save Changes
+                        <button 
+                            className="att-btn-primary" 
+                            onClick={() => handleSave('Late coming')}
+                            disabled={loading || saving}
+                        >
+                            {saving ? 'Saving...' : <><Save size={16} /> {policyId ? 'Save Changes' : 'Initialize Settings'}</>}
                         </button>
                     </div>
                 </div>
@@ -372,9 +506,12 @@ export default function AttendanceSettings() {
                         )}
                     </div>
                     <div className="att-card-footer">
-                        <button className="att-btn-primary" onClick={() => handleSave('Early going')}>
-                            <Save size={16} />
-                            Save Changes
+                        <button 
+                            className="att-btn-primary" 
+                            onClick={() => handleSave('Early going')}
+                            disabled={loading || saving}
+                        >
+                            {saving ? 'Saving...' : <><Save size={16} /> {policyId ? 'Save Changes' : 'Initialize Settings'}</>}
                         </button>
                     </div>
                 </div>
@@ -520,9 +657,12 @@ export default function AttendanceSettings() {
                         )}
                     </div>
                     <div className="att-card-footer">
-                        <button className="att-btn-primary" onClick={() => handleSave('Attendance request')}>
-                            <Save size={16} />
-                            Save Changes
+                        <button 
+                            className="att-btn-primary" 
+                            onClick={() => handleSave('Attendance request')}
+                            disabled={loading || saving}
+                        >
+                            {saving ? 'Saving...' : <><Save size={16} /> {policyId ? 'Save Changes' : 'Initialize Settings'}</>}
                         </button>
                     </div>
                 </div>
@@ -532,6 +672,116 @@ export default function AttendanceSettings() {
             {activeSection === 'overtime' && (
                 <div className="animate-fade-in">
                     <OverTimeSettings standalone={false} />
+                </div>
+            )}
+
+            {/* Advanced Rules Section */}
+            {activeSection === 'advanced' && (
+                <div className="att-card">
+                    <div className="att-card-header">
+                        <Shield size={18} />
+                        <h3>Advanced Attendance Security</h3>
+                    </div>
+                    <div className="att-card-body">
+                        {/* IP Restriction */}
+                        <div className="att-toggle-row">
+                            <div className="att-toggle-item wide">
+                                <div className="toggle-info">
+                                    <div className="flex items-center gap-2">
+                                        <Lock size={16} className="text-blue-500" />
+                                        <span className="toggle-label">IP Restriction (Network Whitelist)</span>
+                                    </div>
+                                    <span className="toggle-desc">Limit check-ins to approved office IP addresses only</span>
+                                </div>
+                                <label className="toggle-switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={advancedSettings.ipRestrictionEnabled}
+                                        onChange={(e) => setAdvancedSettings({ ...advancedSettings, ipRestrictionEnabled: e.target.checked })}
+                                    />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {advancedSettings.ipRestrictionEnabled && (
+                            <div className="att-field full-width animate-fade-in">
+                                <label>Allowed IP Addresses</label>
+                                <textarea
+                                    value={advancedSettings.allowedIps}
+                                    onChange={(e) => setAdvancedSettings({ ...advancedSettings, allowedIps: e.target.value })}
+                                    placeholder="e.g. 192.168.1.1, 103.24.56.2"
+                                    className="att-input att-textarea"
+                                    rows="3"
+                                />
+                                <span className="field-hint">Comma-separated list of static WAN IPs. Leave empty to allow all (though enabled).</span>
+                            </div>
+                        )}
+
+                        <div className="att-divider" />
+
+                        {/* Auto-Clockout */}
+                        <div className="att-toggle-row">
+                            <div className="att-toggle-item wide">
+                                <div className="toggle-info">
+                                    <div className="flex items-center gap-2">
+                                        <Power size={16} className="text-red-500" />
+                                        <span className="toggle-label">Automated Clock-Out</span>
+                                    </div>
+                                    <span className="toggle-desc">Automatically end shifts for employees who forget to clock out</span>
+                                </div>
+                                <label className="toggle-switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={advancedSettings.autoClockoutEnabled}
+                                        onChange={(e) => setAdvancedSettings({ ...advancedSettings, autoClockoutEnabled: e.target.checked })}
+                                    />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {advancedSettings.autoClockoutEnabled && (
+                            <div className="att-field-row animate-fade-in">
+                                <div className="att-field">
+                                    <label>Daily Cut-off Time</label>
+                                    <input
+                                        type="time"
+                                        value={advancedSettings.autoClockoutTime}
+                                        onChange={(e) => setAdvancedSettings({ ...advancedSettings, autoClockoutTime: e.target.value })}
+                                        className="att-input"
+                                    />
+                                    <span className="field-hint">Usually end of the day (e.g. 22:00)</span>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="att-divider" />
+
+                        {/* Limits */}
+                        <div className="att-field-row">
+                            <div className="att-field">
+                                <label>Max Regularization Attempts</label>
+                                <input
+                                    type="number"
+                                    value={advancedSettings.maxRegularizationAttempts}
+                                    onChange={(e) => setAdvancedSettings({ ...advancedSettings, maxRegularizationAttempts: parseInt(e.target.value) })}
+                                    className="att-input"
+                                    min="0"
+                                />
+                                <span className="field-hint">Max requests allowed per employee per month</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="att-card-footer">
+                        <button 
+                            className="att-btn-primary" 
+                            onClick={() => handleSave('Advanced rules')}
+                            disabled={loading || saving}
+                        >
+                            {saving ? 'Saving...' : <><Save size={16} /> {policyId ? 'Save Changes' : 'Initialize Settings'}</>}
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

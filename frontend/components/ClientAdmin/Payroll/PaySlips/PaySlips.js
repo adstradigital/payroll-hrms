@@ -366,6 +366,12 @@ export default function PaySlips() {
                                         </div>
                                         <div className="flex gap-12 text-right justify-end">
                                             <div className="text-left">
+                                                <div className="ps-paper-label">Attendance Details</div>
+                                                <div className="text-sm mb-1">Working Days: <span className="font-bold">{selectedPayslip.working_days}</span></div>
+                                                <div className="text-sm mb-1">LOP Days: <span className="font-bold text-danger">{selectedPayslip.lop_days}</span></div>
+                                                <div className="text-sm">Payable Days: <span className="font-bold text-success">{selectedPayslip.working_days - selectedPayslip.lop_days}</span></div>
+                                            </div>
+                                            <div className="text-left">
                                                 <div className="ps-paper-label">Pay Summary</div>
                                                 <div className="text-sm mb-2">Gross Pay:</div>
                                                 <div className="text-sm">Net Pay:</div>
