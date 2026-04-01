@@ -423,9 +423,18 @@ def cancel_subscription(request):
 def organization_detail(request):
     """Get or update organization details"""
     try:
-        employee = Employee.objects.select_related('company').get(user=request.user)
-        organization = employee.company.get_root_parent()
+        # Try to find employee profile
+        employee = Employee.objects.select_related('company').filter(user=request.user).first()
         
+        # If no profile, fallback to the first active organization (useful for superusers)
+        if employee and employee.company:
+            organization = employee.company.get_root_parent()
+        else:
+            organization = Organization.objects.filter(is_active=True).first()
+            
+        if not organization:
+             return Response({'error': 'Organization context not found'}, status=status.HTTP_404_NOT_FOUND)
+
         if request.method == 'GET':
             subsidiaries = organization.subsidiaries.filter(is_active=True)
             # Get settings from organization

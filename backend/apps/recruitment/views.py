@@ -29,6 +29,10 @@ from .models import (
     SurveyQuestion,
     SurveyResponse,
 )
+from .utils.parser import parse_resume
+import logging
+
+logger = logging.getLogger(__name__)
 from .serializers import (
     JobOpeningSerializer, JobOpeningListSerializer,
     CandidateSerializer, CandidateListSerializer, CandidateNoteSerializer,
@@ -2782,3 +2786,81 @@ def application_update_stage(request, pk):
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def resume_bulk_upload(request):
+    """
+    Bulk upload resumes, parse them, and create candidate profiles.
+    """
+    files = request.FILES.getlist('files')
+    job_id = request.data.get('job_id')
+    
+    if not files:
+        return Response({'success': False, 'message': 'No files provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    job_opening = None
+    if job_id:
+        job_opening = get_object_or_404(JobOpening, pk=job_id)
+        
+    results = []
+    created_count = 0
+    
+    # Get default stage for new candidates
+    default_stage = get_default_recruitment_stage()
+    
+    for file in files:
+        try:
+            # Parse the resume
+            parsed_data = parse_resume(file)
+            
+            if not parsed_data:
+                results.append({'file': file.name, 'success': False, 'message': 'Failed to parse resume'})
+                continue
+                
+            # Create candidate
+            full_name = parsed_data['name'] or "Unknown Candidate"
+            name_parts = full_name.split()
+            first_name = name_parts[0]
+            last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else "."
+            
+            # Skills - convert comma separated string to list for JSONField
+            skills_list = [s.strip() for s in parsed_data['skills'].split(',') if s.strip()]
+            
+            candidate = Candidate.objects.create(
+                first_name=first_name,
+                last_name=last_name,
+                email=parsed_data['email'] or f"unknown_{timezone.now().timestamp()}@example.com",
+                phone=parsed_data['phone'],
+                skills=skills_list,
+                resume=file,
+                stage=default_stage,
+                job_applied=job_opening,
+                source='OTHER',
+                status='NEW'
+            )
+            
+            # If job provided, create application
+            if job_opening:
+                ensure_candidate_job_application(candidate, job_opening)
+                
+            results.append({
+                'file': file.name, 
+                'success': True, 
+                'candidate_id': str(candidate.id),
+                'name': parsed_data['name'],
+                'email': parsed_data['email']
+            })
+            created_count += 1
+            
+        except Exception as e:
+            logger.error(f"Error processing bulk upload file {file.name}: {str(e)}")
+            results.append({'file': file.name, 'success': False, 'message': str(e)})
+            
+    return Response({
+        'success': True,
+        'message': f'Successfully processed {created_count} resumes',
+        'results': results,
+        'created_count': created_count
+    }, status=status.HTTP_201_CREATED)

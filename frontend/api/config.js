@@ -59,6 +59,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     EMPLOYEES: `${BASE_URL}/account/employees/`,
     EMPLOYEE_DETAIL: (id) => `${BASE_URL}/account/employees/${id}/`,
     GET_MY_PROFILE: `${BASE_URL}/account/employees/me/`,
+    CANDIDATE_BULK_UPLOAD: `${BASE_URL}/recruitment/candidates/bulk-upload/`,
     DEPARTMENTS: `${BASE_URL}/account/departments/`,
     DEPARTMENT_DETAIL: (id) => `${BASE_URL}/account/departments/${id}/`,
     DESIGNATIONS: `${BASE_URL}/account/designations/`,

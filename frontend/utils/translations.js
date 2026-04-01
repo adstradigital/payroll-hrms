@@ -78,7 +78,8 @@ export const translations = {
             interview: "Interview",
             openJobs: "Open Jobs",
             stages: "Stages",
-            skillZone: "Skill Zone"
+            skillZone: "Skill Zone",
+            ats: "ATS"
         },
         auth: {
             login: "Login",
@@ -200,7 +201,8 @@ export const translations = {
             interview: "അഭിമുഖം",
             openJobs: "ഓപ്പൺ ജോലികൾ",
             stages: "ഘട്ടങ്ങൾ",
-            skillZone: "സ്കിൽ സോൺ"
+            skillZone: "സ്കിൽ സോൺ",
+            ats: "ATS"
         },
         auth: {
             login: "ലോഗിൻ",
@@ -322,7 +324,8 @@ export const translations = {
             interview: "مقابلة",
             openJobs: "وظائف مفتوحة",
             stages: "مراحل",
-            skillZone: "منطقة المهارات"
+            skillZone: "منطقة المهارات",
+            ats: "ATS"
         },
         auth: {
             login: "تسجيل الدخول",

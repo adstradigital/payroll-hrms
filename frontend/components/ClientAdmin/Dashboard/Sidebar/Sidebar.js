@@ -44,12 +44,12 @@ const menuItems = [
         permission: ['recruitment.view', 'recruitment.view_job_openings'],
         children: [
             { id: 'recruit-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/recruitment' },
-            { id: 'recruitment-pipeline', label: 'Recruitment Pipeline', translationKey: 'common.recruitmentPipeline', path: '/dashboard/recruitment/pipeline' },
-            { id: 'recruitment-survey', label: 'Recruitment Survey', translationKey: 'common.recruitmentSurvey', path: '/dashboard/recruitment/survey' },
+            { id: 'open-jobs', label: 'Job Openings', translationKey: 'common.openJobs', path: '/dashboard/recruitment/job-openings' },
             { id: 'candidates', label: 'Candidates', translationKey: 'common.candidates', path: '/dashboard/recruitment/candidates' },
-            { id: 'interview', label: 'Interview', translationKey: 'common.interview', path: '/dashboard/recruitment/interview' },
-            { id: 'recruitment-general', label: 'Recruitment', translationKey: 'common.recruitment', path: '/dashboard/recruitment/recruitment' },
-            { id: 'open-jobs', label: 'Open Jobs', translationKey: 'common.openJobs', path: '/dashboard/recruitment/job-openings' },
+            { id: 'ats', label: 'ATS Board', translationKey: 'common.ats', path: '/dashboard/recruitment/ats' },
+            { id: 'interview', label: 'Interviews', translationKey: 'common.interview', path: '/dashboard/recruitment/interview' },
+            { id: 'recruitment-pipeline', label: 'Pipeline', translationKey: 'common.recruitmentPipeline', path: '/dashboard/recruitment/pipeline' },
+            { id: 'recruitment-survey', label: 'Surveys', translationKey: 'common.recruitmentSurvey', path: '/dashboard/recruitment/survey' },
             { id: 'stages', label: 'Stages', translationKey: 'common.stages', path: '/dashboard/recruitment/stages' },
             { id: 'skill-zone', label: 'Skill Zone', translationKey: 'common.skillZone', path: '/dashboard/recruitment/skill-zone' },
         ]

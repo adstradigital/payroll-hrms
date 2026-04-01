@@ -45,6 +45,7 @@ urlpatterns = [
     path('candidates/', views.candidate_list_create, name='candidate-list-create'),
     path('candidates/<int:pk>/', views.candidate_detail, name='candidate-detail'),
     path('candidates/stats/', views.candidate_stats, name='candidate-stats'),
+    path('candidates/bulk-upload/', views.resume_bulk_upload, name='candidate-bulk-upload'),
     path('candidates/bulk-update/', views.candidate_bulk_update, name='candidate-bulk-update'),
     path('candidates/<int:pk>/add-note/', views.candidate_add_note, name='candidate-add-note'),
     path('candidates/<int:pk>/status/', views.candidate_update_status, name='candidate-update-status'),

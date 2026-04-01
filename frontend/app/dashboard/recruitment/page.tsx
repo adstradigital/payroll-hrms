@@ -1,8 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
-import { Briefcase, Users, UserCheck, UserX } from 'lucide-react';
+import { 
+    Briefcase, 
+    Users, 
+    UserCheck, 
+    UserX, 
+    LayoutDashboard, 
+    Search, 
+    Calendar,
+    ArrowRight
+} from 'lucide-react';
 import QuickActions from '@/components/dashboard/QuickActions';
 import PipelineStatus from '@/components/dashboard/PipelineStatus';
 import ApplicationSource from '@/components/dashboard/ApplicationSource';
@@ -11,6 +21,7 @@ import styles from '../page.module.css';
 import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
 
 export default function RecruitmentDashboardPage() {
+    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -43,6 +54,13 @@ export default function RecruitmentDashboardPage() {
     useEffect(() => {
         refreshDashboard();
     }, []);
+
+    const workflowSteps = [
+        { id: 'jobs', label: 'Job Openings', icon: Briefcase, path: '/dashboard/recruitment/job-openings', desc: 'Post and manage your vacancies.' },
+        { id: 'candidates', label: 'Candidate Pool', icon: Users, path: '/dashboard/recruitment/candidates', desc: 'Browse and source new talent.' },
+        { id: 'ats', label: 'ATS Pipeline', icon: LayoutDashboard, path: '/dashboard/recruitment/ats', desc: 'Track progress in the board.' },
+        { id: 'interviews', label: 'Interview Desk', icon: Calendar, path: '/dashboard/recruitment/interview', desc: 'Evaluate and schedule meetings.' },
+    ];
 
     const statCards = useMemo(() => ([
         {
@@ -80,10 +98,34 @@ export default function RecruitmentDashboardPage() {
     ]), [stats]);
 
     return (
-        <Dashboard breadcrumbs={['Dashboard', 'Recruitment']}>
-            <ModuleGuard module="HRMS" permission="recruitment.view">
+        <Dashboard
+            title="Recruitment Overview"
+            subtitle="Manage your end-to-end hiring journey"
+            breadcrumbs={['Dashboard', 'Recruitment']}
+        >
+            <ModuleGuard module="HRMS">
+                {/* 1) New Workflow Navigation Bar */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    {workflowSteps.map((step) => (
+                        <button 
+                            key={step.id} 
+                            onClick={() => router.push(step.path)}
+                            className="flex flex-col items-start p-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-blue-500/50 transition-all text-left group"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <step.icon className="text-blue-500" size={20} />
+                            </div>
+                            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                                {step.label}
+                                <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                            </h3>
+                            <p className="text-gray-400 text-xs mt-1">{step.desc}</p>
+                        </button>
+                    ))}
+                </div>
+
                 {error && (
-                    <div className="card" style={{ borderColor: 'rgba(239, 68, 68, 0.35)' }}>
+                    <div className="card mb-6" style={{ borderColor: 'rgba(239, 68, 68, 0.35)' }}>
                         <div className="card__header" style={{ marginBottom: 0 }}>
                             <div>
                                 <h3 className="card__title">Unable to load dashboard</h3>
@@ -96,8 +138,8 @@ export default function RecruitmentDashboardPage() {
                     </div>
                 )}
 
-                {/* 1) Status Cards */}
-                <div className="stats-grid">
+                {/* 2) Status Cards */}
+                <div className="stats-grid mb-8">
                     {statCards.map((card) => (
                         <div key={card.key} className="stat-card">
                             <div className="stat-card__header">
@@ -120,12 +162,12 @@ export default function RecruitmentDashboardPage() {
                 </div>
 
                 <div className={styles.grid}>
-                    {/* 2) Pipeline Status Chart */}
+                    {/* 3) Pipeline Status Chart */}
                     <div className={`card ${styles.pipeline}`}>
                         <div className="card__header">
                             <div>
-                                <h3 className="card__title">Pipeline Status</h3>
-                                <p className="card__subtitle">Stage-wise distribution</p>
+                                <h3 className="card__title">Hiring Funnel</h3>
+                                <p className="card__subtitle">Stage-wise candidate distribution</p>
                             </div>
                         </div>
                         <div className={styles.cardBody}>
@@ -133,7 +175,7 @@ export default function RecruitmentDashboardPage() {
                         </div>
                     </div>
 
-                    {/* 3) Application Sources Chart */}
+                    {/* 4) Application Sources Chart */}
                     <div className={`card ${styles.sources}`}>
                         <div className="card__header">
                             <div>
@@ -146,11 +188,11 @@ export default function RecruitmentDashboardPage() {
                         </div>
                     </div>
 
-                    {/* 4) Today's Interviews */}
+                    {/* 5) Today's Interviews */}
                     <div className={`card ${styles.interviews}`}>
                         <div className="card__header">
                             <div>
-                                <h3 className="card__title">Today&apos;s Interviews</h3>
+                                <h3 className="card__title">Interview Desk</h3>
                                 <p className="card__subtitle">Scheduled for today</p>
                             </div>
                             <span className={styles.badge}>{loading ? '...' : todayInterviews.length}</span>
@@ -187,12 +229,12 @@ export default function RecruitmentDashboardPage() {
                         </div>
                     </div>
 
-                    {/* 5) Quick Actions */}
+                    {/* 6) Quick Actions */}
                     <div className={`card ${styles.actions}`}>
                         <div className="card__header">
                             <div>
-                                <h3 className="card__title">Quick Actions</h3>
-                                <p className="card__subtitle">Common recruitment tasks</p>
+                                <h3 className="card__title">Recruitment Actions</h3>
+                                <p className="card__subtitle">Common hiring tasks</p>
                             </div>
                         </div>
                         <div className={styles.cardBody}>

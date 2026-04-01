@@ -7,10 +7,10 @@ import recruitmentApi from '@/api/recruitmentApi';
 import './QuickActions.css';
 
 const actions = [
-    { key: 'post', title: 'Post Job', icon: Briefcase, href: '/recruitment/open-jobs' },
+    { key: 'post', title: 'Post Job', icon: Briefcase, href: '/dashboard/recruitment/job-openings' },
     { key: 'candidate', title: 'Add Candidate', icon: UserPlus, href: '' },
     { key: 'interview', title: 'Schedule Interview', icon: Calendar, href: '' },
-    { key: 'reports', title: 'Reports', icon: BarChart2, href: '/recruitment/reports' },
+    { key: 'reports', title: 'Reports', icon: BarChart2, href: '/dashboard/recruitment/reports' },
 ];
 
 const EMPTY_CANDIDATE_FORM = {
