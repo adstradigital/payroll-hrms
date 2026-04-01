@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Cloud, Link, Fingerprint, Save, Check, AlertCircle } from 'lucide-react';
+import { Cloud, Link, Fingerprint, Save, Check, AlertCircle, Download } from 'lucide-react';
+import { startSettingsBackup, downloadSettingsBackup } from '@/api/api_clientadmin';
 import './IntegrationsSettings.css';
 
 export default function IntegrationsSettings() {
@@ -29,12 +30,58 @@ export default function IntegrationsSettings() {
         showNotification('Connection test successful!', 'success');
     };
 
-    const handleBackupNow = () => {
-        showNotification('Backup started...', 'success');
+    const handleBackupNow = async () => {
+        try {
+            showNotification('Backup started...', 'success');
+            const res = await startSettingsBackup();
+            const createdAt = res?.data?.data?.created_at;
+            if (createdAt) {
+                setGdrive((current) => ({
+                    ...current,
+                    lastBackup: new Date(createdAt).toLocaleString()
+                }));
+            }
+            showNotification('Backup created successfully', 'success');
+        } catch (error) {
+            const message = error?.response?.data?.error || 'Failed to start backup';
+            showNotification(message, 'error');
+        }
     };
 
     const handleSave = () => {
         showNotification('Settings saved successfully', 'success');
+    };
+
+    const handleDownloadBackup = async () => {
+        try {
+            const res = await downloadSettingsBackup();
+            const blob = new Blob([res.data], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const disposition = res.headers?.['content-disposition'];
+            const match = disposition && disposition.match(/filename="?([^"]+)"?/);
+            link.download = match?.[1] || 'settings-backup.json';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            let message = 'Failed to download backup';
+            const data = error?.response?.data;
+            if (data instanceof Blob) {
+                try {
+                    const text = await data.text();
+                    const parsed = JSON.parse(text);
+                    message = parsed?.error || parsed?.message || message;
+                } catch {
+                    message = 'No backup found. Click "Backup Now" first.';
+                }
+            } else if (data?.error || data?.message) {
+                message = data.error || data.message;
+            }
+            showNotification(message, 'error');
+        }
     };
 
     return (
@@ -100,6 +147,10 @@ export default function IntegrationsSettings() {
                     <button className="int-btn-primary" onClick={handleBackupNow}>
                         <Cloud size={16} />
                         Backup Now
+                    </button>
+                    <button className="int-btn-secondary" onClick={handleDownloadBackup}>
+                        <Download size={16} />
+                        Download Backup
                     </button>
                 </div>
             </div>

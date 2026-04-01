@@ -12,7 +12,7 @@ from apps.accounts.models import Employee
 class AttendancePolicyListSerializer(serializers.ModelSerializer):
     """Attendance Policy List Serializer"""
     company_name = serializers.CharField(source='company.name', read_only=True)
-    department_name = serializers.CharField(source='department.name', read_only=True)
+    department_name = serializers.SerializerMethodField()
     working_hours = serializers.SerializerMethodField()
     
     class Meta:
@@ -26,9 +26,15 @@ class AttendancePolicyListSerializer(serializers.ModelSerializer):
             'overtime_applicable', 'overtime_rate_multiplier',
             'weekend_overtime_multiplier', 'holiday_overtime_multiplier',
             'max_overtime_per_day', 'max_overtime_per_week',
-            'require_overtime_pre_approval', 'min_overtime_minutes'
+            'require_overtime_pre_approval', 'min_overtime_minutes',
+            'ip_restriction_enabled', 'allowed_ips', 'auto_clockout_enabled',
+            'auto_clockout_time', 'max_regularization_attempts_per_month',
+            'late_thresholds', 'early_thresholds'
         ]
         read_only_fields = ['id']
+
+    def get_department_name(self, obj):
+        return obj.department.name if obj.department else "Company-Wide"
 
     def get_working_hours(self, obj):
         return obj.get_working_hours()
@@ -37,13 +43,16 @@ class AttendancePolicyListSerializer(serializers.ModelSerializer):
 class AttendancePolicyDetailSerializer(serializers.ModelSerializer):
     """Attendance Policy Detail Serializer"""
     company_name = serializers.CharField(source='company.name', read_only=True)
-    department_name = serializers.CharField(source='department.name', read_only=True)
+    department_name = serializers.SerializerMethodField()
     working_hours = serializers.SerializerMethodField()
     
     class Meta:
         model = AttendancePolicy
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at', 'company']
+
+    def get_department_name(self, obj):
+        return obj.department.name if obj.department else "Company-Wide"
 
     def get_working_hours(self, obj):
         return obj.get_working_hours()
@@ -369,6 +378,7 @@ class AttendanceRegularizationActionSerializer(serializers.Serializer):
     check_in_time = serializers.TimeField(required=False, format='%H:%M', input_formats=['%H:%M', '%H:%M:%S'])
     check_out_time = serializers.TimeField(required=False, format='%H:%M', input_formats=['%H:%M', '%H:%M:%S'])
     reason = serializers.CharField(required=True, max_length=500)
+    supporting_document = serializers.FileField(required=False, allow_null=True)
 
     def validate(self, data):
         if not data.get('check_in_time') and not data.get('check_out_time'):

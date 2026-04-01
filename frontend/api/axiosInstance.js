@@ -53,11 +53,13 @@ axiosInstance.interceptors.response.use(
                     originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
                     return axiosInstance(originalRequest);
                 }
-            } catch {
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
-                if (typeof window !== 'undefined') window.location.href = '/login';
+            } catch (refreshError) {
+                console.error('Token refresh failed:', refreshError);
             }
+            
+            // If we reach here, refresh failed or no refresh token exists
+            clearAuthTokens();
+            if (typeof window !== 'undefined') window.location.href = '/login';
         }
         return Promise.reject(error);
     }

@@ -69,7 +69,9 @@ const menuItems = [
             { id: 'roles-permissions', label: 'Roles & Permissions', translationKey: 'common.rolesPermissions', path: '/dashboard/employees/roles', adminOnly: true },
             { id: 'document-requests', label: 'Document Requests', translationKey: 'common.documentRequests', path: '/dashboard/employees/document-requests', permission: 'documents.view_document_requests' },
             { id: 'shift-requests', label: 'Shift Requests', translationKey: 'common.shiftRequests', path: '/dashboard/employees/shift-requests', permission: 'shift.view_shift_requests' },
+            { id: 'shift-approvals', label: 'Shift Approvals', path: '/dashboard/employees/shift-requests/approve', adminOnly: true },
             { id: 'work-type-requests', label: 'Work Type Requests', translationKey: 'common.workTypeRequests', path: '/dashboard/employees/work-type-requests', permission: 'employee.view_work_type_requests' },
+            { id: 'work-type-approvals', label: 'Work Type Approvals', path: '/dashboard/employees/work-type-requests/approve', adminOnly: true },
         ]
     },
     {
@@ -81,16 +83,16 @@ const menuItems = [
         path: '/dashboard/attendance',
         permission: ['attendance.view', 'attendance.view_attendance'],
         children: [
-            { id: 'att-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/attendance' },
-            { id: 'att-my-attendance', label: 'My Attendance', translationKey: 'common.attendance', path: '/dashboard/attendance/my-attendance' },
-            { id: 'att-register', label: 'Attendance Register', translationKey: 'common.attendanceRegister', path: '/dashboard/attendance/register', permission: 'attendance.manage' },
-            { id: 'att-requests', label: 'Attendance Requests', translationKey: 'common.attendanceRequests', path: '/dashboard/attendance/requests', permission: 'attendance.approve' },
-            { id: 'att-work-hours', label: 'Work Hours (Hour Bank)', translationKey: 'common.workHours', path: '/dashboard/attendance/work-hours' },
-            { id: 'att-work-records', label: 'Work Records', translationKey: 'common.workRecords', path: '/dashboard/attendance/work-records' },
-            { id: 'att-late-early', label: 'Late & Early Rules', translationKey: 'common.lateEarlyRules', path: '/dashboard/attendance/late-early-rules' },
-            { id: 'att-holidays', label: 'Holiday Calendar', translationKey: 'common.holidayCalendar', path: '/dashboard/attendance/holidays' },
-            { id: 'att-logs', label: 'Attendance Logs', translationKey: 'common.attendanceLogs', path: '/dashboard/attendance/logs' },
-            { id: 'att-biometric', label: 'Biometric Devices', translationKey: 'common.biometricDevices', path: '/dashboard/attendance/biometric', adminOnly: true },
+            { id: 'att-dashboard', label: 'Team Dashboard', path: '/dashboard/attendance' },
+            { id: 'att-my-attendance', label: 'My Attendance', path: '/dashboard/attendance/my-attendance' },
+            { id: 'att-register', label: 'Attendance Register', path: '/dashboard/attendance/register', permission: 'attendance.manage' },
+            { id: 'att-requests', label: 'Attendance Requests', path: '/dashboard/attendance/requests', permission: 'attendance.approve' },
+            { id: 'att-work-hours', label: 'Working Hours', path: '/dashboard/attendance/work-hours' },
+            { id: 'att-work-records', label: 'Attendance Records', path: '/dashboard/attendance/work-records' },
+            { id: 'att-late-early', label: 'Late & Early Policies', path: '/dashboard/attendance/late-early-rules' },
+            { id: 'att-holidays', label: 'Public Holidays', path: '/dashboard/attendance/holidays' },
+            { id: 'att-logs', label: 'Attendance Logs', path: '/dashboard/attendance/logs' },
+            { id: 'att-biometric', label: 'Biometric Devices', path: '/dashboard/attendance/biometric', adminOnly: true },
         ]
     },
     {
@@ -133,49 +135,49 @@ const menuItems = [
         ]
     },
     {
-        id: 'reimbursements',
-        label: 'Reimbursements',
+        id: 'expenses',
+        label: 'Expense Management',
         translationKey: 'common.reimbursements',
         module: 'HRMS',
         icon: Receipt,
-        path: '/dashboard/reimbursements',
+        path: '/dashboard/expenses',
         children: [
             {
                 id: 'expense-dashboard',
                 label: 'Dashboard',
-                path: '/dashboard/reimbursements'
+                path: '/dashboard/expenses'
             },
 
             {
                 id: 'my-expense-claims',
                 label: 'My Expense Claims',
-                path: '/dashboard/reimbursements/my-claims'
+                path: '/dashboard/expenses/my-claims'
             },
 
             {
                 id: 'submit-expense-claim',
                 label: 'Submit Expense Claim',
-                path: '/dashboard/reimbursements/submit'
+                path: '/dashboard/expenses/submit'
             },
 
             {
                 id: 'expense-approvals',
                 label: 'Approvals',
-                path: '/dashboard/reimbursements/approvals',
+                path: '/dashboard/expenses/approvals',
                 adminOnly: true
             },
 
             {
                 id: 'expense-categories',
                 label: 'Categories',
-                path: '/dashboard/reimbursements/categories',
+                path: '/dashboard/expenses/categories',
                 adminOnly: true
             },
 
             {
                 id: 'expense-reports',
                 label: 'Reports',
-                path: '/dashboard/reimbursements/reports'
+                path: '/dashboard/expenses/reports'
             }
         ]
     },
@@ -195,6 +197,7 @@ const menuItems = [
             { id: 'payslips', label: 'Payslips', translationKey: 'common.payslips', path: '/dashboard/payroll/payslips' },
             { id: 'encashments', label: 'Encashments & Reimbursements', translationKey: 'common.encashments', path: '/dashboard/payroll/encashments-reimbursements', permission: 'payroll.manage' },
             { id: 'bonus-incentives', label: 'Bonus & Incentives', path: '/dashboard/payroll/bonus-incentives', permission: 'payroll.manage' },
+            { id: 'sales-commission', label: 'Sales Commission', path: '/dashboard/payroll/sales-commission', permission: 'payroll.manage' },
             { id: 'tax', label: 'Tax Management', translationKey: 'common.tax', path: '/dashboard/payroll/tax', permission: 'payroll.manage' },
             { id: 'advance-salary', label: 'Advance Salary', path: '/dashboard/payroll/advance-salary' },
             { id: 'advance-approvals', label: 'Advance Approvals', path: '/dashboard/payroll/advance-approvals', adminOnly: true },
@@ -202,6 +205,7 @@ const menuItems = [
             { id: 'loan-approvals', label: 'Loan Approvals', path: '/dashboard/payroll/loan-approvals', adminOnly: true },
             { id: 'loan-repayment', label: 'Loan Repayment Tracking', path: '/dashboard/payroll/loan-repayment-tracking', permission: 'payroll.manage' },
             { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
+            { id: 'ctc-calculator', label: 'CTC Calculator', path: '/dashboard/payroll/ctc-calculator', permission: 'payroll.view' },
         ]
     },
     {
@@ -286,6 +290,7 @@ export default function Sidebar() {
     const [workReport, setWorkReport] = useState({ tasks: '', notes: '' });
     const [submittingReport, setSubmittingReport] = useState(false);
     const [attendanceStatus, setAttendanceStatus] = useState(null); // { checkedIn: bool, checkedOut: bool }
+    const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
     const [checkingAttendance, setCheckingAttendance] = useState(false);
     const [ticketStats, setTicketStats] = useState(null);
 
@@ -492,6 +497,13 @@ export default function Sidebar() {
             if (response.ok) {
                 const data = await response.json();
                 const today = data.today;
+                const employeeId = data.employee?.id;
+
+                if (employeeId) {
+                    console.log('[Sidebar] 🕒 Captured Employee ID for checkout:', employeeId);
+                    setCurrentEmployeeId(employeeId);
+                    localStorage.setItem('employeeId', employeeId);
+                }
 
                 // Check if clocked in but not clocked out
                 if (today?.check_in && !today?.check_out) {
@@ -524,8 +536,33 @@ export default function Sidebar() {
         setSubmittingReport(true);
         try {
             const token = localStorage.getItem('accessToken');
+            let employeeId = currentEmployeeId || localStorage.getItem('employeeId');
 
-            const employeeId = localStorage.getItem('employeeId');
+            // --- Robust ID Fetching Fallback ---
+            if (!employeeId) {
+                console.log('[Sidebar] ⚠️ Employee ID missing during checkout. Attempting final fetch...');
+                try {
+                    const dashboardRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/my_dashboard/`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (dashboardRes.ok) {
+                        const data = await dashboardRes.json();
+                        employeeId = data.employee?.id;
+                        if (employeeId) {
+                            localStorage.setItem('employeeId', employeeId);
+                            console.log('[Sidebar] ✅ Fallback fetch successful. ID:', employeeId);
+                        }
+                    }
+                } catch (e) { console.error('[Sidebar] Fallback fetch failed', e); }
+            }
+            // ------------------------------------
+
+            if (!employeeId) {
+                console.error('[Sidebar] ❌ Cannot clock out. No Employee ID found.');
+                alert('Attendance check-out failed: Employee Profile not found. Please contact support.');
+                setSubmittingReport(false);
+                return;
+            }
 
             // Clock out with work report
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/check-out/`, {

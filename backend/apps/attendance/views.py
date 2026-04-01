@@ -402,6 +402,21 @@ def check_in(request):
 
         attendance, _ = Attendance.objects.get_or_create(employee=employee, date=today)
         
+        # Check IP Restriction
+        policy = employee.company.attendance_policies.filter(is_active=True).first()
+        if policy and policy.ip_restriction_enabled and policy.allowed_ips:
+            allowed_ips = [ip.strip() for ip in policy.allowed_ips.split(',')]
+            client_ip = request.META.get('REMOTE_ADDR')
+            # Handle X-Forwarded-For if behind a proxy
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                client_ip = x_forwarded_for.split(',')[0].strip()
+            
+            if client_ip not in allowed_ips:
+                return Response({
+                    'error': f'Check-in not allowed from your current network (IP: {client_ip}). Please use the company office network.'
+                }, status=status.HTTP_403_FORBIDDEN)
+        
         # Assign shift if not already assigned
         if not attendance.shift:
             # 1. Check for assigned shift
@@ -523,6 +538,14 @@ def regularize(request, pk):
         
         data = serializer.validated_data
         
+        # Check Policy for Proof Requirement
+        policy = attendance.employee.company.attendance_policies.filter(is_active=True).first()
+        if policy and policy.require_proof:
+            if not data.get('supporting_document'):
+                return Response({
+                    'error': 'A supporting document (image or PDF) is required for attendance correction as per company policy.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
         # Update check-in if provided
         if data.get('check_in_time'):
             # Combine original date with new time
@@ -547,6 +570,10 @@ def regularize(request, pk):
         # Ensure status is 'present'
         if attendance.status == 'absent':
             attendance.status = 'present'
+
+        # Save Supporting Document if provided
+        if data.get('supporting_document'):
+            attendance.regularization_proof = data['supporting_document']
 
         attendance.save() # This triggers model.calculate_hours()
         
@@ -786,7 +813,8 @@ def offline_employees(request):
                 'id': str(emp.id),
                 'name': emp.full_name,
                 'employee_id': emp.employee_id,
-                'status': 'Expected',  # Can be customized based on shift or other logic
+                'status': 'Expected',
+                'dept': emp.department.name if emp.department else 'N/A',
                 'avatar': emp.full_name[0].upper() if emp.full_name else 'U'
             })
         
@@ -817,7 +845,8 @@ def on_break(request):
                 'name': brk.attendance.employee.full_name,
                 'employee_id': brk.attendance.employee.employee_id,
                 'break_start': brk.break_start,
-                'break_type': brk.get_break_type_display()
+                'break_type': brk.get_break_type_display(),
+                'avatar': brk.attendance.employee.full_name[0].upper() if brk.attendance.employee.full_name else 'U'
             })
         
         return Response({
@@ -1089,14 +1118,11 @@ def my_dashboard(request):
             avg_in_str = f"{h:02d}:{m:02d}"
 
         # 5. Policy Settings
-        policy = AttendancePolicy.objects.filter(
-            Q(department=employee.department) | Q(department__isnull=True),
-            company=employee.company,
-            is_active=True
-        ).first()
+        policy = employee.company.attendance_policies.filter(is_active=True).first()
         
         track_break_time = policy.track_break_time if policy else True
         enable_shift_system = policy.enable_shift_system if policy else True
+        require_proof = policy.require_proof if policy else False
 
         return Response({
             'employee': {
@@ -1110,7 +1136,8 @@ def my_dashboard(request):
             'averages': {'check_in': avg_in_str},
             'settings': {
                 'track_break_time': track_break_time,
-                'enable_shift_system': enable_shift_system
+                'enable_shift_system': enable_shift_system,
+                'require_proof': require_proof
             }
         }, status=status.HTTP_200_OK)
     

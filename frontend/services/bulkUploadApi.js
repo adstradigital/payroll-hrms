@@ -18,7 +18,7 @@ const mockTemplates = [
     { id: 'salary', name: 'Salary Data', description: 'Update salary structures and recurring payments', version: 'v1.5', lastUpdated: '2023-12-10' },
     { id: 'attendance', name: 'Attendance Logs', description: 'Import daily attendance logs and shift timings', version: 'v3.0', lastUpdated: '2024-01-20' },
     { id: 'tax', name: 'Tax Declarations', description: 'Import employee tax declaration data', version: 'v1.2', lastUpdated: '2023-11-05' },
-    { id: 'reimbursement', name: 'Reimbursements', description: 'Upload expense claims and reimbursement data', version: 'v1.0', lastUpdated: '2023-10-25' },
+    { id: 'reimbursement', name: 'Expense Management', description: 'Upload expense claims and related data', version: 'v1.0', lastUpdated: '2023-10-25' },
     { id: 'loan', name: 'Loan & Advances', description: 'Import loan requests and disbursement details', version: 'v1.1', lastUpdated: '2023-11-15' },
 ];
 

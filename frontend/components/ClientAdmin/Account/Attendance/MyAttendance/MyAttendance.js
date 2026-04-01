@@ -43,7 +43,11 @@ export default function MyAttendance() {
     // Regularization Modal States
     const [regularizeModalOpen, setRegularizeModalOpen] = useState(false);
     const [selectedAttendanceId, setSelectedAttendanceId] = useState(null);
-    const [regularizeData, setRegularizeData] = useState({ check_out_time: '', reason: '' });
+    const [regularizeData, setRegularizeData] = useState({
+        check_out_time: '',
+        reason: '',
+        supporting_document: null
+    });
     const [submittingRegularization, setSubmittingRegularization] = useState(false);
     const [submittingReport, setSubmittingReport] = useState(false);
 
@@ -275,33 +279,51 @@ export default function MyAttendance() {
     // --- REGULARIZATION HANDLERS ---
     const handleOpenRegularize = (id) => {
         setSelectedAttendanceId(id);
-        setRegularizeData({ check_out_time: '', reason: '' });
+        setRegularizeData({ check_out_time: '', reason: '', supporting_document: null });
         setRegularizeModalOpen(true);
     };
 
     const submitRegularization = async () => {
-        if (!selectedAttendanceId || !regularizeData.check_out_time || !regularizeData.reason) return;
+        if (!selectedAttendanceId || !regularizeData.check_out_time || !regularizeData.reason) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        // Check if proof is required by policy
+        const isProofRequired = data?.settings?.require_proof;
+        if (isProofRequired && !regularizeData.supporting_document) {
+            alert('A supporting document (image or PDF) is required for attendance correction.');
+            return;
+        }
+
         setSubmittingRegularization(true);
         try {
             const token = localStorage.getItem('accessToken');
+            
+            // Use FormData for file upload
+            const formData = new FormData();
+            formData.append('check_out_time', regularizeData.check_out_time);
+            formData.append('reason', regularizeData.reason);
+            if (regularizeData.supporting_document) {
+                formData.append('supporting_document', regularizeData.supporting_document);
+            }
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/${selectedAttendanceId}/regularize/`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(regularizeData)
+                body: formData
             });
 
             if (response.ok) {
                 setRegularizeModalOpen(false);
-                setRegularizeData({ check_out_time: '', reason: '' });
+                setRegularizeData({ check_out_time: '', reason: '', supporting_document: null });
                 await fetchDashboard();
                 window.dispatchEvent(new Event('attendance-updated'));
             } else {
                 const errorData = await response.json();
                 console.error('Regularization failed:', errorData);
-                // Optionally show error to user
             }
         } catch (err) {
             console.error('Error submitting regularization:', err);
@@ -860,6 +882,33 @@ export default function MyAttendance() {
                                             fontFamily: 'inherit'
                                         }}
                                     />
+                                </div>
+
+                                <div className="form-group" style={{ marginTop: '1rem' }}>
+                                    <label>
+                                        Supporting Document 
+                                        {data?.settings?.require_proof && <span className="text-danger"> *</span>}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        className="form-control"
+                                        accept="image/*,.pdf"
+                                        onChange={(e) => setRegularizeData(prev => ({ ...prev, supporting_document: e.target.files[0] }))}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.5rem',
+                                            borderRadius: '8px',
+                                            border: '1px dashed var(--border-color)',
+                                            background: 'var(--bg-secondary)',
+                                            color: 'var(--text-primary)',
+                                            marginTop: '0.5rem'
+                                        }}
+                                    />
+                                    <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.25rem' }}>
+                                        {data?.settings?.require_proof 
+                                            ? "Proof is mandatory (Image or PDF)." 
+                                            : "Optional: Upload proof (Image or PDF)."}
+                                    </small>
                                 </div>
                             </div>
                             <div className="modal-footer">

@@ -804,3 +804,18 @@ class SurveyAnswer(models.Model):
 
     def __str__(self):
         return f"Answer to '{self.question.question_text[:25]}'"
+
+
+class RejectionReason(models.Model):
+    """Standardized reasons for candidate rejection"""
+    reason_text = models.CharField(max_length=200, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['reason_text']
+
+    def __str__(self):
+        return self.reason_text
+

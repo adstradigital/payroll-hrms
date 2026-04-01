@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Users } from 'lucide-react';
 import axiosInstance from '@/api/axiosInstance';
+import { asString, normalizeBoolean, getApiErrorMessage, slugifyKey } from '@/utils/settingsUtils';
 
 import './EmployeeFieldsSettings.css';
 
@@ -16,40 +17,16 @@ const FIELD_TYPES = [
     { value: 'checkbox', label: 'Checkbox' },
 ];
 
+// Helper functions moved to /utils/settingsUtils.js
 const EMPTY_FORM = Object.freeze({
     field_name: '',
     field_key: '',
     field_type: 'text',
     is_required: false,
     is_active: true,
+    description: '',
     options: [''],
 });
-
-function asString(value) {
-    if (value === null || value === undefined) return '';
-    return String(value);
-}
-
-function slugifyKey(name) {
-    const base = asString(name)
-        .trim()
-        .toLowerCase()
-        .replace(/['"]/g, '')
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '')
-        .replace(/_+/g, '_');
-
-    if (!base) return '';
-    if (/^\d/.test(base)) return `field_${base}`;
-    return base;
-}
-
-function normalizeBoolean(value, fallback = false) {
-    if (value === true || value === false) return value;
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    return fallback;
-}
 
 function normalizeFields(raw) {
     const list = Array.isArray(raw) ? raw : [];
@@ -60,22 +37,11 @@ function normalizeFields(raw) {
             field_name: asString(f?.field_name),
             field_key: asString(f?.field_key),
             field_type: asString(f?.field_type) || 'text',
+            description: asString(f?.description),
             is_required: normalizeBoolean(f?.is_required, false),
             is_active: normalizeBoolean(f?.is_active, true),
             options: Array.isArray(f?.options) ? f.options.map((o) => asString(o)) : [],
         }));
-}
-
-function getApiErrorMessage(error) {
-    const detail = error?.response?.data?.detail;
-    if (detail) return String(detail);
-    const data = error?.response?.data;
-    if (data && typeof data === 'object') {
-        const firstKey = Object.keys(data)[0];
-        const firstVal = data?.[firstKey];
-        if (firstVal) return Array.isArray(firstVal) ? String(firstVal?.[0]) : String(firstVal);
-    }
-    return String(error?.message || 'Something went wrong');
 }
 
 function FieldModal({ open, initialField, onClose, onSave, saving }) {
@@ -95,6 +61,7 @@ function FieldModal({ open, initialField, onClose, onSave, saving }) {
                 field_name: initialField?.field_name || '',
                 field_key: slugifyKey(initialField?.field_name || '') || (initialField?.field_key || ''),
                 field_type: initialField?.field_type || 'text',
+                description: initialField?.description || '',
                 is_required: Boolean(initialField?.is_required),
                 is_active: initialField?.is_active ?? true,
                 options: Array.isArray(initialField?.options) && initialField.options.length > 0
@@ -165,6 +132,7 @@ function FieldModal({ open, initialField, onClose, onSave, saving }) {
         const payload = {
             field_name: asString(form?.field_name).trim(),
             field_type: asString(form?.field_type) || 'text',
+            description: asString(form?.description).trim(),
             is_required: Boolean(form?.is_required),
             is_active: Boolean(form?.is_active),
             options: Array.isArray(form?.options) ? form.options.map((o) => asString(o).trim()).filter(Boolean) : [],
@@ -251,6 +219,17 @@ function FieldModal({ open, initialField, onClose, onSave, saving }) {
                             </div>
                         </div>
 
+                        <div className="settings-field-group">
+                            <label className="settings-label">Description (Help Text)</label>
+                            <textarea
+                                className="settings-textarea"
+                                value={form?.description || ''}
+                                onChange={onChange('description')}
+                                rows={2}
+                                placeholder="e.g. Enter your name as per your government ID."
+                            />
+                        </div>
+
                         <div className="settings-toggle-item wide">
                             <div className="toggle-info">
                                 <span className="toggle-label">Status</span>
@@ -267,7 +246,7 @@ function FieldModal({ open, initialField, onClose, onSave, saving }) {
                                 <label className="settings-label">Dropdown Options</label>
                                 <div className="efs-options">
                                     {(form?.options || []).map((opt, idx) => (
-                                        <div className="efs-option-row" key={`${idx}-${opt || ''}`}>
+                                        <div className="efs-option-row" key={`opt-${idx}`}>
                                             <input
                                                 className="settings-input"
                                                 value={opt || ''}
@@ -437,7 +416,13 @@ export default function EmployeeFieldsSettings() {
                     {loading ? (
                         <div className="efs-empty">Loading employee fields…</div>
                     ) : sortedFields?.length === 0 ? (
-                        <div className="efs-empty">No employee fields configured yet.</div>
+                        <div className="efs-empty" style={{ textAlign: 'center', padding: '3rem 1.25rem' }}>
+                            <Users size={32} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                            <div>No employee fields configured yet.</div>
+                            <p className="efs-muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                                Add fields to collect custom data on employee profiles.
+                            </p>
+                        </div>
                     ) : (
                         <div className="efs-table-wrap">
                             <table className="efs-table">
@@ -454,9 +439,14 @@ export default function EmployeeFieldsSettings() {
                                     {sortedFields?.map((f, idx) => (
                                         <tr key={f?.id || f?.field_key || f?.field_name || idx}>
                                             <td>
-                                                {f?.field_name || ''}
-                                                <div className="efs-muted" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                                                    {f?.field_key || ''}
+                                                <div style={{ fontWeight: 600 }}>{f?.field_name || ''}</div>
+                                                {f?.description && (
+                                                    <div className="efs-muted" style={{ fontSize: '0.75rem', marginTop: '0.125rem' }}>
+                                                        {f?.description}
+                                                    </div>
+                                                )}
+                                                <div className="efs-muted" style={{ fontSize: '0.7rem', marginTop: '0.25rem', opacity: 0.6 }}>
+                                                    Key: {f?.field_key || ''}
                                                 </div>
                                             </td>
                                             <td className="efs-muted">{typeLabel(f?.field_type) || ''}</td>

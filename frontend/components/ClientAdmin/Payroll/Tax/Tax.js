@@ -35,6 +35,7 @@ import {
     Shield
 } from 'lucide-react';
 import TaxSlabModal from './TaxSlabModal';
+import RegimeComparison from './RegimeComparison';
 
 const TaxManagement = () => {
     const [activeTab, setActiveTab] = useState('slabs');
@@ -319,6 +320,12 @@ const TaxManagement = () => {
                     onClick={() => setActiveTab('esi-pf')}
                 >
                     ESI & PF
+                </button>
+                <button
+                    className={`tax-tab ${activeTab === 'comparison' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('comparison')}
+                >
+                    Regime Comparison
                 </button>
             </div>
 
@@ -672,11 +679,35 @@ const TaxManagement = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-muted mb-1.5">Org. Contribution %</label>
+                                        <label className="block text-xs text-muted mb-1.5">Org. Contrib (EPF) %</label>
                                         <input
                                             type="number" className="tax-input" step="0.01"
-                                            value={payrollSettings.pf_contribution_rate_employer}
-                                            onChange={(e) => setPayrollSettings({ ...payrollSettings, pf_contribution_rate_employer: parseFloat(e.target.value) })}
+                                            value={payrollSettings.pf_contribution_rate_epf_employer}
+                                            onChange={(e) => setPayrollSettings({ ...payrollSettings, pf_contribution_rate_epf_employer: parseFloat(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-muted mb-1.5">Org. Contrib (Pension) %</label>
+                                        <input
+                                            type="number" className="tax-input" step="0.01"
+                                            value={payrollSettings.pf_contribution_rate_eps}
+                                            onChange={(e) => setPayrollSettings({ ...payrollSettings, pf_contribution_rate_eps: parseFloat(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-muted mb-1.5">PF Admin Charges %</label>
+                                        <input
+                                            type="number" className="tax-input" step="0.01"
+                                            value={payrollSettings.pf_admin_charges_rate}
+                                            onChange={(e) => setPayrollSettings({ ...payrollSettings, pf_admin_charges_rate: parseFloat(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-muted mb-1.5">EDLI Charges %</label>
+                                        <input
+                                            type="number" className="tax-input" step="0.01"
+                                            value={payrollSettings.pf_edli_rate}
+                                            onChange={(e) => setPayrollSettings({ ...payrollSettings, pf_edli_rate: parseFloat(e.target.value) })}
                                         />
                                     </div>
                                     <div>
@@ -766,6 +797,9 @@ const TaxManagement = () => {
                     </div>
                 )}
 
+                {activeTab === 'comparison' && (
+                    <RegimeComparison />
+                )}
             </div>
 
             {/* Modal */}
@@ -778,16 +812,14 @@ const TaxManagement = () => {
             />
 
             {/* Notification Toast */}
-            {
-                notification && (
-                    <div className={`fixed bottom-8 right-8 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-slide-in ${notification.type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
-                        }`}>
-                        {notification.type === 'error' ? <AlertCircle size={20} /> : <Check size={20} />}
-                        <span className="font-medium">{notification.message}</span>
-                    </div>
-                )
-            }
-        </div >
+            {notification && (
+                <div className={`fixed bottom-8 right-8 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-slide-in ${notification.type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
+                    }`}>
+                    {notification.type === 'error' ? <AlertCircle size={20} /> : <Check size={20} />}
+                    <span className="font-medium">{notification.message}</span>
+                </div>
+            )}
+        </div>
     );
 };
 

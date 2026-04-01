@@ -184,7 +184,7 @@ class PayrollReportViewSet(viewsets.ViewSet):
         )
 
         totals = payslips.aggregate(
-            total_gross=Sum('gross_salary'),
+            total_gross=Sum('gross_earnings'),
             total_net=Sum('net_salary'),
             total_deductions=Sum('total_deductions'),
             count=Count('id')
@@ -234,7 +234,6 @@ class PayrollReportViewSet(viewsets.ViewSet):
                 'employee_id': p.employee.employee_id,
                 'department': p.employee.department.name if p.employee.department else 'N/A',
                 'designation': p.employee.designation.name if p.employee.designation else 'N/A',
-                'basic_salary': float(p.basic_salary),
                 'gross_salary': float(p.gross_earnings),
                 'pf_deduction': pf_amount,
                 'esi_deduction': esi_amount,

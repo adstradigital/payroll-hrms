@@ -26,6 +26,7 @@ export function apiDeleteAllHolidays() {
 
 // Authentication
 export const login = (credentials) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LOGIN, credentials);
+export const apiVerify2FA = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.VERIFY_2FA, data);
 // Submit registration for approval (no password - credentials will be auto-generated)
 export const register = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SUBMIT_REGISTRATION, {
     organization_name: data.organizationName,
@@ -88,6 +89,11 @@ export const deleteHoliday = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOIN
 export const restoreHoliday = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.HOLIDAYS}${id}/restore/`);
 export const getDeletedHolidays = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.HOLIDAYS, { params: { include_deleted: 'true', is_active: 'false' } });
 
+// Shift Management
+export const getAllShifts = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SHIFTS, { params });
+export const getShiftById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SHIFT_DETAIL(id));
+export const getShiftAssignments = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SHIFT_ASSIGNMENTS, { params });
+
 // Leave Management
 export const getAllLeaves = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVES, { params });
 export const getLeaveById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_DETAIL(id));
@@ -128,6 +134,7 @@ export const deleteTaxSlab = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.
 export const getTaxDeclarations = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.TAX_DECLARATIONS, { params });
 export const updateTaxDeclaration = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.TAX_DECLARATION_DETAIL(id), data);
 export const getTaxDashboardStats = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.TAX_DASHBOARD_STATS);
+export const getTaxComparison = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL}tax-comparison/`, data);
 
 
 // Salary Components
@@ -178,12 +185,25 @@ export const getLoanRepaymentStats = () => axiosInstance.get(`${CLIENTADMIN_ENDP
 export const getEMIPaymentHistory = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}emi-payment-history/`, { params });
 
 // Adhoc Payments (Bonuses & Incentives)
-export const getAdhocPayments = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/`, { params });
-export const getAdhocPaymentById = (id) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/${id}/`);
-export const createAdhocPayment = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/`, data);
-export const updateAdhocPayment = (id, data) => axiosInstance.patch(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/${id}/`, data);
-export const deleteAdhocPayment = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/${id}/`);
-export const getAdhocPaymentStats = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}adhoc-payments/stats/`);
+export const getAdhocPayments = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ADHOC_PAYMENTS, { params });
+export const getAdhocPaymentById = (id) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.ADHOC_PAYMENTS}${id}/`);
+export const createAdhocPayment = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ADHOC_PAYMENTS, data);
+export const updateAdhocPayment = (id, data) => axiosInstance.patch(`${CLIENTADMIN_ENDPOINTS.ADHOC_PAYMENTS}${id}/`, data);
+export const deleteAdhocPayment = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.ADHOC_PAYMENTS}${id}/`);
+export const getAdhocPaymentStats = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.ADHOC_PAYMENTS}stats//`);
+
+// Sales Commission
+export const getCommissionRules = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}commission-rules/`);
+export const createCommissionRule = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL}commission-rules/`, data);
+export const updateCommissionRule = (id, data) => axiosInstance.patch(`${CLIENTADMIN_ENDPOINTS.PAYROLL}commission-rules/${id}/`, data);
+export const deleteCommissionRule = (id) => axiosInstance.delete(`${CLIENTADMIN_ENDPOINTS.PAYROLL}commission-rules/${id}/`);
+
+export const getSalesRecords = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}sales-records/`, { params });
+export const createSalesRecord = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL}sales-records/`, data);
+
+export const calculateCommissions = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL}commissions/calculate/`, data);
+export const getCommissionHistory = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}commissions/history/`, { params });
+export const approveCommission = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.PAYROLL}commissions/approve/${id}/`);
 
 
 // Payroll Settings
@@ -207,26 +227,26 @@ export const getPayrollReports = ({ type, ...params }) => axiosInstance.get(`${C
 export const getLeaveReports = ({ type, ...params }) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_LEAVE}${type}/`, { params });
 export const getEmployeeReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_EMPLOYEE, { params });
 
-// Requests
-export const getDocumentRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, { params });
-export const createDocumentRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, data);
-export const approveDocumentRequest = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS}${id}/approve/`);
-export const rejectDocumentRequest = (id, reason) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS}${id}/reject/`, { reason });
-export const submitDocumentForRequest = (id, formData) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS}${id}/submit/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const exportEPFECR = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL}epf-ecr/`, {
+    params,
+    responseType: 'blob'
+});
 
-export const getShiftRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SHIFT_REQUESTS, { params });
-export const createShiftRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SHIFT_REQUESTS, data);
+export const exportESIChallan = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL}esi-challan/`, {
+    params,
+    responseType: 'blob'
+});
 
-export const getWorkTypeRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, { params });
-export const createWorkTypeRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, data);
+export const exportSalaryRegister = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}reports/salary-register/`, {
+    params,
+    responseType: 'blob'
+});
 
-export const getReimbursementRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REIMBURSEMENT_REQUESTS, { params });
-export const createReimbursementRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REIMBURSEMENT_REQUESTS, data, { headers: { 'Content-Type': 'multipart/form-data' } });
-export const updateReimbursementRequest = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.REIMBURSEMENT_REQUEST_DETAIL(id), data);
-export const deleteReimbursementRequest = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.REIMBURSEMENT_REQUEST_DETAIL(id));
+export const exportPayrollSummary = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}reports/payroll-summary/`, {
+    params,
+    responseType: 'blob'
+});
 
-export const getEncashmentRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUESTS, { params });
-export const createEncashmentRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUESTS, data);
 export const updateEncashmentRequest = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUEST_DETAIL(id), data);
 export const deleteEncashmentRequest = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUEST_DETAIL(id));
 
@@ -239,14 +259,21 @@ export const uploadDocument = (formData) => axiosInstance.post(CLIENTADMIN_ENDPO
 // Employee Documents
 export const getEmployeeDocuments = (employeeId) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENTS(employeeId));
 export const uploadEmployeeDocument = (employeeId, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENTS(employeeId), data, { headers: { 'Content-Type': 'multipart/form-data' } });
+
+// Asset and Security management functions are below
 export const deleteEmployeeDocument = (employeeId, docId) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DOCUMENT_DETAIL(employeeId, docId));
 
 // Security
 export const getSecurityProfile = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SECURITY_PROFILE);
 export const updateSecurityProfile = (data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.SECURITY_PROFILE, data);
 export const setSecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SET_SECURITY_PIN, data);
+export const adminSetSecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SECURITY_PIN_ADMIN_SET, data);
 export const verifySecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.VERIFY_SECURITY_PIN, data);
 
+// Settings
+export const startSettingsBackup = () => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SETTINGS_BACKUP);
+export const downloadSettingsBackup = () =>
+    axiosInstance.get(CLIENTADMIN_ENDPOINTS.SETTINGS_BACKUP_DOWNLOAD, { responseType: 'blob' });
 // Assets
 export const getAssets = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSETS, { params });
 export const getAssetById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id));
@@ -269,6 +296,7 @@ export const getAssetHistory = (params) => axiosInstance.get(CLIENTADMIN_ENDPOIN
 export const getAssetDashboardStats = () => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.ASSETS}dashboard_stats/`);
 
 // Performance
+export const getPerformanceDashboard = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PERFORMANCE_DASHBOARD, { params });
 export const getReviewPeriods = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REVIEW_PERIODS, { params });
 export const getGoals = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.GOALS, { params });
 export const getGoalById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.GOAL_DETAIL(id));
@@ -283,3 +311,47 @@ export const submitSelfAssessment = (id, data) => axiosInstance.post(CLIENTADMIN
 export const submitManagerReview = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_SUBMIT_MANAGER(id), data);
 export const approveReview = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_APPROVE(id));
 export const rejectReview = (id, reason) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.REVIEW_REJECT(id), { reason });
+export const calculateBonus = (rating, employeeLevel) => {
+    const params = { rating };
+    if (employeeLevel) params.employee_level = employeeLevel;
+    return axiosInstance.get(CLIENTADMIN_ENDPOINTS.BONUS_CALCULATE, { params });
+};
+
+// Recruitment & Interviews
+export const getInterviews = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.INTERVIEWS, { params });
+export const getInterviewById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.INTERVIEW_DETAIL(id));
+export const updateInterviewStatus = (id, data) => axiosInstance.patch(`${CLIENTADMIN_ENDPOINTS.INTERVIEW_DETAIL(id)}status/`, data);
+export const submitInterviewFeedback = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.INTERVIEW_DETAIL(id)}feedback/`, data);
+export const cancelInterview = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.INTERVIEW_DETAIL(id)}cancel/`);
+
+// Settings - Employee Custom Fields
+export const getEmployeeFieldDefinitions = () => axiosInstance.get('/settings/employee-fields/');
+
+// Settings - Document Types
+export const getDocumentTypes = (params) => axiosInstance.get('/settings/document-types/', { params });
+
+// Onboarding
+export const getOnboardingTemplates = () => axiosInstance.get('/settings/onboarding-templates/');
+export const getEmployeeOnboardingProgress = (employeeId) => axiosInstance.get(`/settings/employee-onboarding/${employeeId}/`);
+export const updateEmployeeOnboardingStep = (stepId, data) => axiosInstance.patch(`/settings/employee-onboarding-step/${stepId}/`, data);
+// Attendance
+export const getAttendancePolicies = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICIES, { params });
+export const createAttendancePolicy = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICIES, data);
+export const updateAttendancePolicy = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICY_DETAIL(id), data);
+
+// HRMS Requests
+export const getDocumentRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, { params });
+export const createDocumentRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, data);
+export const approveDocumentRequest = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS + `${id}/approve/`);
+export const rejectDocumentRequest = (id, reason) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS + `${id}/reject/`, { reason });
+export const submitDocumentForRequest = (id, formData) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS + `${id}/submit/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+
+export const getShiftRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SHIFT_REQUESTS, { params });
+export const createShiftRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SHIFT_REQUESTS, data);
+export const approveShiftRequest = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SHIFT_REQUEST_APPROVE(id));
+export const rejectShiftRequest = (id, reason) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SHIFT_REQUEST_REJECT(id), { reason });
+
+export const getWorkTypeRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, { params });
+export const createWorkTypeRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, data);
+export const approveWorkTypeRequest = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUEST_APPROVE(id));
+export const rejectWorkTypeRequest = (id, reason) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUEST_REJECT(id), { reason });

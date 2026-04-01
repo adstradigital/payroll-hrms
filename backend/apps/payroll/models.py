@@ -3,6 +3,7 @@ from apps.accounts.models import Organization, Employee, BaseModel
 from decimal import Decimal
 import uuid
 from django.utils import timezone
+from .models_commission import CommissionRule, SalesRecord, CommissionHistory
 
 
 class SalaryComponent(BaseModel):
@@ -406,14 +407,51 @@ class PaySlip(BaseModel):
                             self.total_deductions += esi_emp_amount
                             statutory_deductions_val += esi_emp_amount
  
-            # TDS logic (existing but refactored to use fetched settings)
-            if not settings.enable_auto_tds:
-                tds_comps = self.components.filter(component__statutory_type='tds')
-                for tc in tds_comps:
-                    if tc.component.component_type == 'deduction':
-                        self.total_deductions -= tc.amount
-                        statutory_deductions_val -= tc.amount # Safe subtract
-                tds_comps.delete()
+            # TDS / Income Tax Calculation
+            if settings.enable_auto_tds:
+                try:
+                    from .services.tds_calculator import TDSCalculator
+                    
+                    # Get or auto-create the TDS salary component
+                    tds_component = SalaryComponent.objects.filter(
+                        company=self.employee.company,
+                        statutory_type='tds',
+                        is_active=True
+                    ).first()
+                    
+                    if not tds_component:
+                        tds_component = SalaryComponent.objects.create(
+                            company=self.employee.company,
+                            name='Income Tax (TDS)',
+                            code='TDS',
+                            component_type='deduction',
+                            calculation_type='fixed',
+                            is_taxable=False,
+                            is_statutory=True,
+                            statutory_type='tds',
+                        )
+                    
+                    # Only calculate if not already added (avoid double-adding on recalculate)
+                    if not self.components.filter(component=tds_component).exists():
+                        monthly_tds = TDSCalculator.calculate_monthly_tds(
+                            employee=self.employee,
+                            payroll_period=self.payroll_period,
+                            gross_monthly_salary=self.gross_earnings
+                        )
+                        
+                        if monthly_tds > 0:
+                            PaySlipComponent.objects.create(
+                                payslip=self,
+                                component=tds_component,
+                                amount=monthly_tds,
+                                is_manual=False
+                            )
+                            self.total_deductions += monthly_tds
+                            statutory_deductions_val += monthly_tds
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f"TDS calculation failed for {self.employee}: {e}")
+
         
         # 5. Process Loan EMIs
         unpaid_emis = EMI.objects.filter(
@@ -810,6 +848,10 @@ class PayrollSettings(BaseModel):
     pf_enabled = models.BooleanField(default=True)
     pf_contribution_rate_employer = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('12.00'))
     pf_contribution_rate_employee = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('12.00'))
+    pf_contribution_rate_eps = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('8.33'), help_text='Pension Fund rate (Employer share)')
+    pf_contribution_rate_epf_employer = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('3.67'), help_text='EPF rate (Employer share)')
+    pf_admin_charges_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.50'), help_text='PF Admin Charges %')
+    pf_edli_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.50'), help_text='EDLI Charges %')
     pf_wage_ceiling = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('15000.00'))
     pf_is_restricted_basic = models.BooleanField(default=True, help_text='Restrict PF calculation to ceiling if basic > ceiling')
     pf_include_employer_share_in_ctc = models.BooleanField(default=True)

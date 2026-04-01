@@ -10,6 +10,8 @@ import {
     RotateCcw,
     Check,
     AlertCircle,
+    Upload,
+    Trash2,
 } from 'lucide-react';
 import axiosInstance from '@/api/axiosInstance';
 
@@ -36,10 +38,7 @@ const EMPTY_FORM = Object.freeze({
     postal_code: '',
 
     // System Configuration
-    timezone: '',
     currency: '',
-    date_format: '',
-    time_format: '',
     payroll_cycle: '',
 });
 
@@ -78,6 +77,8 @@ export default function CompanyInfoSettings() {
     const [saving, setSaving] = useState(false);
     const [notification, setNotification] = useState(null);
     const [form, setForm] = useState(EMPTY_FORM);
+    const [logoFile, setLogoFile] = useState(null);
+    const [logoPreview, setLogoPreview] = useState(null);
     const initialRef = useRef(EMPTY_FORM);
 
     const showNotification = (message, type = 'success') => {
@@ -98,32 +99,33 @@ export default function CompanyInfoSettings() {
                 const nextForm = {
                     ...EMPTY_FORM,
 
-                    company_name: asString(settings?.company_name ?? org?.company_name ?? org?.name),
-                    company_code: asString(settings?.company_code ?? org?.company_code ?? org?.code),
-                    industry: asString(settings?.industry ?? org?.industry),
-                    company_size: asString(settings?.company_size ?? org?.company_size ?? org?.employee_scale),
+                    company_name: asString(org?.company_name ?? org?.name ?? settings?.company_name),
+                    company_code: asString(org?.company_code ?? org?.code ?? settings?.company_code),
+                    industry: asString(org?.industry ?? settings?.industry),
+                    company_size: asString(org?.company_size ?? org?.employee_scale ?? settings?.company_size),
                     founded_year: asString(
-                        settings?.founded_year ?? org?.founded_year ?? getYearFromDateString(org?.established_date)
+                        getYearFromDateString(org?.established_date) ?? org?.founded_year ?? settings?.founded_year
                     ),
 
-                    email: asString(settings?.email ?? org?.email),
-                    phone: asString(settings?.phone ?? org?.phone),
-                    website: asString(settings?.website ?? org?.website),
+                    email: asString(org?.email ?? settings?.email),
+                    phone: asString(org?.phone ?? settings?.phone),
+                    website: asString(org?.website ?? settings?.website),
                     support_email: asString(settings?.support_email),
 
-                    address_line1: asString(settings?.address_line1 ?? org?.address),
-                    address_line2: asString(settings?.address_line2),
-                    city: asString(settings?.city ?? org?.city),
-                    state: asString(settings?.state ?? org?.state),
-                    country: asString(settings?.country ?? org?.country),
-                    postal_code: asString(settings?.postal_code ?? org?.postal_code ?? org?.pincode),
+                    address_line1: asString(org?.address?.split('\n')[0] ?? settings?.address_line1),
+                    address_line2: asString(org?.address?.split('\n')[1] ?? settings?.address_line2),
+                    city: asString(org?.city ?? settings?.city),
+                    state: asString(org?.state ?? settings?.state),
+                    country: asString(org?.country ?? settings?.country),
+                    postal_code: asString(org?.pincode ?? org?.postal_code ?? settings?.postal_code),
 
-                    timezone: asString(settings?.timezone ?? org?.timezone),
-                    currency: asString(settings?.currency ?? org?.currency),
-                    date_format: asString(settings?.date_format ?? org?.date_format),
-                    time_format: asString(settings?.time_format ?? org?.time_format),
-                    payroll_cycle: asString(settings?.payroll_cycle ?? org?.payroll_cycle),
+                    currency: asString(org?.currency ?? settings?.currency),
+                    payroll_cycle: asString(org?.payroll_cycle ?? settings?.payroll_cycle),
                 };
+
+                if (org?.logo) {
+                    setLogoPreview(org.logo);
+                }
 
                 if (!isMounted) return;
                 initialRef.current = nextForm;
@@ -155,7 +157,23 @@ export default function CompanyInfoSettings() {
 
     const handleReset = () => {
         setForm(initialRef.current);
+        setLogoFile(null);
+        setLogoPreview(initialRef.current.logo || null);
         showNotification('Changes reset', 'success');
+    };
+
+    const handleLogoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                showNotification('Logo must be less than 2MB', 'error');
+                return;
+            }
+            setLogoFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setLogoPreview(reader.result);
+            reader.readAsDataURL(file);
+        }
     };
 
     const buildUpdatePayload = (changed) => {
@@ -179,6 +197,7 @@ export default function CompanyInfoSettings() {
         if ('company_size' in changed) setIf('company_size', asString(form.company_size));
         if ('founded_year' in changed) {
             const year = asString(form.founded_year).trim();
+            payload.established_date = year ? `${year}-01-01` : null;
             setIf('founded_year', year ? year : null);
         }
 
@@ -201,13 +220,10 @@ export default function CompanyInfoSettings() {
         if ('postal_code' in changed) payload.pincode = asString(form.postal_code);
 
         // System Configuration (settings)
-        if ('timezone' in changed) setIf('timezone', asString(form.timezone));
         if ('currency' in changed) setIf('currency', asString(form.currency));
-        if ('date_format' in changed) setIf('date_format', asString(form.date_format));
-        if ('time_format' in changed) setIf('time_format', asString(form.time_format));
         if ('payroll_cycle' in changed) setIf('payroll_cycle', asString(form.payroll_cycle));
 
-        if (Object.keys(settings).length > 0) payload.settings = settings;
+        if (Object.keys(settings).length > 0) payload.settings = JSON.stringify(settings);
         return payload;
     };
 
@@ -220,23 +236,37 @@ export default function CompanyInfoSettings() {
         }
 
         const payload = buildUpdatePayload(changed);
+        const formData = new FormData();
+
+        // Add regular fields
+        Object.keys(payload).forEach(key => {
+            if (key === 'settings') {
+                formData.append(key, payload[key]);
+            } else {
+                formData.append(key, payload[key]);
+            }
+        });
+
+        // Add logo if changed
+        if (logoFile) {
+            formData.append('logo', logoFile);
+        }
 
         try {
             setSaving(true);
             try {
-                await axiosInstance.put('/account/organization/', payload);
+                await axiosInstance.patch('/account/organization/', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
             } catch (error) {
-                if (error?.response?.status === 405) {
-                    await axiosInstance.patch('/account/organization/', payload);
-                } else {
-                    throw error;
-                }
+                showNotification(error?.response?.data?.error || 'Failed to save company info', 'error');
+                throw error;
             }
             initialRef.current = { ...form };
+            setLogoFile(null);
             showNotification('Company info saved', 'success');
         } catch (error) {
             console.error('Failed to save company info:', error);
-            showNotification(error?.response?.data?.error || 'Failed to save company info', 'error');
         } finally {
             setSaving(false);
         }
@@ -268,6 +298,26 @@ export default function CompanyInfoSettings() {
                         <h3>Company Details</h3>
                     </div>
                     <div className="settings-card-body">
+                        <div className="settings-logo-section">
+                            <div className="settings-logo-preview">
+                                {logoPreview ? (
+                                    <img src={logoPreview} alt="Company Logo" />
+                                ) : (
+                                    <Building2 size={32} className="text-gray-300" />
+                                )}
+                            </div>
+                            <div className="settings-logo-actions">
+                                <label className="settings-btn-logo">
+                                    <Upload size={14} />
+                                    Change Logo
+                                    <input type="file" hidden accept="image/*" onChange={handleLogoChange} />
+                                </label>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Recommended: Square image, max 2MB.
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="settings-input-row">
                             <div className="settings-field-group">
                                 <label className="settings-label">Company Name</label>
@@ -448,22 +498,6 @@ export default function CompanyInfoSettings() {
                     <div className="settings-card-body">
                         <div className="settings-input-row">
                             <div className="settings-field-group">
-                                <label className="settings-label">Timezone</label>
-                                <input
-                                    className="settings-input"
-                                    list="timezones"
-                                    value={form.timezone}
-                                    onChange={onChange('timezone')}
-                                    placeholder="e.g. Asia/Kolkata"
-                                />
-                                <datalist id="timezones">
-                                    <option value="Asia/Kolkata" />
-                                    <option value="UTC" />
-                                    <option value="America/New_York" />
-                                    <option value="Europe/London" />
-                                </datalist>
-                            </div>
-                            <div className="settings-field-group">
                                 <label className="settings-label">Currency</label>
                                 <input
                                     className="settings-input"
@@ -477,39 +511,6 @@ export default function CompanyInfoSettings() {
                                     <option value="USD" />
                                     <option value="EUR" />
                                     <option value="GBP" />
-                                </datalist>
-                            </div>
-                        </div>
-                        <div className="settings-input-row">
-                            <div className="settings-field-group">
-                                <label className="settings-label">Date Format</label>
-                                <input
-                                    className="settings-input"
-                                    list="date-formats"
-                                    value={form.date_format}
-                                    onChange={onChange('date_format')}
-                                    placeholder="e.g. YYYY-MM-DD"
-                                />
-                                <datalist id="date-formats">
-                                    <option value="YYYY-MM-DD" />
-                                    <option value="DD-MM-YYYY" />
-                                    <option value="MM/DD/YYYY" />
-                                </datalist>
-                            </div>
-                            <div className="settings-field-group">
-                                <label className="settings-label">Time Format</label>
-                                <input
-                                    className="settings-input"
-                                    list="time-formats"
-                                    value={form.time_format}
-                                    onChange={onChange('time_format')}
-                                    placeholder="e.g. 24h"
-                                />
-                                <datalist id="time-formats">
-                                    <option value="24h" />
-                                    <option value="12h" />
-                                    <option value="HH:mm" />
-                                    <option value="hh:mm A" />
                                 </datalist>
                             </div>
                             <div className="settings-field-group">

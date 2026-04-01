@@ -11,7 +11,10 @@ import {
     getAllDesignations,
     createEmployee,
     updateEmployee,
-    getEmployeeById
+    getEmployeeById,
+    getEmployeeFieldDefinitions,
+    getOnboardingTemplates,
+    getSalaryStructures
 } from '@/api/api_clientadmin';
 import './EmployeeForm.css';
 
@@ -21,6 +24,9 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
     const [fetching, setFetching] = useState(true);
     const [departments, setDepartments] = useState([]);
     const [designations, setDesignations] = useState([]);
+    const [onboardingTemplates, setOnboardingTemplates] = useState([]);
+    const [salaryStructures, setSalaryStructures] = useState([]);
+    const [customFieldsDef, setCustomFieldsDef] = useState([]);
 
     const [formData, setFormData] = useState({
         // Personal Info
@@ -38,6 +44,17 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
         employment_type: 'permanent',
         date_of_joining: new Date().toISOString().split('T')[0],
         status: 'active',
+        onboarding_template: '',
+
+        // Banking & Salary
+        bank_name: '',
+        bank_account_number: '',
+        bank_ifsc_code: '',
+        bank_branch: '',
+        salary_structure: '',
+        gross_salary: '',
+        current_ctc: '',
+        basic_salary: '',
 
         // User Account Fields (New)
         enable_login: false,
@@ -45,30 +62,33 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
         password: '',
         access_role: 'employee',
 
-        // Banking
-        bank_name: '',
-        bank_account_number: '',
-        bank_ifsc_code: '',
-        current_ctc: '',
-        basic_salary: '',
-
         // Address
         current_address: '',
         current_city: '',
         current_state: '',
-        current_pincode: ''
+        current_pincode: '',
+
+        // Custom Fields
+        custom_fields: {}
     });
 
     useEffect(() => {
         const fetchInitialData = async () => {
             setFetching(true);
             try {
-                const [deptRes, desigRes] = await Promise.all([
+                const [deptRes, desigRes, fieldsRes, templateRes, salaryRes] = await Promise.all([
                     getAllDepartments(),
-                    getAllDesignations()
+                    getAllDesignations(),
+                    getEmployeeFieldDefinitions(),
+                    getOnboardingTemplates(),
+                    getSalaryStructures()
                 ]);
                 setDepartments(deptRes.data.results || deptRes.data);
                 setDesignations(desigRes.data.results || desigRes.data);
+                setOnboardingTemplates(templateRes.data.results || templateRes.data || []);
+                setSalaryStructures(salaryRes.data.results || salaryRes.data || []);
+                const activeFields = (fieldsRes.data.results || fieldsRes.data || []).filter(f => f.is_active);
+                setCustomFieldsDef(activeFields);
 
                 if (employeeId) {
                     const empRes = await getEmployeeById(employeeId);
@@ -82,7 +102,8 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
                         enable_login: emp.has_user_account || false,
                         username: emp.username || emp.email, // Default to email if no username
                         access_role: emp.access_role || 'employee',
-                        password: '' // Don't populate password
+                        password: '', // Don't populate password
+                        custom_fields: emp.custom_fields || {}
                     });
                 }
             } catch (error) {
@@ -99,6 +120,16 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handleCustomFieldChange = (key, value) => {
+        setFormData(prev => ({
+            ...prev,
+            custom_fields: {
+                ...(prev.custom_fields || {}),
+                [key]: value
+            }
         }));
     };
 
@@ -153,7 +184,8 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
         { id: 'employment', label: 'Employment Details', icon: Briefcase },
         { id: 'user', label: 'User Access', icon: Shield },
         { id: 'banking', label: 'Banking & Salary', icon: CreditCard },
-        { id: 'address', label: 'Address Details', icon: Home }
+        { id: 'address', label: 'Address Details', icon: Home },
+        { id: 'additional', label: 'Custom Info', icon: Plus }
     ];
 
     if (fetching) return <div className="fetching-loader">Fetching employee data...</div>;
@@ -278,6 +310,27 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
                                             <option value="on_leave">On Leave</option>
                                         </select>
                                     </div>
+                                    {/* Onboarding Template selection hidden for now */}
+                                    {false && !employeeId && (
+                                        <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                                            <label>Onboarding Template</label>
+                                            <select 
+                                                name="onboarding_template" 
+                                                value={formData.onboarding_template} 
+                                                onChange={handleChange} 
+                                                className="form-control"
+                                                title="Select a template to automatically generate onboarding steps for this employee"
+                                            >
+                                                <option value="">No Onboarding Template (Manual)</option>
+                                                {onboardingTemplates.filter(t => t.is_active).map(t => (
+                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                ))}
+                                            </select>
+                                            <p className="form-helper-text">
+                                                Assigning a template will create a checklist of tasks for the new employee.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -379,12 +432,122 @@ export default function EmployeeForm({ employeeId, onClose, onSuccess }) {
                                 </div>
                             )}
 
-                            {(activeTab === 'banking' || activeTab === 'address') && (
-                                <div className="placeholder-ui animate-fade-in">
-                                    <AlertCircle size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
-                                    <p>Please use tabs to navigate sections (Implemented as per mockup)</p>
-                                    <p style={{ fontSize: '0.8rem' }}>If you need these sections fully implemented with fields, let me know.</p>
-                                    {/* Keeping the fields available in state but hiding them for UI simplicity as per mockup request, or I can implement them. User snippet showed them as 'Simplified other tabs'. I'll follow snippet logic but I added fields in state so they are preserved if previously set. */}
+                            {activeTab === 'additional' && (
+                                <div className="form-grid animate-fade-in">
+                                    {customFieldsDef.length === 0 ? (
+                                        <div className="placeholder-ui" style={{ gridColumn: '1/-1', padding: '2rem' }}>
+                                            <AlertCircle size={32} style={{ opacity: 0.5, marginBottom: '1rem' }} />
+                                            <p>No custom fields defined in settings.</p>
+                                        </div>
+                                    ) : (
+                                        customFieldsDef.map(field => (
+                                            <div key={field.id || field.field_key} className="form-group">
+                                                <label>
+                                                    {field.field_name} {field.is_required && <span style={{ color: 'red' }}>*</span>}
+                                                </label>
+                                                {field.field_type === 'dropdown' ? (
+                                                    <select
+                                                        className="form-control"
+                                                        value={formData.custom_fields[field.field_key] || ''}
+                                                        onChange={(e) => handleCustomFieldChange(field.field_key, e.target.value)}
+                                                        required={field.is_required}
+                                                    >
+                                                        <option value="">Select Options</option>
+                                                        {field.options.map(opt => (
+                                                            <option key={opt} value={opt}>{opt}</option>
+                                                        ))}
+                                                    </select>
+                                                ) : field.field_type === 'checkbox' ? (
+                                                    <div className="checkbox-wrapper" style={{ marginTop: '0.5rem' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!formData.custom_fields[field.field_key]}
+                                                            onChange={(e) => handleCustomFieldChange(field.field_key, e.target.checked)}
+                                                        />
+                                                        <span style={{ marginLeft: '0.5rem' }}>{field.field_name}</span>
+                                                    </div>
+                                                ) : (
+                                                    <input
+                                                        type={field.field_type === 'date' ? 'date' : field.field_type === 'number' ? 'number' : 'text'}
+                                                        className="form-control"
+                                                        value={formData.custom_fields[field.field_key] || ''}
+                                                        onChange={(e) => handleCustomFieldChange(field.field_key, e.target.value)}
+                                                        required={field.is_required}
+                                                        placeholder={field.description || `Enter ${field.field_name}`}
+                                                    />
+                                                )}
+                                                {field.description && <p className="field-desc" style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>{field.description}</p>}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'banking' && (
+                                <div className="animate-fade-in">
+                                    <div className="section-title">
+                                        <CreditCard size={18} className="text-brand" />
+                                        <span>Bank Account Details</span>
+                                    </div>
+                                    <div className="form-grid mb-8">
+                                        <div className="form-group">
+                                            <label>Bank Name</label>
+                                            <input type="text" name="bank_name" value={formData.bank_name || ''} onChange={handleChange} className="form-control" placeholder="e.g. HDFC Bank" />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Account Number</label>
+                                            <input type="text" name="bank_account_number" value={formData.bank_account_number || ''} onChange={handleChange} className="form-control" placeholder="e.g. 50100..." />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>IFSC Code</label>
+                                            <input type="text" name="bank_ifsc_code" value={formData.bank_ifsc_code || ''} onChange={handleChange} className="form-control" placeholder="e.g. HDFC0000..." />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Branch Name</label>
+                                            <input type="text" name="bank_branch" value={formData.bank_branch || ''} onChange={handleChange} className="form-control" placeholder="e.g. Mumbai Main" />
+                                        </div>
+                                    </div>
+
+                                    <div className="section-title">
+                                        <Briefcase size={18} className="text-brand" />
+                                        <span>Salary Configuration</span>
+                                    </div>
+                                    <div className="form-grid">
+                                        <div className="form-group">
+                                            <label>Salary Structure <span className="text-danger">*</span></label>
+                                            <select name="salary_structure" value={formData.salary_structure || ''} onChange={handleChange} className="form-control">
+                                                <option value="">Select Structure</option>
+                                                {salaryStructures.map(s => (
+                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Monthly Gross Salary (₹) <span className="text-danger">*</span></label>
+                                            <input type="number" name="gross_salary" value={formData.gross_salary || ''} onChange={handleChange} className="form-control" placeholder="e.g. 50000" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'address' && (
+                                <div className="form-grid animate-fade-in">
+                                    <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                                        <label>Residential Address</label>
+                                        <textarea name="current_address" rows="3" value={formData.current_address || ''} onChange={handleChange} className="form-control"></textarea>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>City</label>
+                                        <input type="text" name="current_city" value={formData.current_city || ''} onChange={handleChange} className="form-control" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>State</label>
+                                        <input type="text" name="current_state" value={formData.current_state || ''} onChange={handleChange} className="form-control" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Pincode</label>
+                                        <input type="text" name="current_pincode" value={formData.current_pincode || ''} onChange={handleChange} className="form-control" />
+                                    </div>
                                 </div>
                             )}
                         </form>

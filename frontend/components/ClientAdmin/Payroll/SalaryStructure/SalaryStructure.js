@@ -35,9 +35,10 @@ const StructureForm = ({ structure, onClose, onSuccess }) => {
                 res = await createSalaryStructure(formData);
             }
             onSuccess(res.data);
-        } catch (e) {
-            console.error("Error saving structure:", e);
-            alert("Error saving structure");
+        } catch (err) {
+            console.error("Error saving structure:", err);
+            const errorMsg = err.response?.data?.error || err.response?.data?.detail || Object.values(err.response?.data || {}).flat()[0] || "Error saving structure";
+            alert(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -167,7 +168,7 @@ const ComponentManager = ({ structure, onClose }) => {
                 <div className="modal-header">
                     <div>
                         <h3 className="text-xl font-serif" style={{ color: 'var(--text-primary)' }}>Configure Components</h3>
-                        <p className="text-xs text-gold">{structure.name}</p>
+                        <p className="text-xs text-gold font-bold">{structure.name}</p>
                     </div>
                     <button onClick={onClose}><X style={{ color: 'var(--text-muted)' }} className="hover:text-white" /></button>
                 </div>

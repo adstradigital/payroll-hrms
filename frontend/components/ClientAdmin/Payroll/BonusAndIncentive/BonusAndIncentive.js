@@ -93,7 +93,6 @@ export default function BonusAndIncentive() {
         setActionLoading(true);
         setErrorMsg('');
 
-        // Manual Validation Check (Just in case)
         if (!formData.amount || isNaN(parseFloat(formData.amount))) {
             setErrorMsg("Please enter a valid amount.");
             setActionLoading(false);
@@ -193,18 +192,18 @@ export default function BonusAndIncentive() {
         return matchesSearch && matchesStatus;
     });
 
-    const getStatusClass = (status) => `status-badge status-${status}`;
+    const getStatusClass = (status) => `bonus-status-badge bonus-status-${status}`;
 
     return (
         <div className="bonus-container">
             {/* Header */}
-            <header className="page-header-premium">
-                <div className="title-block">
-                    <h1 className="cinematic-title">Bonus <span className="title-accent">& Incentives</span></h1>
-                    <p className="cinematic-subtitle">Manage One-Time Payments & Rewards</p>
+            <header className="bonus-page-header">
+                <div className="bonus-title-block">
+                    <h1 className="bonus-cinematic-title">Bonus <span className="bonus-title-accent">& Incentives</span></h1>
+                    <p className="bonus-cinematic-subtitle">Manage One-Time Payments & Rewards</p>
                 </div>
-                <div className="header-actions">
-                    <button className="btn-primary-premium" onClick={() => { resetForm(); setIsModalOpen(true); }}>
+                <div className="bonus-header-actions">
+                    <button className="bonus-btn-primary" onClick={() => { resetForm(); setIsModalOpen(true); }}>
                         <Plus size={18} /> Add Bonus
                     </button>
                 </div>
@@ -214,36 +213,36 @@ export default function BonusAndIncentive() {
             {stats && (
                 <div className="bonus-stats-grid">
                     <div className="bonus-stat-card">
-                        <span className="stat-label">Total Pending</span>
-                        <div className="stat-value">₹{parseFloat(stats.total_pending || 0).toLocaleString()}</div>
-                        <span className="stat-count">{stats.pending_count} payments</span>
-                        <Clock className="stat-icon-bg" size={64} />
+                        <span className="bonus-stat-label">Total Pending</span>
+                        <div className="bonus-stat-value">₹{parseFloat(stats.total_pending || 0).toLocaleString()}</div>
+                        <span className="bonus-stat-count">{stats.pending_count} payments</span>
+                        <Clock className="bonus-stat-icon-bg" size={64} />
                     </div>
                     <div className="bonus-stat-card">
-                        <span className="stat-label">Total Paid</span>
-                        <div className="stat-value">₹{parseFloat(stats.total_paid || 0).toLocaleString()}</div>
-                        <span className="stat-count">{stats.processed_count} payments</span>
-                        <CheckCircle2 className="stat-icon-bg" size={64} />
+                        <span className="bonus-stat-label">Total Paid</span>
+                        <div className="bonus-stat-value">₹{parseFloat(stats.total_paid || 0).toLocaleString()}</div>
+                        <span className="bonus-stat-count">{stats.processed_count} payments</span>
+                        <CheckCircle2 className="bonus-stat-icon-bg" size={64} />
                     </div>
                     <div className="bonus-stat-card">
-                        <span className="stat-label">Total Payments</span>
-                        <div className="stat-value">{stats.total_count}</div>
-                        <span className="stat-count">All time</span>
-                        <Gift className="stat-icon-bg" size={64} />
+                        <span className="bonus-stat-label">Total Payments</span>
+                        <div className="bonus-stat-value">{stats.total_count}</div>
+                        <span className="bonus-stat-count">All time</span>
+                        <Gift className="bonus-stat-icon-bg" size={64} />
                     </div>
                     <div className="bonus-stat-card">
-                        <span className="stat-label">Recent Activity</span>
-                        <div className="stat-value">{stats.recent_payments?.length || 0}</div>
-                        <span className="stat-count">Last 5 payments</span>
-                        <TrendingUp className="stat-icon-bg" size={64} />
+                        <span className="bonus-stat-label">Recent Activity</span>
+                        <div className="bonus-stat-value">{stats.recent_payments?.length || 0}</div>
+                        <span className="bonus-stat-count">Last 5 payments</span>
+                        <TrendingUp className="bonus-stat-icon-bg" size={64} />
                     </div>
                 </div>
             )}
 
             {/* Toolbar */}
-            <div className="toolbar-premium">
-                <div className="search-box-premium">
-                    <Search size={18} className="text-muted" />
+            <div className="bonus-toolbar">
+                <div className="bonus-search-box">
+                    <Search size={18} className="bonus-text-muted" />
                     <input
                         type="text"
                         placeholder="Search by employee name or payment name..."
@@ -251,10 +250,10 @@ export default function BonusAndIncentive() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="filter-group">
-                    <Filter size={18} className="text-muted" />
+                <div className="bonus-filter-group">
+                    <Filter size={18} className="bonus-text-muted" />
                     <select
-                        className="filter-select"
+                        className="bonus-filter-select"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
@@ -264,14 +263,14 @@ export default function BonusAndIncentive() {
                         <option value="cancelled">Cancelled</option>
                     </select>
                 </div>
-                <button className="btn-refresh-premium" onClick={fetchData} title="Refresh Data">
+                <button className="bonus-btn-refresh" onClick={fetchData} title="Refresh Data">
                     <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                 </button>
             </div>
 
             {/* Table */}
-            <div className="table-container-premium">
-                <table className="premium-table">
+            <div className="bonus-table-container">
+                <table className="bonus-table">
                     <thead>
                         <tr>
                             <th>Employee</th>
@@ -292,16 +291,16 @@ export default function BonusAndIncentive() {
                             filteredPayments.map(payment => (
                                 <tr key={payment.id}>
                                     <td>
-                                        <div className="emp-cell">
-                                            <div className="salary-avatar-circle">{payment.employee_name?.[0]}</div>
-                                            <div className="emp-info">
-                                                <span className="emp-name-text">{payment.employee_name}</span>
-                                                <span className="emp-id-text">{payment.employee_id_display}</span>
+                                        <div className="bonus-emp-cell">
+                                            <div className="bonus-avatar-circle">{payment.employee_name?.[0]}</div>
+                                            <div className="bonus-emp-info">
+                                                <span className="bonus-emp-name">{payment.employee_name}</span>
+                                                <span className="bonus-emp-id">{payment.employee_id_display}</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td>{payment.name}</td>
-                                    <td className="font-mono">₹{parseFloat(payment.amount || 0).toLocaleString()}</td>
+                                    <td className="bonus-font-mono">₹{parseFloat(payment.amount || 0).toLocaleString()}</td>
                                     <td>{new Date(payment.date).toLocaleDateString()}</td>
                                     <td>{payment.component_name || '-'}</td>
                                     <td>
@@ -312,14 +311,14 @@ export default function BonusAndIncentive() {
                                             {payment.status === 'pending' && (
                                                 <>
                                                     <button
-                                                        className="action-btn text-blue"
+                                                        className="bonus-action-btn text-blue"
                                                         onClick={() => openEditModal(payment)}
                                                         title="Edit Payment"
                                                     >
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button
-                                                        className="action-btn text-red"
+                                                        className="bonus-action-btn text-red"
                                                         onClick={() => handleDeletePayment(payment.id)}
                                                         title="Delete Payment"
                                                     >
@@ -338,31 +337,31 @@ export default function BonusAndIncentive() {
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-                    <div className="modal-content-premium" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
+                <div className="bonus-modal-overlay" onClick={() => setIsModalOpen(false)}>
+                    <div className="bonus-modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="bonus-modal-header">
                             <div>
-                                <h2 className="modal-title-text">{selectedPayment ? 'Edit Payment' : 'Add New Bonus'}</h2>
-                                <p className="modal-subtitle-text">{selectedPayment ? 'Update payment details' : 'Create a new one-time payment'}</p>
+                                <h2 className="bonus-modal-title">{selectedPayment ? 'Edit Payment' : 'Add New Bonus'}</h2>
+                                <p className="bonus-modal-subtitle">{selectedPayment ? 'Update payment details' : 'Create a new one-time payment'}</p>
                             </div>
-                            <button className="modal-close-btn" onClick={() => setIsModalOpen(false)}>
+                            <button className="bonus-modal-close" onClick={() => setIsModalOpen(false)}>
                                 <X size={20} />
                             </button>
                         </div>
 
                         <form onSubmit={selectedPayment ? handleUpdatePayment : handleCreatePayment} style={{ display: 'contents' }}>
-                            <div className="modal-body">
+                            <div className="bonus-modal-body">
                                 {errorMsg && (
-                                    <div className="error-alert">
+                                    <div className="bonus-error-alert">
                                         <AlertCircle size={16} />
                                         <span>{errorMsg}</span>
                                     </div>
                                 )}
-                                <div className="form-column">
-                                    <div className="form-group">
+                                <div className="bonus-form-column">
+                                    <div className="bonus-form-group">
                                         <label>Employee *</label>
                                         <select
-                                            className="premium-select"
+                                            className="bonus-select"
                                             required
                                             value={formData.employee}
                                             onChange={e => setFormData({ ...formData, employee: e.target.value })}
@@ -374,22 +373,22 @@ export default function BonusAndIncentive() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="form-group">
+                                    <div className="bonus-form-group">
                                         <label>Payment Name *</label>
                                         <input
                                             type="text"
-                                            className="premium-input"
+                                            className="bonus-input"
                                             required
                                             placeholder="e.g., Performance Bonus Q1"
                                             value={formData.name}
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                                         />
                                     </div>
-                                    <div className="form-group">
+                                    <div className="bonus-form-group">
                                         <label>Amount (₹) *</label>
                                         <input
                                             type="number"
-                                            className="premium-input"
+                                            className="bonus-input"
                                             required
                                             min="1"
                                             step="0.01"
@@ -399,11 +398,11 @@ export default function BonusAndIncentive() {
                                         />
                                     </div>
                                 </div>
-                                <div className="form-column">
-                                    <div className="form-group">
+                                <div className="bonus-form-column">
+                                    <div className="bonus-form-group">
                                         <label>Component (Optional)</label>
                                         <select
-                                            className="premium-select"
+                                            className="bonus-select"
                                             value={formData.component}
                                             onChange={e => setFormData({ ...formData, component: e.target.value })}
                                         >
@@ -413,20 +412,20 @@ export default function BonusAndIncentive() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="form-group">
+                                    <div className="bonus-form-group">
                                         <label>Date *</label>
                                         <input
                                             type="date"
-                                            className="premium-input"
+                                            className="bonus-input"
                                             required
                                             value={formData.date}
                                             onChange={e => setFormData({ ...formData, date: e.target.value })}
                                         />
                                     </div>
-                                    <div className="form-group">
+                                    <div className="bonus-form-group">
                                         <label>Notes</label>
                                         <textarea
-                                            className="premium-input"
+                                            className="bonus-input"
                                             rows="3"
                                             placeholder="Optional notes..."
                                             value={formData.notes}
@@ -436,13 +435,13 @@ export default function BonusAndIncentive() {
                                 </div>
                             </div>
 
-                            <div className="modal-footer">
-                                <button type="button" className="btn-secondary-premium" onClick={() => setIsModalOpen(false)}>
+                            <div className="bonus-modal-footer">
+                                <button type="button" className="bonus-btn-secondary" onClick={() => setIsModalOpen(false)}>
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="btn-primary-premium"
+                                    className="bonus-btn-primary"
                                     disabled={actionLoading}
                                 >
                                     {actionLoading ? 'Saving...' : (selectedPayment ? 'Update Payment' : 'Create Payment')}

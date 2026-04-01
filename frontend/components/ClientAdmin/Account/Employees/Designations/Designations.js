@@ -248,11 +248,12 @@ export default function Designations() {
                 <div className="designation-grid">
                     {filteredData.map(desig => (
                         <div key={desig.id} className="designation-card">
-                            <LevelBadge level={desig.level} />
-
                             <div className="card-header-row">
-                                <h3 className="card-title">{desig.name}</h3>
-                                <div className="card-code">{desig.code}</div>
+                                <div className="title-group">
+                                    <h3 className="card-title" title={desig.name}>{desig.name}</h3>
+                                    <div className="card-code">{desig.code}</div>
+                                </div>
+                                <LevelBadge level={desig.level} />
                             </div>
 
                             <p className="card-desc">

@@ -146,6 +146,33 @@ class AttendancePolicy(models.Model):
     allow_flexible_hours = models.BooleanField(default=False, help_text='Employees can adjust timing')
     overtime_after_minutes = models.PositiveIntegerField(default=480, help_text='Minutes after which overtime counts')
     
+    # Advanced Settings
+    ip_restriction_enabled = models.BooleanField(default=False)
+    allowed_ips = models.TextField(blank=True, help_text='Comma-separated list of allowed IP addresses')
+    auto_clockout_enabled = models.BooleanField(default=False)
+    auto_clockout_time = models.TimeField(null=True, blank=True, default=time(22, 0))
+    max_regularization_attempts_per_month = models.PositiveIntegerField(default=5)
+    
+    # Penalty JSON Structures (matches frontend)
+    late_thresholds = models.JSONField(
+        default=list,
+        help_text='JSON list of late penalty rules'
+    )
+    early_thresholds = models.JSONField(
+        default=list,
+        help_text='JSON list of early going penalty rules'
+    )
+
+    # Change Request Settings
+    enable_attendance_requests = models.BooleanField(default=True)
+    allow_checkin_correction = models.BooleanField(default=True)
+    allow_checkout_correction = models.BooleanField(default=True)
+    allow_missed_attendance = models.BooleanField(default=True)
+    require_proof = models.BooleanField(default=False)
+    max_requests_per_month = models.PositiveIntegerField(default=5)
+    request_deadline_days = models.PositiveIntegerField(default=7)
+    auto_approve_after_days = models.PositiveIntegerField(default=0)
+    
     is_active = models.BooleanField(default=True)
     effective_from = models.DateField()
     effective_to = models.DateField(null=True, blank=True)
@@ -386,6 +413,11 @@ class Attendance(models.Model):
         related_name='regularized_attendances'
     )
     regularized_at = models.DateTimeField(null=True, blank=True)
+    regularization_proof = models.FileField(
+        upload_to='attendance/regularization/',
+        null=True,
+        blank=True
+    )
     
     # System fields
     remarks = models.TextField(blank=True)
@@ -457,16 +489,16 @@ class Attendance(models.Model):
                 self.shift.start_time
             )
             
+            # Make timezone aware if needed
+            if timezone.is_aware(self.check_in_time):
+                expected_time = timezone.make_aware(expected_time)
+            
             # Add grace period
             grace_time = expected_time + timedelta(minutes=self.shift.grace_period_minutes)
             
-            # Make timezone aware if needed
-            if timezone.is_aware(self.check_in_time):
-                grace_time = timezone.make_aware(grace_time)
-            
             if self.check_in_time > grace_time:
                 self.is_late = True
-                self.late_by_minutes = int((self.check_in_time - grace_time).total_seconds() / 60)
+                self.late_by_minutes = int((self.check_in_time - expected_time).total_seconds() / 60)
             else:
                 self.is_late = False
                 self.late_by_minutes = 0
@@ -483,12 +515,12 @@ class Attendance(models.Model):
             if self.shift.end_time < self.shift.start_time:
                 expected_time += timedelta(days=1)
             
-            # Add early departure grace
-            grace_time = expected_time - timedelta(minutes=self.shift.early_departure_grace_minutes)
-            
             # Make timezone aware if needed
             if timezone.is_aware(self.check_out_time):
-                grace_time = timezone.make_aware(grace_time)
+                expected_time = timezone.make_aware(expected_time)
+            
+            # Add early departure grace
+            grace_time = expected_time - timedelta(minutes=self.shift.early_departure_grace_minutes)
             
             if self.check_out_time < grace_time:
                 self.is_early_departure = True

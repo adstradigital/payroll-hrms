@@ -1,0 +1,311 @@
+.profile-allowance-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+/* Summary Cards */
+.salary-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.summary-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.summary-card .summary-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
+}
+
+.summary-card.gross .summary-icon {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.summary-card.basic .summary-icon {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.summary-card.net .summary-icon {
+    background: #faf5ff;
+    color: #9333ea;
+}
+
+.summary-details .summary-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.summary-details .summary-value {
+    font-size: 1.5rem;
+    color: #1e293b;
+    font-weight: 700;
+    margin: 0.25rem 0;
+}
+
+.summary-indicator {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    align-self: flex-start;
+}
+
+/* Content Sections */
+.allowance-content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.allowance-section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+}
+
+.section-header .header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.section-header h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #334155;
+    margin: 0;
+}
+
+.count-badge {
+    font-size: 0.7rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.icon-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-badge.earning {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.icon-badge.deduction {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.component-list {
+    padding: 0.5rem 0;
+}
+
+.component-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.2s;
+}
+
+.component-item:last-child {
+    border-bottom: none;
+}
+
+.component-item:hover {
+    background: #f8fafc;
+}
+
+.component-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.component-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.component-code {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.component-amount {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.component-amount.earning {
+    color: #16a34a;
+}
+
+.component-amount.deduction {
+    color: #dc2626;
+}
+
+.total-deduction-row {
+    background: #fef2f2;
+    margin-top: 0.5rem;
+    border-top: 2px dashed #fee2e2;
+}
+
+.total-deduction-row .label {
+    font-weight: 600;
+    color: #991b1b;
+}
+
+.total-deduction-row .value {
+    font-weight: 700;
+    color: #dc2626;
+}
+
+/* States */
+.allowance-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    gap: 1rem;
+    color: #64748b;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #f1f5f9;
+    border-top: 3px solid #2563eb;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.allowance-error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #f8fafc;
+    border: 2px dashed #e2e8f0;
+    border-radius: 12px;
+    color: #64748b;
+    gap: 1rem;
+}
+
+.allowance-error-state h3 {
+    margin: 0;
+    color: #334155;
+}
+
+.allowance-error-state p {
+    max-width: 400px;
+    font-size: 0.9rem;
+}
+
+.empty-section-info {
+    padding: 2rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    background: #f9fafb;
+}
+
+/* Bottom Alert */
+.salary-info-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    background: #fff;
+    border-left: 4px solid #3b82f6;
+    border-radius: 0 8px 8px 0;
+    color: #475569;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.salary-info-alert strong {
+    color: #1e293b;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .allowance-content-grid {
+        grid-template-columns: 1fr;
+    }
+}

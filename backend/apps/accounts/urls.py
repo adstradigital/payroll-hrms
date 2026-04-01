@@ -9,6 +9,7 @@ urlpatterns = [
     # ==================== AUTHENTICATION & REGISTRATION ====================
     # ==================== AUTHENTICATION & REGISTRATION ====================
     path('auth/login/', views.MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/login/verify-2fa/', views.verify_2fa, name='verify_2fa'),
     path('auth/super-admin/login/', views.SuperAdminTokenObtainPairView.as_view(), name='super_admin_login'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/register/', views.register_organization, name='register_organization'),
@@ -85,7 +86,11 @@ urlpatterns = [
     path('employees/document-requests/<uuid:pk>/approve/', req_views.approve_document_request, name='approve_document_request'),
     path('employees/document-requests/<uuid:pk>/reject/', req_views.reject_document_request, name='reject_document_request'),
     path('employees/shift-requests/', req_views.shift_request_list, name='shift_request_list'),
+    path('employees/shift-requests/<uuid:pk>/approve/', req_views.approve_shift_request, name='approve_shift_request'),
+    path('employees/shift-requests/<uuid:pk>/reject/', req_views.reject_shift_request, name='reject_shift_request'),
     path('employees/work-type-requests/', req_views.work_type_request_list, name='work_type_request_list'),
+    path('employees/work-type-requests/<uuid:pk>/approve/', req_views.approve_work_type_request, name='approve_work_type_request'),
+    path('employees/work-type-requests/<uuid:pk>/reject/', req_views.reject_work_type_request, name='reject_work_type_request'),
     path('employees/reimbursement-requests/', req_views.reimbursement_request_list, name='reimbursement_request_list'),
     path('employees/reimbursement-requests/<uuid:pk>/', req_views.reimbursement_request_detail, name='reimbursement_request_detail'),
     path('employees/encashment-requests/', req_views.encashment_request_list, name='encashment_request_list'),
@@ -94,5 +99,8 @@ urlpatterns = [
     # ==================== SECURITY & ACCESS ====================
     path('security/profile/', views.security_profile_detail, name='security_profile_detail'),
     path('security/pin/set/', views.set_security_pin, name='set_security_pin'),
+    path('security/pin/admin-set/', views.admin_set_security_pin, name='admin_set_security_pin'),
     path('security/pin/verify/', views.verify_security_pin, name='verify_security_pin'),
+    path('security/password/change/', views.change_password, name='change_password'),
+    path('security/password/reset-expired/', views.reset_expired_password, name='reset_expired_password'),
 ]

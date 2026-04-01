@@ -3,20 +3,29 @@
 import React, { useState, useEffect } from 'react';
 import {
     Clock, Search, Filter, CheckCircle, XCircle, ArrowRight,
-    MoreVertical, Eye, Calendar, Loader2
+    MoreVertical, Eye, Calendar, Loader2, Plus, X, User as UserIcon
 } from 'lucide-react';
-import { getShiftRequests } from '@/api/api_clientadmin';
+import { getShiftRequests, getAllEmployees, createShiftRequest, approveShiftRequest, rejectShiftRequest } from '@/api/api_clientadmin';
+import { useAuth } from '@/context/AuthContext';
 import './ShiftRequest.css';
 
-export default function ShiftRequest() {
+export default function ShiftRequest({ approvalMode = false }) {
+    const { user } = useAuth();
+    const isAdmin = (user?.role === 'admin' || user?.is_admin) && approvalMode;
+    
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState(approvalMode ? 'pending' : 'all');
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [employees, setEmployees] = useState([]);
+    const [showNewModal, setShowNewModal] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         fetchRequests();
-    }, []);
+        if (isAdmin) fetchEmployees();
+    }, [isAdmin]);
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -28,6 +37,88 @@ export default function ShiftRequest() {
             console.error("Error fetching shift requests:", err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchEmployees = async () => {
+        try {
+            const res = await getAllEmployees({ status: 'active' });
+            setEmployees(res.data.results || res.data || []);
+        } catch (err) {
+            console.error("Error fetching employees:", err);
+        }
+    };
+
+    const handleApprove = async (id) => {
+        if (!window.confirm('Are you sure you want to approve this shift request?')) return;
+        try {
+            await approveShiftRequest(id);
+            fetchRequests();
+        } catch (err) {
+            alert('Failed to approve request');
+            console.error(err);
+        }
+    };
+
+    const handleReject = async (id) => {
+        const reason = window.prompt('Please enter a reason for rejection:');
+        if (reason === null) return;
+        try {
+            await rejectShiftRequest(id, reason);
+            fetchRequests();
+        } catch (err) {
+            console.error('Work type request creation error:', err.response?.data || err.message);
+            alert(`Failed to create work type request: ${JSON.stringify(err.response?.data || err.message)}`);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredRequests.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredRequests.map(r => r.id)));
+        }
+    };
+
+    const toggleSelectRow = (id) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedIds(newSet);
+    };
+
+    const handleBulkApprove = async () => {
+        if (!selectedIds.size) return;
+        if (!window.confirm(`Are you sure you want to approve ${selectedIds.size} requests?`)) return;
+        
+        setIsProcessing(true);
+        try {
+            await Promise.all(Array.from(selectedIds).map(id => approveShiftRequest(id)));
+            setSelectedIds(new Set());
+            fetchRequests();
+        } catch (err) {
+            alert('Some requests failed to approve');
+            console.error(err);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleBulkReject = async () => {
+        if (!selectedIds.size) return;
+        const reason = window.prompt('Enter reason for bulk rejection:');
+        if (reason === null) return;
+        
+        setIsProcessing(true);
+        try {
+            await Promise.all(Array.from(selectedIds).map(id => rejectShiftRequest(id, reason)));
+            setSelectedIds(new Set());
+            fetchRequests();
+        } catch (err) {
+            alert('Some requests failed to reject');
+            console.error(err);
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -55,16 +146,20 @@ export default function ShiftRequest() {
                     </div>
                     <div>
                         <h1>Shift Requests</h1>
-                        <p>Manage employee shift change requests</p>
+                        <p>Manage and track shift change requests</p>
                     </div>
                 </div>
                 <div className="req-actions">
-                    <button className="req-btn-primary">
-                        <Filter size={18} /> Filter
-                    </button>
-                    <button className="req-btn-primary">
-                        <Calendar size={18} /> Roaster
-                    </button>
+                    {!approvalMode && (
+                        <button className="req-btn-primary" onClick={() => setShowNewModal(true)}>
+                            <Plus size={18} /> New Request
+                        </button>
+                    )}
+                    {isAdmin && (
+                        <button className="req-btn-secondary">
+                            <Filter size={18} /> Filter
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -79,25 +174,38 @@ export default function ShiftRequest() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="req-tabs">
-                        <button
-                            className={`req-tab ${statusFilter === 'all' ? 'active' : ''}`}
-                            onClick={() => setStatusFilter('all')}
-                        >
-                            All Requests
-                        </button>
-                        <button
-                            className={`req-tab ${statusFilter === 'pending' ? 'active' : ''}`}
-                            onClick={() => setStatusFilter('pending')}
-                        >
-                            Pending
-                        </button>
-                        <button
-                            className={`req-tab ${statusFilter === 'approved' ? 'active' : ''}`}
-                            onClick={() => setStatusFilter('approved')}
-                        >
-                            Approved
-                        </button>
+                    <div className="req-toolbar-right">
+                        {isAdmin && selectedIds.size > 0 && (
+                            <div className="req-bulk-actions fade-in">
+                                <span>{selectedIds.size} selected</span>
+                                <button className="req-btn-success-sm" onClick={handleBulkApprove} disabled={isProcessing}>
+                                    {isProcessing ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle size={14} />} Approve
+                                </button>
+                                <button className="req-btn-danger-sm" onClick={handleBulkReject} disabled={isProcessing}>
+                                    {isProcessing ? <Loader2 className="animate-spin" size={14} /> : <XCircle size={14} />} Reject
+                                </button>
+                            </div>
+                        )}
+                        <div className="req-tabs">
+                            <button
+                                className={`req-tab ${statusFilter === 'all' ? 'active' : ''}`}
+                                onClick={() => setStatusFilter('all')}
+                            >
+                                All Requests
+                            </button>
+                            <button
+                                className={`req-tab ${statusFilter === 'pending' ? 'active' : ''}`}
+                                onClick={() => setStatusFilter('pending')}
+                            >
+                                Pending
+                            </button>
+                            <button
+                                className={`req-tab ${statusFilter === 'approved' ? 'active' : ''}`}
+                                onClick={() => setStatusFilter('approved')}
+                            >
+                                Approved
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -110,6 +218,15 @@ export default function ShiftRequest() {
                         <table className="req-table">
                             <thead>
                                 <tr>
+                                    {isAdmin && (
+                                        <th style={{ width: '40px' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                onChange={toggleSelectAll}
+                                                checked={selectedIds.size > 0 && selectedIds.size === filteredRequests.length}
+                                            />
+                                        </th>
+                                    )}
                                     <th>Employee</th>
                                     <th>Current Shift</th>
                                     <th>Requested Shift</th>
@@ -122,7 +239,16 @@ export default function ShiftRequest() {
                             <tbody>
                                 {filteredRequests.length > 0 ? (
                                     filteredRequests.map(req => (
-                                        <tr key={req.id}>
+                                        <tr key={req.id} className={selectedIds.has(req.id) ? 'selected-row' : ''}>
+                                            {isAdmin && (
+                                                <td>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={selectedIds.has(req.id)}
+                                                        onChange={() => toggleSelectRow(req.id)}
+                                                    />
+                                                </td>
+                                            )}
                                             <td>
                                                 <div className="req-user-cell">
                                                     <div className="req-avatar">
@@ -149,12 +275,20 @@ export default function ShiftRequest() {
                                             </td>
                                             <td>
                                                 <div className="req-action-buttons">
-                                                    {req.status === 'pending' && (
+                                                    {isAdmin && req.status === 'pending' && (
                                                         <>
-                                                            <button className="req-action-btn success" title="Approve">
+                                                            <button 
+                                                                className="req-action-btn success" 
+                                                                title="Approve"
+                                                                onClick={() => handleApprove(req.id)}
+                                                            >
                                                                 <CheckCircle size={18} />
                                                             </button>
-                                                            <button className="req-action-btn danger" title="Reject">
+                                                            <button 
+                                                                className="req-action-btn danger" 
+                                                                title="Reject"
+                                                                onClick={() => handleReject(req.id)}
+                                                            >
                                                                 <XCircle size={18} />
                                                             </button>
                                                         </>
@@ -168,13 +302,122 @@ export default function ShiftRequest() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="7" className="text-center p-4 text-muted">No requests found</td>
+                                        <td colSpan={isAdmin ? 8 : 7} className="text-center p-4 text-muted">No requests found</td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
                     )}
                 </div>
+            </div>
+
+            {showNewModal && (
+                <NewShiftRequestModal 
+                    employees={employees}
+                    user={user}
+                    isAdmin={isAdmin}
+                    onClose={() => setShowNewModal(false)}
+                    onSuccess={() => {
+                        setShowNewModal(false);
+                        fetchRequests();
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+function NewShiftRequestModal({ employees, user, isAdmin, onClose, onSuccess }) {
+    const [formData, setFormData] = useState({
+        employee: user?.id || '',
+        requested_shift: '',
+        effective_date: '',
+        reason: ''
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // If user has employee_id, use that
+    useEffect(() => {
+        const empId = localStorage.getItem('employeeId');
+        if (empId) {
+            setFormData(prev => ({ ...prev, employee: empId }));
+        }
+    }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            await createShiftRequest(formData);
+            onSuccess();
+        } catch (err) {
+            console.error('Shift request creation error:', err.response?.data || err.message);
+            alert(`Failed to create shift request: ${JSON.stringify(err.response?.data || err.message)}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="req-modal slide-in-up" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>New Shift Request</h3>
+                    <button className="close-btn" onClick={onClose}><X size={20} /></button>
+                </div>
+                <form onSubmit={handleSubmit} className="req-form">
+                    <div className="form-group">
+                        <label>Employee *</label>
+                        <div className="form-input disabled-input" style={{ background: '#f5f5f5', cursor: 'not-allowed', color: '#666' }}>
+                            {user?.name || user?.full_name || 'My Profile'}
+                        </div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Requested Shift *</label>
+                            <select 
+                                required 
+                                className="form-input"
+                                value={formData.requested_shift}
+                                onChange={e => setFormData({ ...formData, requested_shift: e.target.value })}
+                            >
+                                <option value="">Select Shift</option>
+                                <option value="General Shift">General Shift (9:00 AM - 6:00 PM)</option>
+                                <option value="Morning Shift">Morning Shift (6:00 AM - 2:00 PM)</option>
+                                <option value="Afternoon Shift">Afternoon Shift (2:00 PM - 10:00 PM)</option>
+                                <option value="Night Shift">Night Shift (10:00 PM - 6:00 AM)</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Effective Date *</label>
+                            <input 
+                                type="date" 
+                                required 
+                                className="form-input"
+                                value={formData.effective_date}
+                                onChange={e => setFormData({ ...formData, effective_date: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div className="form-group">
+                        <label>Reason *</label>
+                        <textarea 
+                            required 
+                            className="form-input"
+                            rows={3}
+                            placeholder="Reason for shift change..."
+                            value={formData.reason}
+                            onChange={e => setFormData({ ...formData, reason: e.target.value })}
+                        />
+                    </div>
+                    <div className="modal-actions">
+                        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+                        <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
+                            {isSubmitting ? 'Submitting...' : 'Create Request'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );

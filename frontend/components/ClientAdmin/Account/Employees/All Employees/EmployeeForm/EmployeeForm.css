@@ -36,11 +36,11 @@
 
 .form-header {
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color, #e2e8f0);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #f8fafc;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .dark .form-header {
@@ -112,7 +112,23 @@
 }
 
 .dark .header-title p {
-    color: #9ca3af;
+    color: #94a3b8;
+}
+
+.header-title h3 {
+    color: #0f172a !important; /* Force dark text in light mode */
+}
+
+.header-title p {
+    color: #64748b !important; /* Force muted dark text in light mode */
+}
+
+.dark .header-title h3 {
+    color: #f1f5f9 !important;
+}
+
+.dark .header-title p {
+    color: #9ca3af !important;
 }
 
 /* Layout: Sidebar + Content */
@@ -676,4 +692,39 @@ input:checked+.slider:before {
 
 .dark .warning-link:hover {
     color: #c4b5fd;
+}
+
+/* New Section Styles */
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.dark .section-title {
+    border-color: #262626;
+    color: #f1f5f9;
+}
+
+.text-brand {
+    color: #7c3aed;
+}
+
+.dark .text-brand {
+    color: #f59e0b;
+}
+
+.text-danger {
+    color: #ef4444;
+}
+
+.mb-8 {
+    margin-bottom: 2rem;
 }

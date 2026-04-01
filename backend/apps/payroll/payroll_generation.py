@@ -10,6 +10,10 @@ from datetime import date
 from calendar import monthrange
 from decimal import Decimal
 import logging
+from django.http import HttpResponse
+import openpyxl
+from openpyxl.styles import Font, Alignment, Border, Side
+import io
 
 from apps.accounts.models import Employee
 from apps.attendance.models import Attendance
@@ -21,6 +25,9 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+from .services.excel_export import ExcelExportService
+from .services.tds_calculator import TDSCalculator
 
 
 from rest_framework.decorators import api_view, permission_classes
@@ -570,25 +577,34 @@ def get_payroll_reports(request):
                 if settings and settings.pf_is_restricted_basic:
                     pf_base = min(pf_base, settings.pf_wage_ceiling)
                 
-                pf_employer = (pf_base * settings.pf_contribution_rate_employer / 100).quantize(Decimal('0.01')) if settings and pf_emp > 0 else Decimal(0)
+                pf_employer_total = (pf_base * settings.pf_contribution_rate_employer / 100).quantize(Decimal('0.01')) if settings and pf_emp > 0 else Decimal(0)
                 
-                # ESI Calculation (Employer Share)
-                # ESI is usually on Gross Earning
+                # EPS Split (capped at 1250 if base > 15000, but we use rates)
+                # Standard EPS is 8.33% of base
+                pf_eps = (pf_base * settings.pf_contribution_rate_eps / 100).quantize(Decimal('0.01')) if settings and pf_emp > 0 else Decimal(0)
+                pf_epf_employer = pf_employer_total - pf_eps
+                
+                # Admin & EDLI Charges
+                pf_admin = (pf_base * settings.pf_admin_charges_rate / 100).quantize(Decimal('0.01')) if settings and pf_emp > 0 else Decimal(0)
+                pf_edli = (pf_base * settings.pf_edli_rate / 100).quantize(Decimal('0.01')) if settings and pf_emp > 0 else Decimal(0)
+
                 esi_base = payslip.gross_earnings
                 esi_employer = (esi_base * settings.esi_contribution_rate_employer / 100).quantize(Decimal('0.01')) if settings and esi_emp > 0 else Decimal(0)
                 
                 report_data.append({
-                    'Employee': str(payslip.employee),
-                    'Employee ID': payslip.employee.employee_id,
-                    'Gross Salary': float(payslip.gross_earnings),
-                    'PF Base (Basic)': float(pf_base),
-                    'PF Employee Share': float(pf_emp),
-                    'PF Employer Share': float(pf_employer),
-                    'PF Total': float(pf_emp + pf_employer),
-                    'ESI Base (Gross)': float(esi_base),
-                    'ESI Employee Share': float(esi_emp),
-                    'ESI Employer Share': float(esi_employer),
-                    'ESI Total': float(esi_emp + esi_employer),
+                    'employee_name': str(payslip.employee),
+                    'employee_id': payslip.employee.employee_id,
+                    'gross_salary': float(payslip.gross_earnings),
+                    'pf_base': float(pf_base),
+                    'pf_employee': float(pf_emp),
+                    'pf_employer_epf': float(pf_epf_employer),
+                    'pf_employer_eps': float(pf_eps),
+                    'pf_admin_charges': float(pf_admin),
+                    'pf_edli_charges': float(pf_edli),
+                    'pf_employer_total': float(pf_employer_total + pf_admin + pf_edli),
+                    'esi_base': float(esi_base),
+                    'esi_employee': float(esi_emp),
+                    'esi_employer': float(esi_employer),
                 })
             
             return Response(report_data, status=status.HTTP_200_OK)
@@ -596,3 +612,315 @@ def get_payroll_reports(request):
         except Exception as e:
             logger.error(f"Error generating statutory report: {str(e)}")
             raise
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_epf_ecr(request):
+    """
+    Export EPF ECR in .txt format (Delimited by #)
+    GET /payroll/reports/epf-ecr/?month=3&year=2026
+    """
+    try:
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        company_id = request.query_params.get('company_id')
+
+        if not month or not year:
+            return Response({'error': 'month and year are required'}, status=400)
+
+        # Get payroll records
+        payslips = PaySlip.objects.filter(
+            employee__company_id=company_id if company_id else request.user.organization.id,
+            payroll_period__month=month,
+            payroll_period__year=year
+        ).select_related('employee', 'employee_salary').prefetch_related('components__component')
+
+        if not payslips.exists():
+            return Response({'error': 'No payroll data found for this period'}, status=404)
+
+        from .models import PayrollSettings
+        settings = PayrollSettings.objects.filter(company_id=company_id if company_id else request.user.organization.id).first()
+
+        ecr_lines = []
+        for ps in payslips:
+            # Basic values
+            uan = getattr(ps.employee, 'pf_number', 'NOT_AVAIL')
+            name = ps.employee.full_name.upper()
+            gross = ps.gross_earnings
+            
+            # Components
+            pf_emp = sum(c.amount for c in ps.components.all() if c.component.statutory_type == 'pf')
+            
+            # Base calculation
+            working_days = ps.working_days
+            paid_days = working_days - ps.lop_days
+            proration = paid_days / working_days if working_days > 0 else Decimal(1)
+            basic = ps.employee_salary.basic_salary if ps.employee_salary else Decimal(0)
+            pf_base = (basic * proration).quantize(Decimal('0.01'))
+            
+            if settings and settings.pf_is_restricted_basic:
+                pf_base = min(pf_base, settings.pf_wage_ceiling)
+            
+            # Shares
+            pf_employer_total = (pf_base * settings.pf_contribution_rate_employer / 100).quantize(Decimal('0.01')) if settings else Decimal(0)
+            eps_share = (pf_base * settings.pf_contribution_rate_eps / 100).quantize(Decimal('0.01')) if settings else Decimal(0)
+            epf_employer = pf_employer_total - eps_share
+            
+            ncp_days = int(ps.lop_days)
+            
+            # Format: UAN#Name#Gross#EPF_Base#EPS_Base#EDLI_Base#EE#ER_EPF#ER_EPS#NCP#Ref
+            line = f"{uan}#{name}#{gross}#{pf_base}#{pf_base}#{pf_base}#{pf_emp}#{epf_employer}#{eps_share}#{ncp_days}#0"
+            ecr_lines.append(line)
+
+        content = "\n".join(ecr_lines)
+        response = HttpResponse(content, content_type='text/plain')
+        response['Content-Disposition'] = f'attachment; filename="EPF_ECR_{month}_{year}.txt"'
+        return response
+
+    except Exception as e:
+        logger.error(f"ECR Export Error: {str(e)}")
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_esi_challan(request):
+    """
+    Export ESI Monthly Contribution in Excel format
+    GET /payroll/reports/esi-challan/?month=3&year=2026
+    """
+    try:
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        company_id = request.query_params.get('company_id')
+
+        payslips = PaySlip.objects.filter(
+            employee__company_id=company_id if company_id else request.user.organization.id,
+            payroll_period__month=month,
+            payroll_period__year=year
+        ).select_related('employee').prefetch_related('components__component')
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "ESI Contribution"
+
+        # Headers
+        headers = ["IP Number", "IP Name", "No of Days for which wages paid", "Total Monthly Wages", "Reason Code for Zero workings days", "Last Working Day"]
+        ws.append(headers)
+        
+        # Styles
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center')
+
+        for ps in payslips:
+            esi_emp = sum(c.amount for c in ps.components.all() if c.component.statutory_type == 'esi')
+            if esi_emp > 0:
+                paid_days = ps.working_days - ps.lop_days
+                ws.append([
+                    getattr(ps.employee, 'esi_number', 'N/A'),
+                    ps.employee.full_name.upper(),
+                    int(paid_days),
+                    float(ps.gross_earnings),
+                    "0" if paid_days > 0 else "1",
+                    ""
+                ])
+
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        
+        response = HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="ESI_Challan_{month}_{year}.xlsx"'
+        return response
+
+    except Exception as e:
+        logger.error(f"ESI Export Error: {str(e)}")
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_salary_register(request):
+    """Export detailed salary register as Excel"""
+    try:
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        company_id = request.query_params.get('company_id')
+
+        if not month or not year:
+            return Response({'error': 'month and year are required'}, status=400)
+
+        # Infer company_id
+        if not company_id:
+            user = request.user
+            if hasattr(user, 'employee_profile'):
+                company_id = user.employee_profile.company_id
+            elif hasattr(user, 'organization'):
+                company_id = user.organization.id
+
+        payslips = PaySlip.objects.filter(
+            employee__company_id=company_id,
+            payroll_period__month=month,
+            payroll_period__year=year
+        ).select_related('employee', 'employee__department', 'employee__designation').prefetch_related('components__component')
+
+        if not payslips.exists():
+            return Response({'error': 'No payroll data found for this period'}, status=404)
+
+        output = ExcelExportService.generate_salary_register(None, None, payslips)
+        
+        response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="Salary_Register_{month}_{year}.xlsx"'
+        return response
+    except Exception as e:
+        logger.error(f"Salary Register Export Error: {str(e)}")
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_payroll_summary(request):
+    """Export payroll summary as Excel"""
+    try:
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        company_id = request.query_params.get('company_id')
+
+        if not month or not year:
+            return Response({'error': 'month and year are required'}, status=400)
+
+        if not company_id:
+            user = request.user
+            if hasattr(user, 'employee_profile'):
+                company_id = user.employee_profile.company_id
+            elif hasattr(user, 'organization'):
+                company_id = user.organization.id
+
+        payslips = PaySlip.objects.filter(
+            employee__company_id=company_id,
+            payroll_period__month=month,
+            payroll_period__year=year
+        ).select_related('employee__department')
+
+        # Aggregate by department
+        dept_data = payslips.values('employee__department__name').annotate(
+            count=Count('id'),
+            gross=Sum('gross_earnings'),
+            net=Sum('net_salary')
+        )
+
+        from .models import PayrollSettings
+        settings = PayrollSettings.objects.filter(company_id=company_id).first()
+
+        summary_list = []
+        for d in dept_data:
+            dept_name = d['employee__department__name'] or "Unassigned"
+            # Estimate PF/ESI for summary
+            summary_list.append({
+                'department': dept_name,
+                'count': d['count'],
+                'gross': d['gross'],
+                'net': d['net'],
+                'epf_employer': 0, # Simplified for now
+                'esi_employer': 0
+            })
+
+        output = ExcelExportService.generate_payroll_summary(None, None, summary_list)
+        
+        response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="Payroll_Summary_{month}_{year}.xlsx"'
+        return response
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_salary_register_data(request):
+    """Get salary register data as JSON for preview"""
+    try:
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        company_id = request.query_params.get('company_id')
+
+        if not month or not year:
+            return Response({'error': 'month and year are required'}, status=400)
+
+        if not company_id:
+            user = request.user
+            if hasattr(user, 'employee_profile'):
+                company_id = user.employee_profile.company_id
+            elif hasattr(user, 'organization'):
+                company_id = user.organization.id
+
+        payslips = PaySlip.objects.filter(
+            employee__company_id=company_id,
+            payroll_period__month=month,
+            payroll_period__year=year
+        ).select_related('employee', 'employee__department', 'employee__designation')
+
+        data = []
+        for p in payslips:
+            comp_map = {c.component.statutory_type: float(c.amount) for c in p.components.all() if c.component.statutory_type}
+            basic_comp = p.components.filter(component__name__icontains='Basic').first()
+            
+            data.append({
+                'employee': p.employee.get_full_name(),
+                'employee_id': p.employee.employee_id,
+                'department': p.employee.department.name if p.employee.department else 'N/A',
+                'designation': p.employee.designation.name if p.employee.designation else 'N/A',
+                'basic': float(basic_comp.amount) if basic_comp else 0.0,
+                'gross': float(p.gross_earnings),
+                'pf': comp_map.get('pf', 0.0),
+                'esi': comp_map.get('esi', 0.0),
+                'tds': comp_map.get('tds', 0.0),
+                'net': float(p.net_salary)
+            })
+
+        return Response(data)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_payroll_summary_data(request):
+    """Get payroll summary data as JSON for preview and charts"""
+    try:
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        company_id = request.query_params.get('company_id')
+
+        if not month or not year:
+            return Response({'error': 'month and year are required'}, status=400)
+
+        if not company_id:
+            user = request.user
+            if hasattr(user, 'employee_profile'):
+                company_id = user.employee_profile.company_id
+            elif hasattr(user, 'organization'):
+                company_id = user.organization.id
+
+        payslips = PaySlip.objects.filter(
+            employee__company_id=company_id,
+            payroll_period__month=month,
+            payroll_period__year=year
+        ).select_related('employee__department')
+
+        # Aggregate by department
+        dept_data = payslips.values('employee__department__name').annotate(
+            count=Count('id'),
+            gross=Sum('gross_earnings'),
+            net=Sum('net_salary')
+        )
+
+        summary = []
+        for d in dept_data:
+            summary.append({
+                'department': d['employee__department__name'] or "Unassigned",
+                'count': d['count'],
+                'gross': float(d['gross'] or 0),
+                'net': float(d['net'] or 0)
+            })
+
+        return Response(summary)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)

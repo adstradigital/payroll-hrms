@@ -7,15 +7,26 @@ from .views import (
     payroll_period_list_create, payroll_period_detail, payroll_period_generate, payroll_period_mark_paid,
     payslip_list_create, payslip_detail, payslip_my_payslips, payslip_dashboard_stats, payslip_download, payslip_recalculate, payslip_send_email,
     tax_slab_list_create, tax_slab_detail, 
-    tax_declaration_list_create, tax_declaration_detail, tax_dashboard_stats,
+    tax_declaration_list_create, tax_declaration_detail, tax_dashboard_stats, tax_comparison,
     payroll_settings_detail,
     loan_list_create, loan_detail, loan_generate_schedule,
     payslip_add_component, payslip_remove_component,
     advance_salary_list_create, advance_salary_detail, advance_salary_stats,
     loan_repayment_tracking, loan_repayment_stats, emi_payment_history,
-    adhoc_payment_list_create, adhoc_payment_detail, adhoc_payment_stats
+    adhoc_payment_list_create, adhoc_payment_detail, adhoc_payment_stats,
+    calculate_ctc
 )
-from .payroll_generation import generate_payroll_advanced, get_payroll_reports
+from .views_commission import (
+    commission_rule_list_create, commission_rule_detail,
+    sales_record_list_create, calculate_commissions_view,
+    commission_history_list, approve_commission_view
+)
+from .payroll_generation import (
+    generate_payroll_advanced, get_payroll_reports,
+    export_epf_ecr, export_esi_challan,
+    export_salary_register, export_payroll_summary,
+    get_salary_register_data, get_payroll_summary_data
+)
 
 urlpatterns = [
     # Global Settings
@@ -28,6 +39,7 @@ urlpatterns = [
     path('tax-declarations/', tax_declaration_list_create, name='tax-declaration-list'),
     path('tax-declarations/<uuid:pk>/', tax_declaration_detail, name='tax-declaration-detail'),
     path('tax-declarations/dashboard-stats/', tax_dashboard_stats, name='tax-dashboard-stats'),
+    path('tax-comparison/', tax_comparison, name='tax-comparison'),
 
     # Salary Components
     path('components/', salary_component_list_create, name='salary-component-list'),
@@ -70,6 +82,12 @@ urlpatterns = [
     # Payroll generation and reports
     path('generate/', generate_payroll_advanced, name='generate-payroll'),
     path('reports/', get_payroll_reports, name='payroll-reports'),
+    path('reports/epf-ecr/', export_epf_ecr, name='epf-ecr-export'),
+    path('reports/esi-challan/', export_esi_challan, name='esi-challan-export'),
+    path('reports/salary-register/', export_salary_register, name='salary-register-export'),
+    path('reports/payroll-summary/', export_payroll_summary, name='payroll-summary-export'),
+    path('reports/salary-register-data/', get_salary_register_data, name='salary-register-data'),
+    path('reports/payroll-summary-data/', get_payroll_summary_data, name='payroll-summary-data'),
 
     # Advance Salary (Dedicated Endpoints)
     path('advances/', advance_salary_list_create, name='advance-salary-list'),
@@ -85,4 +103,15 @@ urlpatterns = [
     path('adhoc-payments/', adhoc_payment_list_create, name='adhoc-payment-list'),
     path('adhoc-payments/stats/', adhoc_payment_stats, name='adhoc-payment-stats'),
     path('adhoc-payments/<uuid:pk>/', adhoc_payment_detail, name='adhoc-payment-detail'),
+    
+    # CTC Calculator
+    path('calculate-ctc/', calculate_ctc, name='calculate-ctc'),
+
+    # Sales Commission
+    path('commission-rules/', commission_rule_list_create, name='commission-rule-list'),
+    path('commission-rules/<int:pk>/', commission_rule_detail, name='commission-rule-detail'),
+    path('sales-records/', sales_record_list_create, name='sales-record-list'),
+    path('commissions/calculate/', calculate_commissions_view, name='calculate-commissions'),
+    path('commissions/history/', commission_history_list, name='commission-history-list'),
+    path('commissions/approve/<int:pk>/', approve_commission_view, name='approve-commission'),
 ]

@@ -87,9 +87,9 @@ const ScaleCard = ({ scale, onEdit, onDelete, onDuplicate, onToggleActive }) => 
                     </span>
                 </div>
             </div>
-            
+
             <h4 className="rating-card__name">{scale.name}</h4>
-            
+
             <div className="rating-card__range">
                 <div className="range-indicator">
                     <span className="range-indicator__label">Min</span>
@@ -108,7 +108,7 @@ const ScaleCard = ({ scale, onEdit, onDelete, onDuplicate, onToggleActive }) => 
                         {scale.description}
                     </p>
                     {scale.description.length > 100 && (
-                        <button 
+                        <button
                             className="rating-card__expand"
                             onClick={() => setIsExpanded(!isExpanded)}
                         >
@@ -119,29 +119,29 @@ const ScaleCard = ({ scale, onEdit, onDelete, onDuplicate, onToggleActive }) => 
             )}
 
             <div className="rating-card__actions">
-                <button 
-                    className="btn-icon" 
+                <button
+                    className="btn-icon"
                     onClick={() => onToggleActive(scale)}
                     title={scale.is_active ? 'Deactivate' : 'Activate'}
                 >
                     {scale.is_active ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
-                <button 
-                    className="btn-icon" 
+                <button
+                    className="btn-icon"
                     onClick={() => onDuplicate(scale)}
                     title="Duplicate"
                 >
                     <Copy size={14} />
                 </button>
-                <button 
-                    className="btn-icon" 
+                <button
+                    className="btn-icon"
                     onClick={() => onEdit(scale)}
                     title="Edit"
                 >
                     <Edit2 size={14} />
                 </button>
-                <button 
-                    className="btn-icon btn-icon--danger" 
+                <button
+                    className="btn-icon btn-icon--danger"
                     onClick={() => onDelete(scale)}
                     title="Delete"
                 >
@@ -159,13 +159,13 @@ const CategoryItem = ({ category, scales, onEdit, onDelete, onDuplicate }) => {
 
     return (
         <div className="category-item">
-            <div 
-                className="category-color" 
+            <div
+                className="category-color"
                 style={{ backgroundColor: category.color_code }}
             >
                 <div className="category-color__overlay"></div>
             </div>
-            
+
             <div className="category-content">
                 <div className="category-header">
                     <div className="category-info">
@@ -185,7 +185,7 @@ const CategoryItem = ({ category, scales, onEdit, onDelete, onDuplicate }) => {
                             {category.description}
                         </p>
                         {category.description.length > 100 && (
-                            <button 
+                            <button
                                 className="category-expand"
                                 onClick={() => setIsExpanded(!isExpanded)}
                             >
@@ -196,22 +196,22 @@ const CategoryItem = ({ category, scales, onEdit, onDelete, onDuplicate }) => {
                 )}
 
                 <div className="category-actions">
-                    <button 
-                        className="btn-icon" 
+                    <button
+                        className="btn-icon"
                         onClick={() => onDuplicate(category)}
                         title="Duplicate"
                     >
                         <Copy size={14} />
                     </button>
-                    <button 
-                        className="btn-icon" 
+                    <button
+                        className="btn-icon"
                         onClick={() => onEdit(category)}
                         title="Edit"
                     >
                         <Edit2 size={14} />
                     </button>
-                    <button 
-                        className="btn-icon btn-icon--danger" 
+                    <button
+                        className="btn-icon btn-icon--danger"
                         onClick={() => onDelete(category)}
                         title="Delete"
                     >
@@ -234,7 +234,7 @@ export default function Ratings() {
     const [filterActive, setFilterActive] = useState('all');
     const [toast, setToast] = useState(null);
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, item: null });
-    
+
     const [formData, setFormData] = useState({
         name: '',
         min_value: 0,
@@ -242,7 +242,7 @@ export default function Ratings() {
         description: '',
         is_active: true
     });
-    
+
     const [categoryFormData, setCategoryFormData] = useState({
         rating_scale: '',
         name: '',
@@ -340,7 +340,7 @@ export default function Ratings() {
             resetForm();
             loadData();
         } catch (error) {
-            showToast('Failed to save rating scale', 'error');
+            showToast(error.message || 'Failed to save rating scale', 'error');
             console.error('Failed to save scale:', error);
         }
     };
@@ -496,10 +496,10 @@ export default function Ratings() {
     const filteredScales = useMemo(() => {
         return scales.filter(scale => {
             const matchesSearch = scale.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                 scale.description?.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesFilter = filterActive === 'all' || 
-                                 (filterActive === 'active' && scale.is_active) ||
-                                 (filterActive === 'inactive' && !scale.is_active);
+                scale.description?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesFilter = filterActive === 'all' ||
+                (filterActive === 'active' && scale.is_active) ||
+                (filterActive === 'inactive' && !scale.is_active);
             return matchesSearch && matchesFilter;
         });
     }, [scales, searchTerm, filterActive]);
@@ -507,7 +507,7 @@ export default function Ratings() {
     const filteredCategories = useMemo(() => {
         return categories.filter(category => {
             return category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                   category.description?.toLowerCase().includes(searchTerm.toLowerCase());
+                category.description?.toLowerCase().includes(searchTerm.toLowerCase());
         });
     }, [categories, searchTerm]);
 
@@ -520,10 +520,10 @@ export default function Ratings() {
             {/* Toast Notifications */}
             {toast && (
                 <div className="toast-container">
-                    <Toast 
-                        message={toast.message} 
-                        type={toast.type} 
-                        onClose={() => setToast(null)} 
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => setToast(null)}
                     />
                 </div>
             )}
@@ -586,7 +586,7 @@ export default function Ratings() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                         {searchTerm && (
-                            <button 
+                            <button
                                 className="search-box__clear"
                                 onClick={() => setSearchTerm('')}
                             >
@@ -611,15 +611,15 @@ export default function Ratings() {
                     )}
                 </div>
 
-                <button 
+                <button
                     className="btn btn-primary"
-                    onClick={() => { 
+                    onClick={() => {
                         if (activeTab === 'scales') {
                             resetForm();
                         } else {
                             resetCategoryForm();
                         }
-                        setShowModal(true); 
+                        setShowModal(true);
                     }}
                     disabled={activeTab === 'categories' && activeScales.length === 0}
                 >
@@ -702,7 +702,7 @@ export default function Ratings() {
                             </h2>
                             <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
                         </div>
-                        
+
                         {activeTab === 'scales' ? (
                             <form onSubmit={handleScaleSubmit}>
                                 <div className="modal-body">
@@ -711,13 +711,13 @@ export default function Ratings() {
                                         <input
                                             type="text"
                                             value={formData.name}
-                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                             className={formErrors.name ? 'error' : ''}
                                             placeholder="e.g., 1-5 Performance Scale"
                                         />
                                         {formErrors.name && <span className="error-message">{formErrors.name}</span>}
                                     </div>
-                                    
+
                                     <div className="form-row">
                                         <div className="form-group">
                                             <label>Min Value <span className="required">*</span></label>
@@ -725,7 +725,7 @@ export default function Ratings() {
                                                 type="number"
                                                 step="0.01"
                                                 value={formData.min_value}
-                                                onChange={(e) => setFormData({...formData, min_value: parseFloat(e.target.value) || 0})}
+                                                onChange={(e) => setFormData({ ...formData, min_value: parseFloat(e.target.value) || 0 })}
                                                 className={formErrors.range ? 'error' : ''}
                                             />
                                         </div>
@@ -735,34 +735,34 @@ export default function Ratings() {
                                                 type="number"
                                                 step="0.01"
                                                 value={formData.max_value}
-                                                onChange={(e) => setFormData({...formData, max_value: parseFloat(e.target.value) || 0})}
+                                                onChange={(e) => setFormData({ ...formData, max_value: parseFloat(e.target.value) || 0 })}
                                                 className={formErrors.range ? 'error' : ''}
                                             />
                                         </div>
                                     </div>
                                     {formErrors.range && <span className="error-message">{formErrors.range}</span>}
-                                    
+
                                     <div className="form-group">
                                         <label>Description</label>
                                         <textarea
                                             value={formData.description}
-                                            onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             rows={3}
                                             placeholder="Describe what this scale measures and how it should be used..."
                                         />
                                     </div>
-                                    
+
                                     <div className="form-group form-group--checkbox">
                                         <input
                                             type="checkbox"
                                             id="is_active"
                                             checked={formData.is_active}
-                                            onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                                            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                                         />
                                         <label htmlFor="is_active">Active (available for use in evaluations)</label>
                                     </div>
                                 </div>
-                                
+
                                 <div className="modal-footer">
                                     <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
                                         Cancel
@@ -781,13 +781,13 @@ export default function Ratings() {
                                         <input
                                             type="text"
                                             value={categoryFormData.name}
-                                            onChange={(e) => setCategoryFormData({...categoryFormData, name: e.target.value})}
+                                            onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
                                             className={formErrors.name ? 'error' : ''}
                                             placeholder="e.g., Excellent, Good, Needs Improvement"
                                         />
                                         {formErrors.name && <span className="error-message">{formErrors.name}</span>}
                                     </div>
-                                    
+
                                     <div className="form-group">
                                         <label>Rating Scale <span className="required">*</span></label>
                                         <select
@@ -812,7 +812,7 @@ export default function Ratings() {
                                         </select>
                                         {formErrors.rating_scale && <span className="error-message">{formErrors.rating_scale}</span>}
                                     </div>
-                                    
+
                                     <div className="form-row">
                                         <div className="form-group">
                                             <label>Min Score <span className="required">*</span></label>
@@ -820,7 +820,7 @@ export default function Ratings() {
                                                 type="number"
                                                 step="0.01"
                                                 value={categoryFormData.min_score}
-                                                onChange={(e) => setCategoryFormData({...categoryFormData, min_score: parseFloat(e.target.value) || 0})}
+                                                onChange={(e) => setCategoryFormData({ ...categoryFormData, min_score: parseFloat(e.target.value) || 0 })}
                                                 className={formErrors.range ? 'error' : ''}
                                             />
                                         </div>
@@ -830,42 +830,42 @@ export default function Ratings() {
                                                 type="number"
                                                 step="0.01"
                                                 value={categoryFormData.max_score}
-                                                onChange={(e) => setCategoryFormData({...categoryFormData, max_score: parseFloat(e.target.value) || 0})}
+                                                onChange={(e) => setCategoryFormData({ ...categoryFormData, max_score: parseFloat(e.target.value) || 0 })}
                                                 className={formErrors.range ? 'error' : ''}
                                             />
                                         </div>
                                     </div>
                                     {formErrors.range && <span className="error-message">{formErrors.range}</span>}
-                                    
+
                                     <div className="form-group">
                                         <label>Color</label>
                                         <div className="color-picker-wrapper">
                                             <input
                                                 type="color"
                                                 value={categoryFormData.color_code}
-                                                onChange={(e) => setCategoryFormData({...categoryFormData, color_code: e.target.value})}
+                                                onChange={(e) => setCategoryFormData({ ...categoryFormData, color_code: e.target.value })}
                                             />
                                             <input
                                                 type="text"
                                                 value={categoryFormData.color_code}
-                                                onChange={(e) => setCategoryFormData({...categoryFormData, color_code: e.target.value})}
+                                                onChange={(e) => setCategoryFormData({ ...categoryFormData, color_code: e.target.value })}
                                                 placeholder="#10b981"
                                                 className="color-input-text"
                                             />
                                         </div>
                                     </div>
-                                    
+
                                     <div className="form-group">
                                         <label>Description</label>
                                         <textarea
                                             value={categoryFormData.description}
-                                            onChange={(e) => setCategoryFormData({...categoryFormData, description: e.target.value})}
+                                            onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
                                             rows={3}
                                             placeholder="Describe what this category represents..."
                                         />
                                     </div>
                                 </div>
-                                
+
                                 <div className="modal-footer">
                                     <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
                                         Cancel

@@ -11,4 +11,8 @@ urlpatterns = [
     path('onboarding-templates/<uuid:pk>/', views.onboarding_template_detail, name='onboarding-template-detail'),
     path('onboarding-steps/<uuid:template_id>/', views.onboarding_steps_by_template, name='onboarding-step-list'),
     path('onboarding-steps/', views.onboarding_step_create, name='onboarding-step-create'),
+    path('employee-onboarding/<uuid:employee_id>/', views.employee_onboarding_steps, name='employee-onboarding-steps'),
+    path('employee-onboarding-step/<uuid:pk>/', views.update_employee_onboarding_step, name='update-employee-onboarding-step'),
+    path('backup/', views.settings_backup, name='settings-backup'),
+    path('backup/download/', views.settings_backup_download, name='settings-backup-download'),
 ]

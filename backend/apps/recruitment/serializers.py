@@ -6,7 +6,7 @@ from .models import (
     Interview, InterviewFeedback, CandidateNote,
     Survey, SurveyQuestion, SurveyResponse, SurveyAnswer,
     RecruitmentJobSetting,
-    InterviewTemplate, InterviewQuestion,
+    InterviewTemplate, InterviewQuestion, RejectionReason,
 )
 
 
@@ -862,8 +862,22 @@ class SurveyAnswerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SurveyAnswer
-        fields = ['id', 'question', 'question_text', 'question_type', 'answer_text']
+        fields = ['id', 'response', 'question', 'answer_text']
         read_only_fields = ['id', 'question_text', 'question_type']
+
+
+class RejectionReasonSerializer(serializers.ModelSerializer):
+    """Serializer for standardized rejection reasons"""
+    class Meta:
+        model = RejectionReason
+        fields = ['id', 'reason_text', 'is_active', 'created_at']
+        read_only_fields = ['created_at']
+
+    def validate_reason_text(self, value):
+        queryset = RejectionReason.objects.exclude(pk=getattr(self.instance, 'pk', None))
+        if queryset.filter(reason_text__iexact=value.strip()).exists():
+            raise serializers.ValidationError("This rejection reason already exists")
+        return value.strip()
 
 
 class SurveyCandidateSerializer(serializers.ModelSerializer):

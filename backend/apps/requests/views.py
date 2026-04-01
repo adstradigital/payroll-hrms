@@ -200,21 +200,33 @@ def reject_document_request(request, pk):
 def shift_request_list(request):
     @safe_api
     def logic():
+        employee = get_employee_or_none(request.user)
         org_id = get_employee_org_id(request.user)
+        is_admin = getattr(request.user, 'is_staff', False) or (employee and employee.is_admin)
+
         if request.method == 'GET':
             queryset = ShiftRequest.objects.select_related('employee').all()
-            if org_id:
+            if not is_admin and employee:
+                queryset = queryset.filter(employee=employee)
+            elif org_id:
                 queryset = queryset.filter(employee__company_id=org_id)
+            
             serializer = ShiftRequestSerializer(queryset, many=True)
             return Response(serializer.data)
+        
         elif request.method == 'POST':
-            serializer = ShiftRequestSerializer(data=request.data)
+            data = request.data.copy()
+            # If not admin, force employee to be current user
+            if not is_admin and employee:
+                data['employee'] = str(employee.id)
+            
+            serializer = ShiftRequestSerializer(data=data)
             if serializer.is_valid():
                 if org_id and serializer.validated_data['employee'].company_id != org_id:
-                    return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+                    return Response({'error': 'Access denied: Employee belongs to a different organization'}, status=status.HTTP_403_FORBIDDEN)
                 serializer.save(created_by=request.user)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid data', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     return logic()
 
 @api_view(['GET', 'POST'])
@@ -222,21 +234,33 @@ def shift_request_list(request):
 def work_type_request_list(request):
     @safe_api
     def logic():
+        employee = get_employee_or_none(request.user)
         org_id = get_employee_org_id(request.user)
+        is_admin = getattr(request.user, 'is_staff', False) or (employee and employee.is_admin)
+
         if request.method == 'GET':
             queryset = WorkTypeRequest.objects.select_related('employee').all()
-            if org_id:
+            if not is_admin and employee:
+                queryset = queryset.filter(employee=employee)
+            elif org_id:
                 queryset = queryset.filter(employee__company_id=org_id)
+                
             serializer = WorkTypeRequestSerializer(queryset, many=True)
             return Response(serializer.data)
+        
         elif request.method == 'POST':
-            serializer = WorkTypeRequestSerializer(data=request.data)
+            data = request.data.copy()
+            # If not admin, force employee to be current user
+            if not is_admin and employee:
+                data['employee'] = str(employee.id)
+                
+            serializer = WorkTypeRequestSerializer(data=data)
             if serializer.is_valid():
                 if org_id and serializer.validated_data['employee'].company_id != org_id:
-                    return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+                    return Response({'error': 'Access denied: Employee belongs to a different organization'}, status=status.HTTP_403_FORBIDDEN)
                 serializer.save(created_by=request.user)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid data', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     return logic()
 
 @api_view(['GET', 'POST'])
@@ -342,4 +366,101 @@ def encashment_request_detail(request, pk):
         elif request.method == 'DELETE':
             instance.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+    return logic()
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def approve_shift_request(request, pk):
+    @safe_api
+    def logic():
+        instance = get_object_or_404(ShiftRequest, pk=pk)
+        org_id = get_employee_org_id(request.user)
+        if org_id and instance.employee.company_id != org_id:
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        instance.status = 'approved'
+        instance.approver = request.user
+        instance.updated_by = request.user
+        instance.save()
+        
+        # Log activity
+        log_activity(
+            user=request.user,
+            action_type='APPROVE',
+            module='REQUESTS',
+            description=f"Approved shift request for {instance.employee.full_name}",
+            reference_id=str(instance.id)
+        )
+        return Response({'success': True, 'message': 'Shift request approved'})
+    return logic()
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def reject_shift_request(request, pk):
+    @safe_api
+    def logic():
+        instance = get_object_or_404(ShiftRequest, pk=pk)
+        org_id = get_employee_org_id(request.user)
+        if org_id and instance.employee.company_id != org_id:
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        instance.status = 'rejected'
+        instance.approver = request.user
+        instance.rejection_reason = request.data.get('reason', '')
+        instance.updated_by = request.user
+        instance.save()
+        
+        return Response({'success': True, 'message': 'Shift request rejected'})
+    return logic()
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def approve_work_type_request(request, pk):
+    @safe_api
+    def logic():
+        instance = get_object_or_404(WorkTypeRequest, pk=pk)
+        org_id = get_employee_org_id(request.user)
+        if org_id and instance.employee.company_id != org_id:
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        instance.status = 'approved'
+        instance.approver = request.user
+        instance.updated_by = request.user
+        instance.save()
+
+        # Update Employee Profile
+        employee = instance.employee
+        employee.is_remote_employee = (instance.requested_type == 'Remote')
+        if hasattr(employee, 'work_location'): # Check if field exists
+             employee.work_location = instance.requested_type
+        employee.save()
+        
+        # Log activity
+        log_activity(
+            user=request.user,
+            action_type='APPROVE',
+            module='REQUESTS',
+            description=f"Approved work type request for {instance.employee.full_name}",
+            reference_id=str(instance.id)
+        )
+        return Response({'success': True, 'message': 'Work type request approved'})
+    return logic()
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def reject_work_type_request(request, pk):
+    @safe_api
+    def logic():
+        instance = get_object_or_404(WorkTypeRequest, pk=pk)
+        org_id = get_employee_org_id(request.user)
+        if org_id and instance.employee.company_id != org_id:
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        instance.status = 'rejected'
+        instance.approver = request.user
+        instance.rejection_reason = request.data.get('reason', '')
+        instance.updated_by = request.user
+        instance.save()
+        
+        return Response({'success': True, 'message': 'Work type request rejected'})
     return logic()

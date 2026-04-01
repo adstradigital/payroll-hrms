@@ -1,20 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { 
+import {
     Search, Plus, FileText, Edit2, Trash2, Copy, CheckCircle, X,
     GripVertical, Download, LayoutGrid, List, Filter, MoreHorizontal,
     AlertCircle, Check, ChevronDown
 } from 'lucide-react';
-import { 
-    getPerformanceCriteria, createPerformanceCriteria, 
-    updatePerformanceCriteria, deletePerformanceCriteria 
+import {
+    getPerformanceCriteria, createPerformanceCriteria,
+    updatePerformanceCriteria, deletePerformanceCriteria
 } from '../services/performanceService';
 import './Templates.css';
 
 // Color palette for criteria
 const CRITERIA_COLORS = [
-    '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', 
+    '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899',
     '#06b6d4', '#f97316', '#14b8a6', '#6366f1', '#d946ef'
 ];
 
@@ -126,7 +126,7 @@ export default function Templates() {
 
     const handleBulkToggleActive = async (active) => {
         try {
-            await Promise.all(selectedItems.map(id => 
+            await Promise.all(selectedItems.map(id =>
                 updatePerformanceCriteria(id, { is_active: active })
             ));
             showToast(`${selectedItems.length} criteria ${active ? 'activated' : 'deactivated'}`);
@@ -168,11 +168,11 @@ export default function Templates() {
             c.weightage,
             c.is_active ? 'Active' : 'Inactive'
         ]);
-        
+
         const csvContent = [headers, ...rows]
             .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
             .join('\n');
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
@@ -182,8 +182,8 @@ export default function Templates() {
     };
 
     const handleSelectItem = (id) => {
-        setSelectedItems(prev => 
-            prev.includes(id) 
+        setSelectedItems(prev =>
+            prev.includes(id)
                 ? prev.filter(i => i !== id)
                 : [...prev, id]
         );
@@ -215,10 +215,10 @@ export default function Templates() {
             const newCriteria = [...criteria];
             const dragIndex = newCriteria.findIndex(c => c.id === draggedItem.id);
             const dropIndex = newCriteria.findIndex(c => c.id === dragOverItem.id);
-            
+
             const [removed] = newCriteria.splice(dragIndex, 1);
             newCriteria.splice(dropIndex, 0, removed);
-            
+
             setCriteria(newCriteria);
             showToast('Order updated');
         }
@@ -272,7 +272,7 @@ export default function Templates() {
                             {totalWeightage.toFixed(0)}%
                         </span>
                         <div className="weightage-bar">
-                            <div 
+                            <div
                                 className={`weightage-bar__fill ${totalWeightage === 100 ? 'valid' : 'invalid'}`}
                                 style={{ width: `${Math.min(totalWeightage, 100)}%` }}
                             />
@@ -302,14 +302,14 @@ export default function Templates() {
                 </div>
                 <div className="templates-toolbar__right">
                     <div className="view-toggle">
-                        <button 
+                        <button
                             className={`view-toggle__btn ${viewMode === 'list' ? 'active' : ''}`}
                             onClick={() => setViewMode('list')}
                             title="List view"
                         >
                             <List size={16} />
                         </button>
-                        <button 
+                        <button
                             className={`view-toggle__btn ${viewMode === 'card' ? 'active' : ''}`}
                             onClick={() => setViewMode('card')}
                             title="Card view"
@@ -321,7 +321,7 @@ export default function Templates() {
                         <Download size={16} />
                         Export
                     </button>
-                    <button 
+                    <button
                         className="btn templates-add-btn"
                         onClick={() => { resetForm(); setShowModal(true); }}
                     >
@@ -368,7 +368,7 @@ export default function Templates() {
                     {filteredCriteria.length > 0 && (
                         <div className="templates-list-header">
                             <label className="checkbox-wrapper">
-                                <input 
+                                <input
                                     type="checkbox"
                                     checked={selectedItems.length === filteredCriteria.length && filteredCriteria.length > 0}
                                     onChange={handleSelectAll}
@@ -380,8 +380,8 @@ export default function Templates() {
 
                     <div className={`templates-${viewMode}`}>
                         {filteredCriteria.map((item, index) => (
-                            <div 
-                                key={item.id} 
+                            <div
+                                key={item.id}
                                 className={`template-item ${!item.is_active ? 'inactive' : ''} ${selectedItems.includes(item.id) ? 'selected' : ''} ${draggedItem?.id === item.id ? 'dragging' : ''} ${dragOverItem?.id === item.id ? 'drag-over' : ''}`}
                                 draggable
                                 onDragStart={(e) => handleDragStart(e, item)}
@@ -389,7 +389,7 @@ export default function Templates() {
                                 onDragEnd={handleDragEnd}
                             >
                                 <div className="template-item__checkbox">
-                                    <input 
+                                    <input
                                         type="checkbox"
                                         checked={selectedItems.includes(item.id)}
                                         onChange={() => handleSelectItem(item.id)}
@@ -400,7 +400,7 @@ export default function Templates() {
                                     <GripVertical size={16} />
                                 </div>
 
-                                <div 
+                                <div
                                     className="template-item__color-bar"
                                     style={{ backgroundColor: item.color }}
                                 />
@@ -430,9 +430,9 @@ export default function Templates() {
                                     <button className="btn-icon" onClick={() => handleEdit(item)} title="Edit">
                                         <Edit2 size={14} />
                                     </button>
-                                    <button 
-                                        className="btn-icon btn-icon--danger" 
-                                        onClick={() => setShowDeleteConfirm(item.id)} 
+                                    <button
+                                        className="btn-icon btn-icon--danger"
+                                        onClick={() => setShowDeleteConfirm(item.id)}
                                         title="Delete"
                                     >
                                         <Trash2 size={14} />
@@ -448,13 +448,13 @@ export default function Templates() {
                                 </div>
                                 <h3 className="empty-state__title">No criteria found</h3>
                                 <p className="empty-state__description">
-                                    {searchTerm 
+                                    {searchTerm
                                         ? 'Try adjusting your search terms'
                                         : 'Create your first performance criteria to get started'
                                     }
                                 </p>
                                 {!searchTerm && (
-                                    <button 
+                                    <button
                                         className="btn btn-primary"
                                         onClick={() => { resetForm(); setShowModal(true); }}
                                     >
@@ -485,7 +485,7 @@ export default function Templates() {
                                     <input
                                         type="text"
                                         value={formData.name}
-                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="e.g., Quality of Work"
                                         required
                                     />
@@ -494,7 +494,7 @@ export default function Templates() {
                                     <label>Description</label>
                                     <textarea
                                         value={formData.description}
-                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                         rows={3}
                                         placeholder="Describe how this criteria should be evaluated..."
                                     />
@@ -508,7 +508,7 @@ export default function Templates() {
                                             min="0"
                                             max="100"
                                             value={formData.weightage}
-                                            onChange={(e) => setFormData({...formData, weightage: e.target.value === '' ? '' : parseFloat(e.target.value)})}
+                                            onChange={(e) => setFormData({ ...formData, weightage: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                                             required
                                         />
                                         <span className="form-hint">
@@ -516,7 +516,10 @@ export default function Templates() {
                                         </span>
                                     </div>
                                     <div className="form-group">
-                                        <label>Color</label>
+                                        <label>Color Tag</label>
+                                        <span className="form-hint" style={{ display: 'block', marginBottom: '8px', marginTop: '-4px' }}>
+                                            Used to visually group this criteria in charts
+                                        </span>
                                         <div className="color-picker">
                                             {CRITERIA_COLORS.map(color => (
                                                 <button
@@ -524,7 +527,7 @@ export default function Templates() {
                                                     type="button"
                                                     className={`color-picker__swatch ${formData.color === color ? 'active' : ''}`}
                                                     style={{ backgroundColor: color }}
-                                                    onClick={() => setFormData({...formData, color})}
+                                                    onClick={() => setFormData({ ...formData, color })}
                                                 />
                                             ))}
                                         </div>
@@ -535,7 +538,7 @@ export default function Templates() {
                                         type="checkbox"
                                         id="is_active"
                                         checked={formData.is_active}
-                                        onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                                     />
                                     <label htmlFor="is_active">Active (included in weightage calculation)</label>
                                 </div>

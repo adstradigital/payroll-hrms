@@ -138,11 +138,43 @@ export const attendanceApi = {
     axiosInstance.get(`${API_BASE}/daily-summary/`, { params: { date } }),
 
   /**
-   * Get dashboard statistics
+   * Get dashboard statistics (Total staff, Attendance %, counts)
+   * @param {string} date - Optional date
    * @returns {Promise}
    */
-  getDashboardStats: () =>
-    axiosInstance.get(`${API_BASE}/dashboard-stats/`),
+  getDashboardStats: (date) =>
+    axiosInstance.get(`${API_BASE}/dashboard-stats/`, { params: { date } }),
+
+  /**
+   * Get offline employees today
+   * @param {Object} params - page, page_size
+   * @returns {Promise}
+   */
+  getOfflineEmployees: (params = {}) =>
+    axiosInstance.get(`${API_BASE}/offline-employees/`, { params }),
+
+  /**
+   * Get employees currently on break
+   * @returns {Promise}
+   */
+  getOnBreakEmployees: () =>
+    axiosInstance.get(`${API_BASE}/on-break/`),
+
+  /**
+   * Get weekly analytics percentages
+   * @param {string} period - Day, Week, Month
+   * @returns {Promise}
+   */
+  getAnalyticsData: (period = 'Day') =>
+    axiosInstance.get(`${API_BASE}/analytics/`, { params: { period } }),
+
+  /**
+   * Get overtime hours by department
+   * @param {Object} params - month, year
+   * @returns {Promise}
+   */
+  getDepartmentOvertime: (params = {}) =>
+    axiosInstance.get(`${API_BASE}/department-overtime/`, { params }),
 
   /**
    * Get employee dashboard data (for Profile or Personal Dashboard)

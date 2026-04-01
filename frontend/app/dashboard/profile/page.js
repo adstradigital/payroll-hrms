@@ -1,7 +1,7 @@
 'use client';
 
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
-import EmployeeProfile from '@/components/ClientAdmin/Account/Employees/Employee Profile/EmployeeProfile';
+import EmployeeProfile from '@/components/ClientAdmin/Account/Employees/EmployeeProfile/EmployeeProfile';
 
 export default function MyProfilePage() {
     return (

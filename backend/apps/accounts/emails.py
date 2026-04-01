@@ -340,3 +340,80 @@ The Nexus HRMS Team
     except Exception as e:
         logger.error(f"Failed to send registration rejection email to {admin_email}: {str(e)}")
         return False
+
+
+def send_2fa_otp(user_email, user_name, otp_code):
+    """
+    Send a 2FA verification code to the user's email.
+    """
+    subject = f"Your Login Verification Code - {otp_code}"
+    
+    plain_message = f"""
+Hello {user_name},
+
+Your verification code is: {otp_code}
+
+This code is required to complete your login. It will expire in 10 minutes. 
+
+If you did not request this code, please ignore this email and contact our support team immediately.
+
+Best regards,
+The Nexus HRMS Team
+    """
+    
+    html_message = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 10px; }}
+            .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+            .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px 20px; text-align: center; }}
+            .header h1 {{ color: #f59e0b; margin: 0; font-size: 24px; }}
+            .content {{ padding: 30px 20px; color: #333; text-align: center; }}
+            .otp-code {{ font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #f59e0b; margin: 25px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; display: inline-block; }}
+            .expiry {{ color: #64748b; font-size: 14px; margin-bottom: 20px; }}
+            .footer {{ background: #f8fafc; padding: 20px; text-align: center; color: #666; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🏢 Nexus HRMS</h1>
+            </div>
+            <div class="content">
+                <h2 style="color: #1a1a2e;">Login Verification</h2>
+                <p>Hello {user_name},</p>
+                <p>Use the code below to complete your secure login:</p>
+                
+                <div class="otp-code">{otp_code}</div>
+                
+                <p class="expiry">This code will expire in <strong>10 minutes</strong>.</p>
+                
+                <p style="font-size: 13px; color: #64748b;">If you did not attempt to sign in, please secure your account immediately or contact support.</p>
+            </div>
+            <div class="footer">
+                <p>© 2024 Nexus HRMS. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        from django.conf import settings
+        from django.core.mail import send_mail
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        logger.info(f"2FA OTP email sent to {user_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send 2FA OTP email to {user_email}: {str(e)}")
+        return False
