@@ -462,12 +462,21 @@ def organization_detail(request):
                 enable_tax_management = organization.settings.get('enable_tax_management', True)
                 enable_global_search = organization.settings.get('enable_global_search', True)
             
+            # Safe logo URL handling
+            logo_url = None
+            if organization.logo:
+                try:
+                    logo_url = organization.logo.url
+                except Exception as logo_err:
+                    logger.warning(f"Failed to generate logo URL for organization {organization.id}: {str(logo_err)}")
+                    logo_url = None
+
             data = {
                 'id': str(organization.id), 'name': organization.name, 'slug': organization.slug,
                 'email': organization.email, 'phone': organization.phone, 'address': organization.address,
                 'city': organization.city, 'state': organization.state, 'country': organization.country,
                 'pincode': organization.pincode, 'gstin': organization.gstin, 'pan': organization.pan,
-                'website': organization.website, 'logo': organization.logo.url if organization.logo else None,
+                'website': organization.website, 'logo': logo_url,
                 'employee_count': organization.employee_count,
                 'established_date': str(organization.established_date) if organization.established_date else None,
                 'industry': organization.industry, 'is_verified': organization.is_verified,
@@ -543,8 +552,8 @@ def organization_detail(request):
     except Employee.DoesNotExist:
         return Response({'error': 'Employee profile not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        logger.error(f"Error in organization_detail: {str(e)}")
-        return Response({'error': 'Failed to process request'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error in organization_detail: {str(e)}", exc_info=True)
+        return Response({'error': f'Failed to process request: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ==================== INVITE CODE MANAGEMENT ====================

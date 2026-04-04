@@ -205,7 +205,7 @@ export default function RecruitmentDashboardPage() {
                             ) : (
                                 <ul className={styles.interviewList}>
                                     {todayInterviews.map((item) => {
-                                        const when = new Date(item.scheduled_date || item.interview_date);
+                                        const when = new Date(item.scheduled_date || item.interview_date || '');
                                         const time = Number.isNaN(when.getTime())
                                             ? '-'
                                             : when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

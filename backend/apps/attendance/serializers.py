@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from .models import (
     AttendancePolicy, Shift, EmployeeShiftAssignment,
     Attendance, AttendanceBreak, Holiday,
-    AttendanceRegularizationRequest, AttendanceSummary
+    AttendanceRegularizationRequest, AttendanceSummary, OvertimeRequest
 )
 from apps.accounts.models import Employee
 
@@ -386,10 +386,78 @@ class AttendanceRegularizationActionSerializer(serializers.Serializer):
         return data
 
 
+class OvertimeRequestSerializer(serializers.ModelSerializer):
+    """Overtime Request Serializer with High-Fidelity Analytics"""
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_id_display = serializers.CharField(source='employee.employee_id', read_only=True)
+    reviewed_by_name = serializers.CharField(source='reviewed_by.full_name', read_only=True)
+    
+    attendance_match = serializers.SerializerMethodField()
+    calculated_ot = serializers.SerializerMethodField()
+    policy_status = serializers.SerializerMethodField()
+    estimated_cost = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OvertimeRequest
+        fields = '__all__'
+        read_only_fields = ['id', 'reviewed_by', 'reviewed_at', 'reviewer_comments', 'created_at', 'updated_at']
+
+    def get_attendance_match(self, obj):
+        attendance = Attendance.objects.filter(employee=obj.employee, date=obj.date).first()
+        if attendance:
+            shift_start = attendance.shift.start_time.strftime('%H:%M') if attendance.shift else "09:00"
+            shift_end = attendance.shift.end_time.strftime('%H:%M') if attendance.shift else "17:00"
+            clock_in = timezone.localtime(attendance.check_in_time).strftime('%H:%M') if attendance.check_in_time else "None"
+            clock_out = timezone.localtime(attendance.check_out_time).strftime('%H:%M') if attendance.check_out_time else "None"
+            return {
+                "scheduled": f"{shift_start} - {shift_end}",
+                "clock": f"{clock_in} - {clock_out}",
+                "has_record": True
+            }
+        return {"scheduled": "Off / No Shift", "clock": "No Punch", "has_record": False}
+
+    def get_calculated_ot(self, obj):
+        attendance = Attendance.objects.filter(employee=obj.employee, date=obj.date).first()
+        if not attendance or not attendance.check_in_time or not attendance.check_out_time:
+            return 0.0
+        
+        # Calculate potential OT (Total hours worked - Shift hours)
+        total_hours = float(attendance.total_hours)
+        expected_hours = float(attendance.shift.get_shift_duration()) if attendance.shift else 8.0
+        
+        potential_ot = max(0, total_hours - expected_hours)
+        return round(potential_ot, 2)
+
+    def get_policy_status(self, obj):
+        attendance = Attendance.objects.filter(employee=obj.employee, date=obj.date).first()
+        if not attendance or not attendance.check_in_time or not attendance.check_out_time:
+            return "mismatch"
+        
+        # Use our new potential calculation for matching
+        potential_ot = self.get_calculated_ot(obj)
+        req_ot = float(obj.hours_requested)
+        
+        # If user requests more than they actually worked
+        if req_ot > potential_ot + 0.1: # 6 min buffer
+            return "mismatch"
+        
+        # Check against policy cap
+        policy = obj.employee.company.attendance_policies.filter(is_active=True).first()
+        if policy and req_ot > float(policy.max_overtime_per_day):
+            return "cap_warning"
+            
+        return "verified"
+
+    def get_estimated_cost(self, obj):
+        # Professional placeholder: In a real system, this would pull from the salary structure.
+        return round(float(obj.hours_requested) * 35.0, 2)
+
+
 # Aliases for views
 AttendancePolicySerializer = AttendancePolicyDetailSerializer
 ShiftSerializer = ShiftDetailSerializer
 AttendanceRegularizationSerializer = AttendanceRegularizationRequestSerializer
 AttendanceRegularizationRequestAlias = AttendanceRegularizationRequestSerializer
 AttendanceSerializer = AttendanceListSerializer
+OvertimeRequestAlias = OvertimeRequestSerializer
 

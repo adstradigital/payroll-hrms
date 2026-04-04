@@ -1,0 +1,291 @@
+/* ============================================
+   SHIFT MANAGEMENT - HIGH FIDELITY DASHBOARD
+   ============================================ */
+
+.shift-management {
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-bottom: 5rem;
+}
+
+.shift-page-title {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.025em;
+}
+
+.dark .shift-page-title {
+    color: #f8fafc;
+}
+
+.shift-page-subtitle {
+    font-size: 1rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.dark .shift-page-subtitle {
+    color: #94a3b8;
+}
+
+/* 4-Card Stats Grid */
+.shift-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+}
+
+.shift-stat-card {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.dark .shift-stat-card {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.shift-stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.1);
+}
+
+.shift-stat-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 1rem;
+}
+
+.shift-stat-value {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: #0f172a;
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+}
+
+.dark .shift-stat-value {
+    color: #f8fafc;
+}
+
+.shift-stat-unit {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.shift-stat-icon-wrapper {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.shift-card-indigo .shift-stat-icon-wrapper { background: #eef2ff; color: #4f46e5; }
+.shift-card-emerald .shift-stat-icon-wrapper { background: #ecfdf5; color: #10b981; }
+.shift-card-amber .shift-stat-icon-wrapper { background: #fffbeb; color: #f59e0b; }
+.shift-card-rose .shift-stat-icon-wrapper { background: #fff1f2; color: #e11d48; }
+
+.dark .shift-card-indigo .shift-stat-icon-wrapper { background: rgba(79, 70, 229, 0.1); }
+.dark .shift-card-rose .shift-stat-icon-wrapper { background: rgba(225, 29, 72, 0.1); }
+
+/* Table Container */
+.shift-list-card {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
+}
+
+.dark .shift-list-card {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.shift-table-header {
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.dark .shift-table-header {
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.shift-table-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.dark .shift-table-title { color: #f1f5f9; }
+
+/* Table Content */
+.shift-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.shift-table th {
+    background: #fcfdfe;
+    text-align: left;
+    padding: 1.25rem 2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.dark .shift-table th {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.shift-table td {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    vertical-align: middle;
+}
+
+.dark .shift-table td {
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Shift Info Details */
+.shift-color-identifier {
+    width: 3rem;
+    height: 1.5rem;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.shift-name-bold {
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: #1e293b;
+}
+
+.dark .shift-name-bold { color: #f8fafc; }
+
+.shift-code-tag {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.dark .shift-code-tag { background: #0f172a; }
+
+/* Timeline Bar Styling */
+.shift-timeline-track {
+    width: 100%;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    position: relative;
+    margin: 8px 0;
+}
+
+.dark .shift-timeline-track { background: #334155; }
+
+.shift-timeline-bar {
+    position: absolute;
+    height: 100%;
+    border-radius: 10px;
+}
+
+.shift-time-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.dark .shift-time-labels { color: #94a3b8; }
+
+/* Status & Control */
+.shift-status-pill {
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.shift-status-pill.active { background: #ecfdf5; color: #059669; }
+.shift-status-pill.inactive { background: #fef2f2; color: #e11d48; }
+
+.shift-action-btn {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    color: #94a3b8;
+    transition: all 0.2s;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.shift-action-btn:hover {
+    background: #f8fafc;
+    color: #4f46e5;
+}
+
+.shift-action-btn.delete:hover {
+    color: #ef4444;
+}
+
+.dark .shift-action-btn:hover { background: #334155; }
+
+/* FAB Section */
+.shift-fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 99px;
+    background: #4f46e5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 16px rgba(79, 70, 229, 0.4);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 100;
+}
+
+.shift-fab:hover {
+    transform: scale(1.1) rotate(90deg);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

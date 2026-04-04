@@ -1,5 +1,6 @@
 from django.db import models
-from apps.accounts.models import Organization, Employee
+from apps.accounts.models import Organization, Employee, BaseModel
+import uuid
 from datetime import date
 import logging
 
@@ -235,3 +236,111 @@ class LeaveRequest(models.Model):
             balance.save()
         except LeaveBalance.DoesNotExist:
             pass
+
+
+class LeaveEncashment(models.Model):
+    """Track leave encashment (converting unused leave days to cash)"""
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('paid', 'Paid'),
+    ]
+
+    employee = models.ForeignKey(
+        Employee, on_delete=models.CASCADE, related_name='leave_encashments'
+    )
+    leave_type = models.ForeignKey(
+        LeaveType, on_delete=models.CASCADE,
+        help_text='Must have is_encashable=True'
+    )
+    year = models.PositiveIntegerField()
+    days_encashed = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        help_text='Number of leave days being encashed'
+    )
+    daily_rate = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text='Employee daily salary rate at time of request (gross/26)'
+    )
+    total_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text='days_encashed × daily_rate'
+    )
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    approved_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='approved_encashments'
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    remarks = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Leave Encashment'
+        verbose_name_plural = 'Leave Encashments'
+
+    def __str__(self):
+        return f"{self.employee.employee_id} – {self.leave_type.code} – {self.days_encashed}d (₹{self.total_amount})"
+
+    def save(self, *args, **kwargs):
+        # Auto-compute total_amount
+        from decimal import Decimal
+        self.total_amount = (Decimal(str(self.days_encashed)) * Decimal(str(self.daily_rate))).quantize(Decimal('0.01'))
+        super().save(*args, **kwargs)
+
+    def approve(self, approved_by_employee):
+        """Approve the encashment request"""
+        from django.utils import timezone
+        self.status = 'approved'
+        self.approved_by = approved_by_employee
+        self.approved_at = timezone.now()
+        self.save()
+
+    def reject(self, rejection_reason):
+        """Reject the encashment request and restore leave balance"""
+        self.status = 'rejected'
+        self.rejection_reason = rejection_reason
+        self.save()
+        # Restore the deducted leave days
+        try:
+            balance = LeaveBalance.objects.get(
+                employee=self.employee,
+                leave_type=self.leave_type,
+                year=self.year
+            )
+            balance.used -= self.days_encashed
+            balance.save()
+        except LeaveBalance.DoesNotExist:
+            pass
+
+    def mark_paid(self):
+        """Mark the encashment as disbursed"""
+        self.status = 'paid'
+        self.save()
+
+class LeaveSettings(BaseModel):
+    """Global leave and accrual settings for an organization"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='leave_settings')
+    
+    # Feature Toggles
+    is_encashment_enabled = models.BooleanField(default=True, help_text='Enable/Disable the entire Leave Encashment module')
+    
+    # Global Rules
+    fiscal_year_start = models.CharField(max_length=5, default='04-01', help_text='MM-DD format (default April 1st)')
+    default_probation_months = models.PositiveIntegerField(default=6, help_text='Standard probation period for new employees')
+    allow_negative_balance = models.BooleanField(default=False, help_text='Permit advance leaves')
+    
+    class Meta:
+        verbose_name_plural = 'Leave Settings'
+
+    def __str__(self):
+        return f"Leave Settings - {self.company.name}"

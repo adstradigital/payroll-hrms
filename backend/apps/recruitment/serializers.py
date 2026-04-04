@@ -671,6 +671,10 @@ class InterviewSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
+        # Ensure scheduled_date is returned as interview_date for backward compatibility if needed, 
+        # but the frontend should move to scheduled_date.
+        representation['interview_date'] = representation.get('scheduled_date')
+        
         if not representation.get('location_or_link'):
             representation['location_or_link'] = (
                 representation.get('meeting_link')
@@ -701,6 +705,7 @@ class InterviewListSerializer(serializers.ModelSerializer):
             'interview_type',
             'interviewer',
             'interview_date',
+            'scheduled_date',
             'interview_mode',
             'status',
             'result',
@@ -949,3 +954,32 @@ class SurveyResponseCreateSerializer(serializers.Serializer):
             ])
 
         return response
+
+class HireCandidateSerializer(serializers.Serializer):
+    """
+    Serializer for the 'Hire' action.
+    Validates data required to create an Employee profile from a Candidate.
+    """
+    joining_date = serializers.DateField(required=True)
+    employee_id = serializers.CharField(max_length=50, required=True)
+    department_id = serializers.UUIDField(required=True)
+    designation_id = serializers.UUIDField(required=True)
+    employment_type = serializers.ChoiceField(
+        choices=[
+            ('permanent', 'Permanent'),
+            ('contract', 'Contract'),
+            ('intern', 'Intern'),
+            ('consultant', 'Consultant'),
+            ('part_time', 'Part Time'),
+        ],
+        default='permanent'
+    )
+    basic_salary = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    probation_months = serializers.IntegerField(default=6, min_value=0)
+    is_admin = serializers.BooleanField(default=False)
+
+    def validate_employee_id(self, value):
+        from apps.accounts.models import Employee
+        if Employee.objects.filter(employee_id__iexact=value).exists():
+            raise serializers.ValidationError("This Employee ID is already in use.")
+        return value

@@ -30,6 +30,8 @@ from .models import (
     SurveyResponse,
     RejectionReason,
 )
+from apps.accounts.models import Employee, Organization, Department, Designation
+from django.contrib.auth.models import User
 from .utils.parser import parse_resume
 import logging
 
@@ -44,6 +46,7 @@ from .serializers import (
     RecruitmentJobSettingSerializer,
     InterviewTemplateSerializer,
     RejectionReasonSerializer,
+    HireCandidateSerializer,
 )
 
 
@@ -109,14 +112,14 @@ def ensure_candidate_job_application(candidate, job_opening):
         },
     )
 
-    if created:
-        job_opening.applications_count = Application.objects.filter(job_opening=job_opening).count()
-        job_opening.save(update_fields=['applications_count'])
-
+    # Note: Count is now handled by atomic signals in signals.py
     return application
 
 
 def sync_candidate_primary_application_stage(candidate):
+    """
+    Synchronize the primary application stage and status from the candidate's active stage.
+    """
     if not candidate.job_applied or not candidate.stage:
         return
 
@@ -129,15 +132,19 @@ def sync_candidate_primary_application_stage(candidate):
         return
 
     application.current_stage = candidate.stage.name
-    normalized_stage = candidate.stage.name.strip().lower()
-    if normalized_stage == 'rejected':
-        application.status = 'REJECTED'
-    elif normalized_stage == 'hired':
-        application.status = 'HIRED'
-    elif normalized_stage == 'withdrawn':
-        application.status = 'WITHDRAWN'
-    else:
-        application.status = 'ACTIVE'
+    normalized_stage = candidate.stage.name.strip().upper()
+    
+    # Mapping of stages to statuses for Application
+    status_map = {
+        'HIRED': 'HIRED',
+        'REJECTED': 'REJECTED',
+        'OFFER': 'OFFER_EXTENDED',
+        'OFFER_ACCEPTED': 'OFFER_ACCEPTED',
+        'OFFER_DECLINED': 'OFFER_DECLINED',
+        'WITHDRAWN': 'WITHDRAWN',
+    }
+    
+    application.status = status_map.get(normalized_stage, 'ACTIVE')
     application.save(update_fields=['current_stage', 'status', 'updated_at'])
 
 
@@ -2954,3 +2961,136 @@ def resume_bulk_upload(request):
         'results': results,
         'created_count': created_count
     }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def hire_candidate(request, pk):
+    """
+    End-to-end hire process:
+    1. Validate Candidate and Application.
+    2. Create User (if not exists).
+    3. Create Employee profile.
+    4. Move Candidate/Application to HIRED stage.
+    """
+    try:
+        import random
+        candidate = get_object_or_404(Candidate, pk=pk)
+        
+        # Check if already hired in accounts
+        if Employee.objects.filter(email__iexact=candidate.email).exists():
+            return Response({
+                'success': False,
+                'message': f"An employee with email {candidate.email} already exists."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = HireCandidateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({
+                'success': False,
+                'message': 'Invalid hiring data.',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        
+        # Determine Organization
+        organization = None
+        if candidate.job_applied and candidate.job_applied.created_by:
+            creator_employee = getattr(candidate.job_applied.created_by, 'employee_profile', None)
+            if creator_employee:
+                organization = creator_employee.company
+        
+        # Fallback to current authenticated user's organization
+        if not organization:
+            auth_employee = getattr(request.user, 'employee_profile', None)
+            if auth_employee:
+                organization = auth_employee.company
+
+        # Ultimate fallback (if superuser or no employee profile)
+        if not organization:
+            organization = Organization.objects.first()
+
+        if not organization:
+            return Response({
+                'success': False,
+                'message': "No organization found to assign the employee to. Please ensure your account is linked to an organization profile."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Create/Get User
+        # Ensure unique username
+        username = candidate.email.split('@')[0]
+        if User.objects.filter(username=username).exists():
+             username = f"{username}_{random.randint(100, 999)}"
+
+        user, created = User.objects.get_or_create(
+            email=candidate.email,
+            defaults={
+                'username': username,
+                'first_name': candidate.first_name,
+                'last_name': candidate.last_name,
+                'is_active': True
+            }
+        )
+        if created:
+            # Default password as per plan
+            user.set_password('Welcome@123')
+            user.save()
+
+        # 2. Create Employee Profile
+        employee = Employee.objects.create(
+            user=user,
+            company=organization,
+            employee_id=data['employee_id'],
+            first_name=candidate.first_name,
+            last_name=candidate.last_name,
+            email=candidate.email,
+            phone=candidate.phone,
+            date_of_joining=data['joining_date'],
+            department_id=data['department_id'],
+            designation_id=data['designation_id'],
+            employment_type=data['employment_type'],
+            basic_salary=data.get('basic_salary'),
+            probation_period_months=data['probation_months'],
+            is_admin=data['is_admin'],
+            status='active'
+        )
+
+        # 3. Update Candidate and Application Status
+        candidate.status = 'HIRED'
+        hired_stage = RecruitmentStage.objects.filter(name__iexact='Hired').first()
+        if hired_stage:
+            candidate.stage = hired_stage
+        candidate.save()
+
+        if candidate.job_applied:
+            application = Application.objects.filter(
+                candidate=candidate, 
+                job_opening=candidate.job_applied
+            ).first()
+            if application:
+                application.status = 'HIRED'
+                # Sync logic similar to sync_candidate_primary_application_stage
+                application.current_stage = hired_stage.name if hired_stage else 'Hired'
+                application.save()
+
+        return Response({
+            'success': True,
+            'message': f"Successfully recruited {candidate.full_name} as Employee ID {employee.employee_id}.",
+            'data': {
+                'employee_record_id': str(employee.id),
+                'user_id': user.id,
+                'full_name': employee.full_name
+            }
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"Error hiring candidate {pk}: {str(e)}\n{error_trace}")
+        return Response({
+            'success': False,
+            'message': 'An unexpected error occurred during hiring.',
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

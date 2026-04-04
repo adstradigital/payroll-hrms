@@ -268,6 +268,161 @@
     left: 22px;
 }
 
+/* ── Premium Toggle Switch (ls-switch) ─────────────── */
+.ls-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.ls-switch--lg {
+    width: 56px;
+    height: 30px;
+}
+
+.ls-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.ls-slider {
+    position: absolute;
+    inset: 0;
+    background: #d1d5db;
+    border-radius: 999px;
+    transition: background 0.25s;
+}
+
+.ls-slider::before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: transform 0.25s;
+}
+
+.ls-switch--lg .ls-slider::before {
+    width: 22px;
+    height: 22px;
+    left: 4px;
+    top: 4px;
+}
+
+.ls-switch input:checked + .ls-slider {
+    background: #4f46e5;
+}
+
+.ls-switch input:checked + .ls-slider::before {
+    transform: translateX(20px);
+}
+
+.ls-switch--lg input:checked + .ls-slider::before {
+    transform: translateX(26px);
+}
+
+/* ── Leave Encashment Toggle Card ───────────────────── */
+.encashment-toggle-card {
+    border-width: 1.5px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+}
+
+.encashment-toggle-card.enabled {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.10);
+}
+
+.encashment-toggle-card.disabled {
+    border-color: var(--border-color);
+    opacity: 0.85;
+}
+
+.encashment-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+}
+
+.badge-on {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+}
+
+.badge-off {
+    background: rgba(107, 114, 128, 0.12);
+    color: #6b7280;
+}
+
+.encashment-main-toggle {
+    padding-bottom: 1.25rem;
+}
+
+.encashment-label {
+    font-size: 1rem !important;
+    color: var(--text-primary) !important;
+}
+
+.encashment-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    transition: background 0.3s;
+}
+
+.encashment-info-box p { margin: 0; }
+
+.info-active {
+    background: rgba(99, 102, 241, 0.06);
+    color: #3730a3;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.info-inactive {
+    background: rgba(245, 158, 11, 0.06);
+    color: #92400e;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.info-icon-active { color: #4f46e5; flex-shrink: 0; margin-top: 2px; }
+.info-icon-inactive { color: #f59e0b; flex-shrink: 0; margin-top: 2px; }
+
+/* ── Encashable Tag in Accrual List ─────────────────── */
+.encashable-tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: rgba(99, 102, 241, 0.1);
+    color: #4f46e5;
+    letter-spacing: 0.04em;
+}
+
+/* ── Alert error ─────────────────────────────────────── */
+.settings-alert.error {
+    background: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 @media (max-width: 768px) {
     .settings-header {
         flex-direction: column;
@@ -277,4 +432,35 @@
     .settings-btn {
         width: 100%;
     }
+
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-card.full-width {
+        grid-column: span 1;
+    }
+
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+[data-theme="dark"] .info-active,
+.dark .info-active {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+[data-theme="dark"] .info-inactive,
+.dark .info-inactive {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="dark"] .ls-switch input:checked + .ls-slider,
+.dark .ls-switch input:checked + .ls-slider {
+    background: #f59e0b;
 }

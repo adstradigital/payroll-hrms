@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Filter, LayoutGrid, Trash2, Plus, GripVertical, ChevronDown, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
+import { getAttendanceLogs } from '@/api/api_clientadmin';
 import './AttendanceLogs.css';
 
 export default function AttendanceLogs() {
@@ -13,22 +14,11 @@ export default function AttendanceLogs() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('accessToken');
-
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/logs/?date=${viewDate}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setLogs(data.results || []);
-            } else {
-                console.error('Failed to fetch attendance logs');
-            }
+            const response = await getAttendanceLogs({ date: viewDate });
+            setLogs(response.data.results || []);
         } catch (error) {
             console.error('Error fetching logs:', error);
+            setLogs([]);
         } finally {
             setLoading(false);
         }
@@ -117,15 +107,16 @@ export default function AttendanceLogs() {
                             <th>Check In</th>
                             <th>Check Out</th>
                             <th>Shift (Assigned)</th>
+                            <th>OT</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={8} className="text-center p-4">Loading logs...</td></tr>
+                            <tr><td colSpan={9} className="text-center p-4">Loading logs...</td></tr>
                         ) : logs.length === 0 ? (
-                            <tr><td colSpan={8} className="text-center p-4">No attendance logs found for this date</td></tr>
+                            <tr><td colSpan={9} className="text-center p-4">No attendance logs found for this date</td></tr>
                         ) : (
                             logs.map(row => (
                                 <tr key={row.id}>
@@ -150,6 +141,11 @@ export default function AttendanceLogs() {
                                     <td className="font-medium text-green-600">{formatTime(row.check_in_time)}</td>
                                     <td className="font-medium text-red-500">{formatTime(row.check_out_time)}</td>
                                     <td>{row.shift_name || '-'}</td>
+                                    <td>
+                                        {row.overtime_hours > 0 ? (
+                                            <span className="ot-tag">+{row.overtime_hours}h</span>
+                                        ) : '-'}
+                                    </td>
                                     <td>
                                         <span className={`status-badge-log ${row.status}`}>
                                             {row.status}

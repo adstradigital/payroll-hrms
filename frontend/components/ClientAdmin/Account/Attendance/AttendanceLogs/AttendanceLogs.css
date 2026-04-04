@@ -267,3 +267,16 @@
     background: rgba(249, 115, 22, 0.1);
     color: #f97316;
 }
+
+/* Overtime Tag */
+.ot-tag {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+}

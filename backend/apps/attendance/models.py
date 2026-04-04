@@ -440,7 +440,7 @@ class Attendance(models.Model):
         return f"{self.employee.full_name} - {self.date} - {self.status}"
 
     def calculate_hours(self):
-        """Calculate total working hours"""
+        """Calculate total working hours and overtime"""
         # Recalculate break hours from related AttendanceBreak objects
         if self.pk:
             total_break_seconds = 0
@@ -457,22 +457,47 @@ class Attendance(models.Model):
             
             # Subtract break hours
             break_seconds = float(self.break_hours) * 3600
-            working_seconds = max(0, total_seconds - break_seconds) # Ensure non-negative
+            working_seconds = max(0, total_seconds - break_seconds)
             
             self.total_hours = round(working_seconds / 3600, 2)
             
+            # Reset overtime first
+            self.overtime_hours = 0.0
+            
             # Calculate overtime if shift is assigned
-            if self.shift:
-                expected_hours = self.shift.get_shift_duration()
-                # Check overtime threshold from policy or default
-                policy = self.employee.company.attendance_policies.filter(is_active=True).first()
-                overtime_threshold = policy.overtime_after_minutes / 60 if (policy and policy.overtime_after_minutes) else expected_hours
+            policy = self.employee.company.attendance_policies.filter(is_active=True).first()
+            if self.shift and policy and policy.overtime_applicable:
+                expected_hours = float(self.shift.get_shift_duration())
+                overtime_threshold = float(policy.overtime_after_minutes / 60) if policy.overtime_after_minutes else expected_hours
                 
-                if self.total_hours > overtime_threshold:
-                    self.overtime_hours = round(self.total_hours - expected_hours, 2)
+                if float(self.total_hours) > overtime_threshold:
+                    potential_ot = float(self.total_hours) - expected_hours
+                    
+                    # Apply min overtime minutes rule
+                    min_ot_hours = float(policy.min_overtime_minutes / 60)
+                    if potential_ot >= min_ot_hours:
+                        
+                        # Apply pre-approval rule
+                        if policy.require_overtime_pre_approval:
+                            approved_request = OvertimeRequest.objects.filter(
+                                employee=self.employee,
+                                date=self.date,
+                                status='approved'
+                            ).first()
+                            
+                            if approved_request:
+                                # Credit overtime up to requested hours if specifically restricted, 
+                                # but usually we credit actual worked hours if approved for that day
+                                self.overtime_hours = round(min(potential_ot, float(approved_request.hours_requested)), 2)
+                        else:
+                            # Direct credit
+                            self.overtime_hours = round(potential_ot, 2)
+                        
+                        # Apply maximum daily limit
+                        if policy.max_overtime_per_day:
+                            self.overtime_hours = min(float(self.overtime_hours), float(policy.max_overtime_per_day))
             
             # Determine status based on hours
-            policy = self.employee.company.attendance_policies.filter(is_active=True).first()
             if policy:
                 if self.total_hours >= float(policy.full_day_hours):
                     self.status = 'present'
@@ -681,6 +706,49 @@ class AttendanceRegularizationRequest(models.Model):
 
     def __str__(self):
         return f"{self.employee.full_name} - {self.request_type} - {self.attendance.date}"
+
+
+class OvertimeRequest(models.Model):
+    """Requests for overtime work (either pre-approval or post-work regularization)"""
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='overtime_requests')
+    date = models.DateField(db_index=True)
+    
+    hours_requested = models.DecimalField(max_digits=4, decimal_places=2)
+    reason = models.TextField()
+    
+    # Approval workflow
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    reviewed_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_overtimes'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewer_comments = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('employee', 'date')
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['employee', 'status']),
+            models.Index(fields=['date', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.date} - {self.hours_requested}h - {self.status}"
 
 
 class AttendanceSummary(models.Model):

@@ -14,6 +14,7 @@ export default function LeaveReports() {
     const [loading, setLoading] = useState(false);
     const [employees, setEmployees] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
+    const [error, setError] = useState(null);
 
     const [filters, setFilters] = useState({
         employee: '',
@@ -39,9 +40,15 @@ export default function LeaveReports() {
                 getMyProfile(),
                 getAllEmployees()
             ]);
-            setCurrentUser(profRes.data.employee || profRes.data);
+            const user = profRes.data.employee || profRes.data;
+            setCurrentUser(user);
             setEmployees(empRes.data.results || empRes.data || []);
-            setFilters(prev => ({ ...prev, company: profRes.data.company_id }));
+            
+            // Set company filter from the user profile correctly
+            const companyId = user.company?.id || profRes.data.company_id || user.company_id;
+            if (companyId) {
+                setFilters(prev => ({ ...prev, company: companyId }));
+            }
         } catch (err) {
             console.error('Error fetching initial data:', err);
         }
@@ -52,11 +59,13 @@ export default function LeaveReports() {
             setLoading(true);
             const params = {
                 ...filters,
-                company: currentUser?.company_id || currentUser?.company?.id
+                company: filters.company || currentUser?.company_id || currentUser?.company?.id
             };
-
-            // Clean empty params
-            Object.keys(params).forEach(key => !params[key] && delete params[key]);
+            
+            // Remove empty keys
+            Object.keys(params).forEach(key => (params[key] === null || params[key] === undefined || params[key] === '') && delete params[key]);
+            
+            console.log('Fetching report with params:', params);
 
             // Determine endpoint based on tab
             let res;
@@ -71,8 +80,15 @@ export default function LeaveReports() {
             }
 
             setData(res.data);
+            setError(null);
         } catch (err) {
-            console.error('Error fetching report:', err);
+            console.error('Full Axios Error Object:', err);
+            if (err.response) {
+                console.error('Error Response Data:', err.response.data);
+                setError(err.response.data?.error || err.response.data?.detail || 'Failed to fetch report data');
+            } else {
+                setError(err.message || 'Failed to fetch report data');
+            }
         } finally {
             setLoading(false);
         }
@@ -160,6 +176,14 @@ export default function LeaveReports() {
                         <Loader2 size={40} className="animate-spin" />
                         <p>Generating report...</p>
                     </div>
+                ) : error ? (
+                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--danger-color)' }}>
+                        <AlertCircle size={48} style={{ marginBottom: '1rem' }} />
+                        <p>{error}</p>
+                        <button className="report-btn report-btn--secondary" onClick={fetchReport} style={{ marginTop: '1rem' }}>
+                            Try Again
+                        </button>
+                    </div>
                 ) : data.length === 0 ? (
                     <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         <FileText size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
@@ -190,14 +214,14 @@ export default function LeaveReports() {
                                 data.map((row, idx) => (
                                     <tr key={idx}>
                                         <td>
-                                            <div style={{ fontWeight: 600 }}>{row.name}</div>
+                                            <div style={{ fontWeight: 600 }}>{row.employee_name}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{row.employee_id}</div>
                                         </td>
                                         <td>{row.department}</td>
                                         <td>
                                             {row.leaves && row.leaves.map((l, i) => (
                                                 <span key={i} className="leave-type-pill">
-                                                    {l.type}: {l.used}/{l.allocated}
+                                                    {l.type}: {l.used}/{l.total}
                                                 </span>
                                             ))}
                                         </td>

@@ -141,7 +141,11 @@ const AtsBoard = () => {
                                     <AnimatePresence mode="popLayout">
                                         {items.length > 0 ? (
                                             items.map((candidate) => (
-                                                <CandidateCard key={candidate.id} candidate={candidate} />
+                                                <CandidateCard 
+                                                    key={candidate.id} 
+                                                    candidate={candidate} 
+                                                    onRefresh={fetchCandidates}
+                                                />
                                             ))
                                         ) : (
                                             <motion.div 

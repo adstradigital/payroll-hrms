@@ -89,6 +89,7 @@ export const CLIENTADMIN_ENDPOINTS = {
 
     // Attendance
     ATTENDANCE: `${BASE_URL}/attendance/`,
+    ATTENDANCE_LOGS: `${BASE_URL}/attendance/logs/`,
     CLOCK_IN: `${BASE_URL}/attendance/clock-in/`,
     CLOCK_OUT: `${BASE_URL}/attendance/clock-out/`,
     ATTENDANCE_REPORT: `${BASE_URL}/attendance/report/`,
@@ -106,6 +107,12 @@ export const CLIENTADMIN_ENDPOINTS = {
     LEAVE_TYPE_DETAIL: (id) => `${BASE_URL}/leave/types/${id}/`,
     LEAVE_BALANCE: `${BASE_URL}/leave/balances/`,
     LEAVE_PROCESS: (id) => `${BASE_URL}/leave/requests/${id}/process/`,
+    LEAVE_SETTINGS: `${BASE_URL}/leave/settings/`,
+    // Leave Encashment
+    LEAVE_ENCASHMENTS: `${BASE_URL}/leave/encashments/`,
+    LEAVE_ENCASHMENT_DETAIL: (id) => `${BASE_URL}/leave/encashments/${id}/`,
+    LEAVE_ENCASHMENT_PROCESS: (id) => `${BASE_URL}/leave/encashments/${id}/process/`,
+    LEAVE_ENCASHMENT_ELIGIBILITY: `${BASE_URL}/leave/encashments/eligibility/`,
 
     // Payroll
     PAYROLL: `${BASE_URL}/payroll/`,

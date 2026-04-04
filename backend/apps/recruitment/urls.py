@@ -54,6 +54,7 @@ urlpatterns = [
     path('candidates/<int:pk>/stage/', views.candidate_update_status, name='candidate-update-stage'),
     path('candidates/<int:pk>/toggle-star/', views.candidate_toggle_star, name='candidate-toggle-star'),
     path('candidates/<int:pk>/apply/', views.candidate_apply_to_job, name='candidate-apply-to-job'),
+    path('candidates/<int:pk>/hire/', views.hire_candidate, name='hire-candidate'),
     
     # Applications (additional stage action)
     path('applications/<int:pk>/stage/', views.application_update_stage, name='application-update-stage'),
