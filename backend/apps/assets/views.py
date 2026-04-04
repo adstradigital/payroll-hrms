@@ -5,11 +5,45 @@ from rest_framework import status
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from .models import Asset, AssetBatch, AssetRequest, AssetHistory
+from .models import Asset, AssetBatch, AssetRequest, AssetHistory, AssetCategory
 from .serializers import (
     AssetSerializer, AssetBatchSerializer, 
-    AssetRequestSerializer, AssetHistorySerializer
+    AssetRequestSerializer, AssetHistorySerializer,
+    AssetCategorySerializer
 )
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def asset_category_list_create(request):
+    try:
+        company = get_client_company(request.user)
+        if request.method == 'GET':
+            queryset = AssetCategory.objects.filter(company=company)
+            return Response(AssetCategorySerializer(queryset, many=True).data)
+        elif request.method == 'POST':
+            serializer = AssetCategorySerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(company=company, created_by=request.user)
+                return Response(serializer.data, status=201)
+            return Response(serializer.errors, status=400)
+    except Exception as e: return Response({'error': str(e)}, status=500)
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def asset_category_detail(request, pk):
+    try:
+        company = get_client_company(request.user)
+        category = get_object_or_404(AssetCategory, pk=pk, company=company)
+        if request.method == 'GET':
+            return Response(AssetCategorySerializer(category).data)
+        elif request.method in ['PUT', 'PATCH']:
+            serializer = AssetCategorySerializer(category, data=request.data, partial=(request.method == 'PATCH'))
+            if serializer.is_valid():
+                serializer.save(); return Response(serializer.data)
+            return Response(serializer.errors, status=400)
+        elif request.method == 'DELETE':
+            category.delete(); return Response(status=204)
+    except Exception as e: return Response({'error': str(e)}, status=500)
 from apps.audit.utils import log_activity
 import logging
 

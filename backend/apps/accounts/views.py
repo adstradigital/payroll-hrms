@@ -1254,6 +1254,9 @@ def employee_list_create(request):
             logger.info(f"  - designation_id: {desig_id}")
             logger.info(f"  - is_admin: {request.data.get('is_admin', False)}")
 
+            if Employee.objects.filter(employee_id=employee_id_val).exists():
+                return Response({'error': f"Employee ID '{employee_id_val}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
             emp = Employee.objects.create(
                 company_id=company_id, 
                 user_id=user_id,

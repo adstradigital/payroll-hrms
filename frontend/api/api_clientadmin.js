@@ -227,12 +227,12 @@ export const getPayrollReports = ({ type, ...params }) => axiosInstance.get(`${C
 export const getLeaveReports = ({ type, ...params }) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_LEAVE}${type}/`, { params });
 export const getEmployeeReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_EMPLOYEE, { params });
 
-export const exportEPFECR = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL}epf-ecr/`, {
+export const exportEPFECR = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}reports/epf-ecr/`, {
     params,
     responseType: 'blob'
 });
 
-export const exportESIChallan = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL}esi-challan/`, {
+export const exportESIChallan = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}reports/esi-challan/`, {
     params,
     responseType: 'blob'
 });
@@ -245,6 +245,14 @@ export const exportSalaryRegister = (params) => axiosInstance.get(`${CLIENTADMIN
 export const exportPayrollSummary = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}reports/payroll-summary/`, {
     params,
     responseType: 'blob'
+});
+
+export const getSalaryRegisterData = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}reports/salary-register-data/`, {
+    params
+});
+
+export const getPayrollSummaryData = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}reports/payroll-summary-data/`, {
+    params
 });
 
 export const updateEncashmentRequest = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ENCASHMENT_REQUEST_DETAIL(id), data);
@@ -274,19 +282,6 @@ export const verifySecurityPin = (data) => axiosInstance.post(CLIENTADMIN_ENDPOI
 export const startSettingsBackup = () => axiosInstance.post(CLIENTADMIN_ENDPOINTS.SETTINGS_BACKUP);
 export const downloadSettingsBackup = () =>
     axiosInstance.get(CLIENTADMIN_ENDPOINTS.SETTINGS_BACKUP_DOWNLOAD, { responseType: 'blob' });
-// Assets
-export const getAssets = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSETS, { params });
-export const getAssetById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id));
-export const createAsset = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSETS, data);
-export const updateAsset = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id), data);
-export const deleteAsset = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id));
-export const allocateAsset = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id)}allocate/`, data);
-export const deallocateAsset = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id)}deallocate/`);
-
-export const getAssetBatches = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_BATCHES, { params });
-export const createAssetBatch = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSET_BATCHES, data);
-export const updateAssetBatch = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ASSET_BATCH_DETAIL(id), data);
-export const deleteAssetBatch = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ASSET_BATCH_DETAIL(id));
 
 export const getAssetRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_REQUESTS, { params });
 export const createAssetRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSET_REQUESTS, data);
@@ -334,10 +329,31 @@ export const getDocumentTypes = (params) => axiosInstance.get('/settings/documen
 export const getOnboardingTemplates = () => axiosInstance.get('/settings/onboarding-templates/');
 export const getEmployeeOnboardingProgress = (employeeId) => axiosInstance.get(`/settings/employee-onboarding/${employeeId}/`);
 export const updateEmployeeOnboardingStep = (stepId, data) => axiosInstance.patch(`/settings/employee-onboarding-step/${stepId}/`, data);
-// Attendance
+// Attendance
 export const getAttendancePolicies = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICIES, { params });
 export const createAttendancePolicy = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICIES, data);
 export const updateAttendancePolicy = (id, data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICY_DETAIL(id), data);
+
+// Assets
+export const getAssets = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSETS, { params });
+export const getAssetById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id));
+export const createAsset = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSETS, data);
+export const updateAsset = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id), data);
+export const deleteAsset = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id));
+
+// Asset Categories
+export const getAssetCategories = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_CATEGORIES);
+export const createAssetCategory = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSET_CATEGORIES, data);
+export const updateAssetCategory = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ASSET_CATEGORY_DETAIL(id), data);
+export const deleteAssetCategory = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ASSET_CATEGORY_DETAIL(id));
+
+export const allocateAsset = (id, data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id)}allocate/`, data);
+export const deallocateAsset = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.ASSET_DETAIL(id)}deallocate/`);
+
+export const getAssetBatches = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ASSET_BATCHES, { params });
+export const createAssetBatch = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ASSET_BATCHES, data);
+export const updateAssetBatch = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ASSET_BATCH_DETAIL(id), data);
+export const deleteAssetBatch = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.ASSET_BATCH_DETAIL(id));
 
 // HRMS Requests
 export const getDocumentRequests = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.DOCUMENT_REQUESTS, { params });
@@ -355,3 +371,6 @@ export const getWorkTypeRequests = (params) => axiosInstance.get(CLIENTADMIN_END
 export const createWorkTypeRequest = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUESTS, data);
 export const approveWorkTypeRequest = (id) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUEST_APPROVE(id));
 export const rejectWorkTypeRequest = (id, reason) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.WORK_TYPE_REQUEST_REJECT(id), { reason });
+
+export const getGlobalLeaveSettings = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_GLOBAL_SETTINGS);
+export const updateGlobalLeaveSettings = (data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.LEAVE_GLOBAL_SETTINGS, data);

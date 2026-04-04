@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { expensesApi, mockCategories, mockClaims } from '@/api/expensesApi';
+import { expensesApi } from '@/api/expensesApi';
 import {
   Plus, FileText, CheckCircle, Clock,
   ClipboardList, LayoutGrid, List, X, Upload
@@ -14,6 +14,11 @@ const SubmitExpense = () => {
   const [filter, setFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Quick Add Category State
+  const [isQuickAdd, setIsQuickAdd] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
 
   const [categories, setCategories] = useState([]);
   const [submittedClaims, setSubmittedClaims] = useState([]);
@@ -41,8 +46,8 @@ const SubmitExpense = () => {
         console.error("Error response data:", err.response.data);
         console.error("Error status:", err.response.status);
       }
-      setCategories(mockCategories);
-      setSubmittedClaims(mockClaims);
+      setCategories([]);
+      setSubmittedClaims([]);
     } finally {
       setLoading(false);
     }
@@ -74,6 +79,24 @@ const SubmitExpense = () => {
       setFormData(prev => ({ ...prev, [name]: files[0] }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleQuickAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setSavingCategory(true);
+    try {
+      const res = await expensesApi.createCategory({ name: newCategoryName.trim(), description: 'Added from Submit Claim form' });
+      const newCat = res.data;
+      setCategories(prev => [...prev, newCat]);
+      setFormData(prev => ({ ...prev, category_id: newCat.id }));
+      setIsQuickAdd(false);
+      setNewCategoryName('');
+    } catch (err) {
+      console.error("Failed to create category", err);
+      alert('Failed to create category: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSavingCategory(false);
     }
   };
 
@@ -280,18 +303,60 @@ const SubmitExpense = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>Category *</label>
-                    <select
-                      name="category_id"
-                      value={formData.category_id}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ margin: 0 }}>Category *</label>
+                      {!isQuickAdd && (
+                        <button 
+                          type="button" 
+                          onClick={() => setIsQuickAdd(true)}
+                          style={{ background: 'none', border: 'none', color: 'var(--brand-primary)', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}
+                        >
+                          + Quick Add
+                        </button>
+                      )}
+                    </div>
+                    
+                    {isQuickAdd ? (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          placeholder="New Category Name..."
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          style={{ flex: 1 }}
+                          autoFocus
+                        />
+                        <button 
+                          type="button" 
+                          onClick={handleQuickAddCategory}
+                          disabled={savingCategory || !newCategoryName.trim()}
+                          className="btn btn-primary"
+                          style={{ padding: '8px 16px', fontSize: '13px' }}
+                        >
+                          {savingCategory ? '...' : 'Save'}
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => { setIsQuickAdd(false); setNewCategoryName(''); }}
+                          className="btn btn-outline"
+                          style={{ padding: '8px 12px' }}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <select
+                        name="category_id"
+                        value={formData.category_id}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Select Category</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 

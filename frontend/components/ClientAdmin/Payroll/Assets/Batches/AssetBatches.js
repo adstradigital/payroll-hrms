@@ -193,7 +193,7 @@ export default function AssetBatches() {
                         <tbody>
                             {batches.map((batch) => (
                                 <tr key={batch.id}>
-                                    <td className="ab-td-id">{batch.id}</td>
+                                    <td className="ab-td-id">{batch.batch_id || batch.id}</td>
                                     <td className="ab-td-name">
                                         <div className="ab-name-wrapper">
                                             <Package size={16} className="ab-pkg-icon" />
@@ -236,7 +236,8 @@ export default function AssetBatches() {
                                     </div>
                                     <div>
                                         <div className="ab-batch-card-name">{batch.name}</div>
-                                        <div className="ab-batch-card-id">{batch.id}</div>
+                                        <div className="ab-batch-card-id-label">BATCH ID</div>
+                                        <div className="ab-batch-card-id-value">{batch.batch_id || batch.id}</div>
                                     </div>
                                 </div>
                                 <span className={`ab-status-label ab-status-label--${getStatusClassName(batch.status)}`}>

@@ -96,39 +96,53 @@ export default function LeavePage() {
                 .leave-tabs-container {
                     display: flex;
                     flex-direction: column;
-                    gap: 1.5rem;
+                    gap: 2rem;
                 }
+                
                 .tabs-header {
                     display: flex;
                     gap: 1rem;
-                    border-bottom: 1px solid var(--border-color);
-                    padding-bottom: 0.5rem;
+                    border-bottom: 2px solid var(--border-color);
+                    padding-bottom: 0;
+                    margin-bottom: 0.5rem;
                     overflow-x: auto;
+                    scrollbar-width: none; /* Firefox */
                 }
+                .tabs-header::-webkit-scrollbar { 
+                    display: none; /* Safari/Chrome */
+                }
+                
                 .tab-btn {
-                    padding: 0.625rem 1.25rem;
+                    padding: 0.875rem 0.5rem;
+                    margin: 0 0.5rem;
                     border: none;
-                    background: none;
+                    background: transparent;
                     font-weight: 500;
-                    color: var(--text-secondary);
+                    font-size: 0.95rem;
+                    color: var(--text-muted);
                     cursor: pointer;
                     white-space: nowrap;
-                    border-radius: 8px;
-                    transition: all 0.2s;
+                    position: relative;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    border-bottom: 2px solid transparent;
+                    margin-bottom: -2px; /* Overlap container border */
                 }
+                
                 .tab-btn:hover {
-                    color: var(--primary-color);
-                    background: rgba(var(--primary-rgb), 0.05);
+                    color: var(--text-primary);
                 }
+                
                 .tab-btn.active {
-                    color: black;
-                    background: var(--primary-color);
+                    color: var(--brand-primary);
+                    font-weight: 600;
+                    border-bottom-color: var(--brand-primary);
                 }
+                
+                /* Dark Theme specific adjustments */
                 :global([data-theme="dark"]) .tab-btn.active,
                 :global(.dark) .tab-btn.active {
                     color: #fbbf24;
-                    background: rgba(245, 158, 11, 0.12);
-                    box-shadow: inset 0 -2px 0 #f59e0b;
+                    border-bottom-color: #f59e0b;
                 }
             `}</style>
         </Dashboard>

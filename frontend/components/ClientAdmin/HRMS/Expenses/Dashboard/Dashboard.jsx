@@ -24,7 +24,10 @@ const ExpenseDashboard = () => {
     setLoading(true);
     try {
       const res = await expensesApi.getMyClaims();
-      const allClaims = res.data;
+      let allClaims = [];
+      if (res.data) {
+        allClaims = Array.isArray(res.data) ? res.data : (res.data.results || []);
+      }
       setClaims(allClaims);
 
       const total = allClaims.length;
@@ -34,14 +37,10 @@ const ExpenseDashboard = () => {
 
       setStats({ total, pending, approved, rejected });
     } catch (err) {
-      console.error("Failed to fetch dashboard data, using mocks", err);
-      // Fallback to mocks
-      setClaims(mockClaims);
-      const total = mockClaims.length;
-      const pending = mockClaims.filter(c => c.status === 'pending').length;
-      const approved = mockClaims.filter(c => c.status === 'approved').length;
-      const rejected = mockClaims.filter(c => c.status === 'rejected').length;
-      setStats({ total, pending, approved, rejected });
+      console.error("Failed to fetch dashboard data", err);
+      // Let's not use mock data here
+      setClaims([]);
+      setStats({ total: 0, pending: 0, approved: 0, rejected: 0 });
     } finally {
       setLoading(false);
     }

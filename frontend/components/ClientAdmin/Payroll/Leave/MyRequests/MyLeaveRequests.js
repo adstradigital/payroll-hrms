@@ -102,17 +102,32 @@ export default function MyLeaveRequests({ currentUser }) {
         <div className="my-leave-requests">
             {/* Stats Overview */}
             <div className="requests-stats">
-                <div className="stat-item">
-                    <span className="stat-label">Total Requests</span>
-                    <span className="stat-value">{stats.total}</span>
+                <div className="stat-item stat-item--total">
+                    <div className="stat-icon-wrapper">
+                        <Calendar size={20} className="stat-icon" />
+                    </div>
+                    <div className="stat-content">
+                        <span className="stat-label">Total Requests</span>
+                        <span className="stat-value">{stats.total}</span>
+                    </div>
                 </div>
-                <div className="stat-item">
-                    <span className="stat-label">Pending</span>
-                    <span className="stat-value text-warning">{stats.pending}</span>
+                <div className="stat-item stat-item--pending">
+                    <div className="stat-icon-wrapper">
+                        <Clock size={20} className="stat-icon text-warning" />
+                    </div>
+                    <div className="stat-content">
+                        <span className="stat-label">Pending</span>
+                        <span className="stat-value text-warning">{stats.pending}</span>
+                    </div>
                 </div>
-                <div className="stat-item">
-                    <span className="stat-label">Approved</span>
-                    <span className="stat-value text-success">{stats.approved}</span>
+                <div className="stat-item stat-item--approved">
+                    <div className="stat-icon-wrapper">
+                        <CheckCircle size={20} className="stat-icon text-success" />
+                    </div>
+                    <div className="stat-content">
+                        <span className="stat-label">Approved</span>
+                        <span className="stat-value text-success">{stats.approved}</span>
+                    </div>
                 </div>
             </div>
 

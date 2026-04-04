@@ -557,14 +557,6 @@ export default function RunPayroll() {
                                                         </div>
                                                         {pinLoading && <div className="text-[10px] text-center mt-2 animate-pulse text-brand">Verifying Clearance...</div>}
                                                     </div>
-                                                ) : securityProfile?.clearance_level < 4 ? (
-                                                    <div className="rp-alert rp-alert-danger animate-zoom-in" style={{ marginTop: '1rem' }}>
-                                                        <div className="rp-alert-icon"><AlertTriangle size={20} /></div>
-                                                        <div>
-                                                            <h4>Access Denied</h4>
-                                                            <p>Level 4 (Critical) Clearance required to execute payroll. Your current level: {securityProfile?.clearance_level}</p>
-                                                        </div>
-                                                    </div>
                                                 ) : (
                                                     <div className="rp-verified-badge animate-zoom-in">
                                                         <div className="rp-verified-icon"><CheckCircle size={20} /></div>
@@ -580,8 +572,8 @@ export default function RunPayroll() {
                                             <div className="rp-security-actions">
                                                 <button
                                                     onClick={() => handleGeneratePayroll(false)}
-                                                    disabled={!isPinVerified || processing || (securityProfile?.clearance_level < 4)}
-                                                    className={`rp-btn-execute ${isPinVerified && !processing && (securityProfile?.clearance_level >= 4) ? 'ready' : 'disabled'}`}
+                                                    disabled={!isPinVerified || processing}
+                                                    className={`rp-btn-execute ${isPinVerified && !processing ? 'ready' : 'disabled'}`}
                                                 >
                                                     {processing ? (
                                                         <><Loader2 className="animate-spin" size={20} /> EXECUTING...</>

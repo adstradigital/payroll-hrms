@@ -3,7 +3,8 @@ from .views import (
     leave_type_list_create, leave_type_detail,
     leave_balance_list_create, leave_balance_detail, leave_balance_my_balance, leave_balance_allocate, leave_balance_run_accrual,
     leave_request_list_create, leave_request_detail, leave_request_process,
-    leave_request_email_process, leave_request_cancel, leave_request_stats
+    leave_request_email_process, leave_request_cancel, leave_request_stats,
+    global_leave_settings
 )
 
 urlpatterns = [
@@ -25,4 +26,7 @@ urlpatterns = [
     path('requests/<int:pk>/email-process/', leave_request_email_process, name='leave-request-email-process'),
     path('requests/<int:pk>/cancel/', leave_request_cancel, name='leave-request-cancel'),
     path('requests/stats/', leave_request_stats, name='leave-request-stats'),
+    
+    # Settings
+    path('global-settings/', global_leave_settings, name='global-leave-settings'),
 ]

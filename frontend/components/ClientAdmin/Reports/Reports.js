@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, PieChart, Pie, Cell, Legend
+    ResponsiveContainer, PieChart, Pie, Cell, Legend, LabelList
 } from 'recharts';
 import {
     getAttendanceReports, getPayrollReports, getLeaveReports,
@@ -28,11 +28,11 @@ const reportCategories = [
         name: 'Payroll Reports',
         icon: Wallet,
         reports: [
-            { id: 'salary-register', name: 'Salary Register', description: 'Comprehensive monthly salary statement with all components' },
-            { id: 'payroll-summary', name: 'Payroll Summary', description: 'High-level cost analysis grouped by department' },
-            { id: 'epf-esi', name: 'EPF & ESI Statements', description: 'Statutory compliance reports for EPF and ESI contributions' },
-            { id: 'tds-summary', name: 'TDS Summary', description: 'Income tax deductions for the current financial year' },
-            { id: 'bonus-report', name: 'Bonus & Incentives', description: 'Annual and performance-based bonus distribution' }
+            { id: 'salary-register', name: 'Salary Register', description: 'Comprehensive monthly salary statement with all components', canView: true, canDownload: true },
+            { id: 'payroll-summary', name: 'Payroll Summary', description: 'High-level cost analysis grouped by department', canView: true, canDownload: true },
+            { id: 'epf-esi', name: 'EPF & ESI Statements', description: 'Statutory compliance reports for EPF and ESI contributions', canView: true, canDownload: true },
+            { id: 'tds-summary', name: 'TDS Summary', description: 'Income tax deductions for the current financial year', canView: true, canDownload: true },
+            { id: 'bonus-report', name: 'Bonus & Incentives', description: 'Annual and performance-based bonus distribution', canView: true, canDownload: true }
         ]
     },
     {
@@ -40,10 +40,10 @@ const reportCategories = [
         name: 'Attendance Reports',
         icon: Clock,
         reports: [
-            { id: 'daily-attendance', name: 'Daily Attendance Report', description: 'Real-time check-in and check-out status of employees' },
-            { id: 'monthly-summary', name: 'Monthly Attendance Summary', description: 'Overview of present, absent, and late marks' },
-            { id: 'overtime-report', name: 'Overtime Analysis', description: 'Detailed report on extra hours worked by employees' },
-            { id: 'shift-roster', name: 'Shift Wise Roster', description: 'Employee distribution across different work shifts' }
+            { id: 'daily-attendance', name: 'Daily Attendance Report', description: 'Real-time check-in and check-out status of employees', canView: true, canDownload: true },
+            { id: 'monthly-summary', name: 'Monthly Attendance Summary', description: 'Overview of present, absent, and late marks', canView: true, canDownload: true },
+            { id: 'overtime-report', name: 'Overtime Analysis', description: 'Detailed report on extra hours worked by employees', canView: true, canDownload: true },
+            { id: 'shift-roster', name: 'Shift Wise Roster', description: 'Employee distribution across different work shifts', canView: false, canDownload: false }
         ]
     },
     {
@@ -51,9 +51,9 @@ const reportCategories = [
         name: 'Leave Reports',
         icon: Calendar,
         reports: [
-            { id: 'leave-balance', name: 'Leave Balance Statement', description: 'Current leave balances for all active employees' },
-            { id: 'leave-utilization', name: 'Leave Utilization Rate', description: 'Department-wise leave trends and patterns' },
-            { id: 'holiday-calendar', name: 'Annual Holiday List', description: 'Company-wide holidays for the current calendar year' }
+            { id: 'leave-balance', name: 'Leave Balance Statement', description: 'Current leave balances for all active employees', canView: true, canDownload: true },
+            { id: 'leave-utilization', name: 'Leave Utilization Rate', description: 'Department-wise leave trends and patterns', canView: false, canDownload: false },
+            { id: 'holiday-calendar', name: 'Annual Holiday List', description: 'Company-wide holidays for the current calendar year', canView: false, canDownload: false }
         ]
     },
     {
@@ -61,9 +61,9 @@ const reportCategories = [
         name: 'Employee Reports',
         icon: Users,
         reports: [
-            { id: 'employee-master', name: 'Employee Master List', description: 'Detailed demographic and professional info of employees' },
-            { id: 'joining-attrition', name: 'Joining & Attrition', description: 'Monthly analysis of new hires and exits' },
-            { id: 'anniversaries', name: 'Birthdays & Work Anniversaries', description: 'Upcoming employee events for the month' }
+            { id: 'employee-master', name: 'Employee Master List', description: 'Detailed demographic and professional info of employees', canView: false, canDownload: false },
+            { id: 'joining-attrition', name: 'Joining & Attrition', description: 'Monthly analysis of new hires and exits', canView: false, canDownload: false },
+            { id: 'anniversaries', name: 'Birthdays & Work Anniversaries', description: 'Upcoming employee events for the month', canView: false, canDownload: false }
         ]
     }
 ];
@@ -75,6 +75,7 @@ export default function Reports() {
     const [generatingReport, setGeneratingReport] = useState(null);
     const [previewData, setPreviewData] = useState(null);
     const [previewReportName, setPreviewReportName] = useState('');
+    const [previewReportId, setPreviewReportId] = useState('');
     const [notification, setNotification] = useState({ show: false, message: '', type: '' });
     const [stats, setStats] = useState([
         { label: 'Present Today', value: '0', trend: 'Attendance', icon: Clock, color: 'primary' },
@@ -85,6 +86,50 @@ export default function Reports() {
     const [payrollDistData, setPayrollDistData] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+    const formatINR = (value) => {
+        try {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0
+            }).format(value || 0);
+        } catch {
+            return `₹${value || 0}`;
+        }
+    };
+
+    const renderMiniTooltip = ({ active, payload, label }) => {
+        if (!active || !payload || !payload.length) return null;
+        return (
+            <div className="analytics-tooltip">
+                <div className="tooltip-title">{label}</div>
+                {payload.map((item, idx) => (
+                    <div key={idx} className="tooltip-row">
+                        <span className="dot" style={{ background: item.color }} />
+                        <span className="name">{item.name}</span>
+                        <span className="value">{typeof item.value === 'number' ? item.value : 0}</span>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    const renderCurrencyTooltip = ({ active, payload, label }) => {
+        if (!active || !payload || !payload.length) return null;
+        return (
+            <div className="analytics-tooltip">
+                <div className="tooltip-title">{label}</div>
+                {payload.map((item, idx) => (
+                    <div key={idx} className="tooltip-row">
+                        <span className="dot" style={{ background: item.color }} />
+                        <span className="name">{item.name}</span>
+                        <span className="value">{formatINR(item.value)}</span>
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     useEffect(() => {
         fetchReportStats();
@@ -140,6 +185,28 @@ export default function Reports() {
         }
     };
 
+    const downloadCSV = (data, filename) => {
+        if (!data || data.length === 0) return;
+        
+        const headers = Object.keys(data[0]);
+        const csvContent = [
+            headers.join(','),
+            ...data.map(row => headers.map(header => {
+                const val = row[header];
+                return typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val;
+            }).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handleGenerate = async (reportId, reportName) => {
         setGeneratingReport(reportId);
         try {
@@ -151,8 +218,68 @@ export default function Reports() {
                 response = await exportSalaryRegister(params);
             } else if (reportId === 'payroll-summary') {
                 response = await exportPayrollSummary(params);
+            } else if (reportId === 'epf-esi') {
+                const [epfRes, esiRes] = await Promise.all([
+                    exportEPFECR(params),
+                    exportESIChallan(params)
+                ]);
+
+                const epfUrl = window.URL.createObjectURL(new Blob([epfRes.data]));
+                const epfLink = document.createElement('a');
+                epfLink.href = epfUrl;
+                epfLink.setAttribute('download', `EPF_ECR_${selectedMonth}_${selectedYear}.txt`);
+                document.body.appendChild(epfLink);
+                epfLink.click();
+                epfLink.remove();
+
+                const esiUrl = window.URL.createObjectURL(new Blob([esiRes.data]));
+                const esiLink = document.createElement('a');
+                esiLink.href = esiUrl;
+                esiLink.setAttribute('download', `ESI_Challan_${selectedMonth}_${selectedYear}.xlsx`);
+                document.body.appendChild(esiLink);
+                esiLink.click();
+                esiLink.remove();
+
+                setNotification({ show: true, message: 'EPF & ESI files downloaded successfully', type: 'success' });
+                return;
+            } else if (reportId === 'daily-attendance') {
+                const res = await getAttendanceReports({ type: 'detailed', ...params });
+                downloadCSV(res.data, `${reportName}_${selectedMonth}_${selectedYear}.csv`);
+                setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
+                return;
+            } else if (reportId === 'monthly-summary') {
+                const res = await getAttendanceReports({ type: 'summary', ...params });
+                downloadCSV([res.data], `${reportName}_${selectedMonth}_${selectedYear}.csv`);
+                setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
+                return;
+            } else if (reportId === 'overtime-report') {
+                const res = await getAttendanceReports({ type: 'overtime', ...params });
+                downloadCSV(res.data, `${reportName}_${selectedMonth}_${selectedYear}.csv`);
+                setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
+                return;
+            } else if (reportId === 'tds-summary') {
+                const res = await getPayrollReports({ type: 'tds_summary', ...params });
+                downloadCSV(res.data, `${reportName}_${selectedMonth}_${selectedYear}.csv`);
+                setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
+                return;
+            } else if (reportId === 'bonus-report') {
+                const res = await getPayrollReports({ type: 'bonus_report', ...params });
+                downloadCSV(res.data, `${reportName}_${selectedMonth}_${selectedYear}.csv`);
+                setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
+                return;
+            } else if (reportId === 'leave-balance') {
+                const res = await getLeaveReports({ type: 'summary', ...params });
+                const flatData = res.data.map(emp => ({
+                    Employee: emp.employee_name,
+                    ID: emp.employee_id,
+                    Department: emp.department,
+                    ...emp.leaves.reduce((acc, l) => ({ ...acc, [l.type]: `${l.used}/${l.total}` }), {})
+                }));
+                downloadCSV(flatData, `${reportName}_${selectedMonth}_${selectedYear}.csv`);
+                setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
+                return;
             } else {
-                setNotification({ show: true, message: 'Advanced export coming soon for this report.', type: 'info' });
+                setNotification({ show: true, message: 'Export coming soon for this specific format.', type: 'info' });
                 return;
             }
 
@@ -193,6 +320,7 @@ export default function Reports() {
                 if (res.data && res.data.length > 0) {
                     setPreviewData(res.data);
                     setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
                 } else {
                     setNotification({ show: true, message: 'No data found for this report.', type: 'info' });
                 }
@@ -201,6 +329,7 @@ export default function Reports() {
                 if (res.data && res.data.length > 0) {
                     setPreviewData(res.data);
                     setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
                 } else {
                     setNotification({ show: true, message: 'No salary data found for this period.', type: 'info' });
                 }
@@ -209,11 +338,70 @@ export default function Reports() {
                 if (res.data && res.data.length > 0) {
                     setPreviewData(res.data);
                     setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
                 } else {
                     setNotification({ show: true, message: 'No summary data found for this period.', type: 'info' });
                 }
+            } else if (reportId === 'daily-attendance') {
+                const res = await getAttendanceReports({ type: 'detailed', month: selectedMonth, year: selectedYear });
+                if (res.data && res.data.length > 0) {
+                    setPreviewData(res.data);
+                    setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
+                } else {
+                    setNotification({ show: true, message: 'No attendance data found.', type: 'info' });
+                }
+            } else if (reportId === 'monthly-summary') {
+                const res = await getAttendanceReports({ type: 'summary', month: selectedMonth, year: selectedYear });
+                if (res.data) {
+                    setPreviewData([res.data]);
+                    setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
+                }
+            } else if (reportId === 'overtime-report') {
+                const res = await getAttendanceReports({ type: 'overtime', month: selectedMonth, year: selectedYear });
+                if (res.data && res.data.length > 0) {
+                    setPreviewData(res.data);
+                    setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
+                } else {
+                    setNotification({ show: true, message: 'No overtime data found.', type: 'info' });
+                }
+            } else if (reportId === 'tds-summary') {
+                const res = await getPayrollReports({ type: 'tds_summary', month: selectedMonth, year: selectedYear });
+                if (res.data && res.data.length > 0) {
+                    setPreviewData(res.data);
+                    setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
+                } else {
+                    setNotification({ show: true, message: 'No TDS data found.', type: 'info' });
+                }
+            } else if (reportId === 'bonus-report') {
+                const res = await getPayrollReports({ type: 'bonus_report', month: selectedMonth, year: selectedYear });
+                if (res.data && res.data.length > 0) {
+                    setPreviewData(res.data);
+                    setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
+                } else {
+                    setNotification({ show: true, message: 'No bonus/incentive data found.', type: 'info' });
+                }
+            } else if (reportId === 'leave-balance') {
+                const res = await getLeaveReports({ type: 'summary', month: selectedMonth, year: selectedYear });
+                if (res.data && res.data.length > 0) {
+                    const flatData = res.data.map(emp => ({
+                        Employee: emp.employee_name,
+                        ID: emp.employee_id,
+                        Department: emp.department,
+                        ...emp.leaves.reduce((acc, l) => ({ ...acc, [l.type]: `${l.used}/${l.total}` }), {})
+                    }));
+                    setPreviewData(flatData);
+                    setPreviewReportName(reportName);
+                    setPreviewReportId(reportId);
+                } else {
+                    setNotification({ show: true, message: 'No leave data found.', type: 'info' });
+                }
             } else {
-                setNotification({ show: true, message: 'Preview is currently only available for Payroll and Statutory Reports.', type: 'info' });
+                setNotification({ show: true, message: 'Preview not available for this report yet.', type: 'info' });
             }
         } catch (err) {
             console.error('Failed to fetch report preview:', err);
@@ -277,18 +465,41 @@ export default function Reports() {
                     </div>
                     <div className="insight-body">
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={attendanceData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' }}
-                                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                                />
-                                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                    {attendanceData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
+                            <BarChart data={attendanceData} barSize={42}>
+                                <defs>
+                                    <linearGradient id="att-present" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#16a34a" stopOpacity={0.95} />
+                                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.75} />
+                                    </linearGradient>
+                                    <linearGradient id="att-absent" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.95} />
+                                        <stop offset="100%" stopColor="#f87171" stopOpacity={0.75} />
+                                    </linearGradient>
+                                    <linearGradient id="att-late" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.95} />
+                                        <stop offset="100%" stopColor="#fbbf24" stopOpacity={0.75} />
+                                    </linearGradient>
+                                    <linearGradient id="att-leave" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.95} />
+                                        <stop offset="100%" stopColor="#818cf8" stopOpacity={0.75} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="4 6" vertical={false} stroke="rgba(15,23,42,0.08)" />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} allowDecimals={false} />
+                                <Tooltip content={renderMiniTooltip} cursor={{ fill: 'rgba(15,23,42,0.04)' }} />
+                                <Bar dataKey="value" radius={[10, 10, 4, 4]}>
+                                    {attendanceData.map((entry, index) => {
+                                        const gradient = entry.name === 'Present'
+                                            ? 'url(#att-present)'
+                                            : entry.name === 'Absent'
+                                                ? 'url(#att-absent)'
+                                                : entry.name === 'Late'
+                                                    ? 'url(#att-late)'
+                                                    : 'url(#att-leave)';
+                                        return <Cell key={`cell-${index}`} fill={gradient} />;
+                                    })}
+                                    <LabelList dataKey="value" position="top" fill="#0f172a" fontSize={12} fontWeight={600} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
@@ -304,17 +515,33 @@ export default function Reports() {
                     </div>
                     <div className="insight-body">
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={payrollDistData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <Tooltip
-                                    formatter={(value) => `₹${value.toLocaleString()}`}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' }}
+                            <BarChart data={payrollDistData} barSize={24}>
+                                <defs>
+                                    <linearGradient id="pay-gross" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.95} />
+                                        <stop offset="100%" stopColor="#a5b4fc" stopOpacity={0.75} />
+                                    </linearGradient>
+                                    <linearGradient id="pay-net" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                                        <stop offset="100%" stopColor="#6ee7b7" stopOpacity={0.75} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="4 6" vertical={false} stroke="rgba(15,23,42,0.08)" />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                    tickFormatter={(value) => (value >= 100000 ? `${Math.round(value / 1000)}k` : value)}
                                 />
-                                <Legend />
-                                <Bar dataKey="gross" fill="#6366f1" name="Gross Pay" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="net" fill="#10b981" name="Net Pay" radius={[4, 4, 0, 0]} />
+                                <Tooltip content={renderCurrencyTooltip} />
+                                <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} iconType="circle" />
+                                <Bar dataKey="gross" fill="url(#pay-gross)" name="Gross Pay" radius={[8, 8, 4, 4]}>
+                                    <LabelList dataKey="gross" position="top" fill="#1f2937" fontSize={10} formatter={formatINR} />
+                                </Bar>
+                                <Bar dataKey="net" fill="url(#pay-net)" name="Net Pay" radius={[8, 8, 4, 4]}>
+                                    <LabelList dataKey="net" position="top" fill="#1f2937" fontSize={10} formatter={formatINR} />
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -398,7 +625,7 @@ export default function Reports() {
                                         <span className="format-badge">CSV</span>
                                     </div>
                                     <div className="report-card-actions">
-                                        {(report.id === 'epf-esi' || report.id === 'salary-register' || report.id === 'payroll-summary') && (
+                                        {report.canView && (
                                             <button
                                                 className="view-btn"
                                                 onClick={() => handleViewReport(report.id, report.name)}
@@ -407,18 +634,22 @@ export default function Reports() {
                                                 View
                                             </button>
                                         )}
-                                        <button
-                                            className={`generate-btn ${generatingReport === report.id ? 'loading' : ''}`}
-                                            onClick={() => handleGenerate(report.id, report.name)}
-                                            disabled={generatingReport !== null}
-                                        >
-                                            {generatingReport === report.id ? (
-                                                <Loader2 className="animate-spin" size={16} />
-                                            ) : (
-                                                <Download size={16} />
-                                            )}
-                                            <span>{generatingReport === report.id ? 'Generating...' : 'Download'}</span>
-                                        </button>
+                                        {report.canDownload ? (
+                                            <button
+                                                className={`generate-btn ${generatingReport === report.id ? 'loading' : ''}`}
+                                                onClick={() => handleGenerate(report.id, report.name)}
+                                                disabled={generatingReport !== null}
+                                            >
+                                                {generatingReport === report.id ? (
+                                                    <Loader2 className="animate-spin" size={16} />
+                                                ) : (
+                                                    <Download size={16} />
+                                                )}
+                                                <span>{generatingReport === report.id ? 'Generating...' : 'Download'}</span>
+                                            </button>
+                                        ) : (
+                                            <div className="coming-soon-badge">Coming Soon</div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -443,7 +674,11 @@ export default function Reports() {
                 <StatutoryReportPreview
                     data={previewData}
                     reportName={previewReportName}
-                    onClose={() => setPreviewData(null)}
+                    onClose={() => {
+                        setPreviewData(null);
+                        setPreviewReportName('');
+                        setPreviewReportId('');
+                    }}
                     onExport={async (exportType) => {
                         const params = { month: selectedMonth, year: selectedYear };
                         try {
@@ -469,6 +704,8 @@ export default function Reports() {
                             setNotification({ show: true, message: 'Export failed!', type: 'error' });
                         }
                         setPreviewData(null);
+                        setPreviewReportName('');
+                        setPreviewReportId('');
                     }}
                 />
             )}
@@ -479,13 +716,15 @@ export default function Reports() {
                     data={previewData}
                     reportName={previewReportName}
                     type={previewReportName.toLowerCase().includes('summary') ? 'payroll-summary' : 'detailed'}
-                    onClose={() => setPreviewData(null)}
-                    onExport={() => handleGenerate(
-                        previewReportName.toLowerCase().includes('summary') ? 'payroll-summary' : 'salary-register',
-                        previewReportName
-                    )}
+                    onClose={() => {
+                        setPreviewData(null);
+                        setPreviewReportName('');
+                        setPreviewReportId('');
+                    }}
+                    onExport={() => handleGenerate(previewReportId || 'salary-register', previewReportName)}
                 />
             )}
         </div>
     );
 }
+

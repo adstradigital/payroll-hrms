@@ -1,6 +1,14 @@
 from rest_framework import serializers
 from apps.accounts.serializers import EmployeeListSerializer, UserSerializer
-from .models import Asset, AssetBatch, AssetRequest, AssetHistory
+from .models import Asset, AssetBatch, AssetRequest, AssetHistory, AssetCategory
+from datetime import datetime
+
+class AssetCategorySerializer(serializers.ModelSerializer):
+    """Serializer for AssetCategory model"""
+    class Meta:
+        model = AssetCategory
+        fields = ['id', 'name', 'company']
+        read_only_fields = ['id', 'company']
 
 class AssetBatchSerializer(serializers.ModelSerializer):
     """Serializer for AssetBatch model"""
@@ -32,8 +40,8 @@ class AssetRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetRequest
         fields = [
-            'id', 'employee', 'employee_details', 'asset_type', 'priority', 
-            'reason', 'date', 'status', 'approver', 'approver_details', 
+            'id', 'employee', 'employee_details', 'request_id', 'asset_type', 'asset_name', 'priority', 
+            'reason', 'date', 'needed_by', 'status', 'approver', 'approver_details', 
             'rejection_reason', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'employee', 'date', 'created_at', 'updated_at', 'created_by', 'updated_by']
@@ -41,13 +49,12 @@ class AssetRequestSerializer(serializers.ModelSerializer):
 class AssetHistorySerializer(serializers.ModelSerializer):
     """Serializer for AssetHistory model"""
     user_details = UserSerializer(source='user', read_only=True)
-    asset_name = serializers.CharField(source='asset.name', read_only=True)
-    asset_id = serializers.CharField(source='asset.asset_id', read_only=True)
+    asset_details = AssetSerializer(source='asset', read_only=True)
     
     class Meta:
         model = AssetHistory
         fields = [
-            'id', 'asset', 'asset_name', 'asset_id', 'action', 'user', 
+            'id', 'asset', 'asset_details', 'action', 'user', 
             'user_details', 'date', 'details', 'history_type', 
             'created_at', 'updated_at'
         ]

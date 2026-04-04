@@ -8,8 +8,8 @@
 
     /* Brand Colors */
     --brand-primary: #4f46e5;
-    /* Indigo */
     --brand-primary-hover: #4338ca;
+    --brand-primary-dark: #4338ca;
     --brand-primary-light: #eef2ff;
     --brand-secondary: #6366f1;
 
@@ -198,8 +198,8 @@
 
     /* Brand Overrides for Dark Mode */
     --brand-primary: #f59e0b;
-    /* Amber 500 */
     --brand-primary-hover: #d97706;
+    --brand-primary-dark: #d97706;
     --brand-primary-light: rgba(245, 158, 11, 0.2);
 
     /* Status Overrides */

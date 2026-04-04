@@ -121,6 +121,7 @@
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
 }
 
 .insight-card {
@@ -134,6 +135,7 @@
     flex-direction: column;
     gap: var(--spacing-lg);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
 }
 
 .insight-header {
@@ -165,10 +167,54 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding-bottom: 8px;
 }
 
 .recharts-responsive-container {
     filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.05));
+}
+
+.analytics-tooltip {
+    background: rgba(15, 23, 42, 0.95);
+    color: #e2e8f0;
+    border-radius: 14px;
+    padding: 10px 12px;
+    min-width: 160px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    font-size: 12px;
+}
+
+.analytics-tooltip .tooltip-title {
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 6px;
+}
+
+.analytics-tooltip .tooltip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 2px 0;
+}
+
+.analytics-tooltip .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.analytics-tooltip .name {
+    flex: 1;
+    color: #cbd5f5;
+}
+
+.analytics-tooltip .value {
+    font-weight: 600;
+    color: #f8fafc;
 }
 
 @media (max-width: 1200px) {
@@ -182,12 +228,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(var(--bg-secondary-rgb), 0.4);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(var(--bg-secondary-rgb), 0.9);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     padding: var(--spacing-lg);
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    z-index: 2;
+    margin-top: var(--spacing-md);
 }
 
 .reports-tabs {
@@ -503,6 +552,19 @@
     color: var(--text-tertiary);
     box-shadow: none;
     cursor: not-allowed;
+}
+
+.coming-soon-badge {
+    padding: 8px 16px;
+    background: #f8fafc;
+    color: #94a3b8;
+    border: 1px dashed #e2e8f0;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: default;
 }
 
 /* Notification Toast */

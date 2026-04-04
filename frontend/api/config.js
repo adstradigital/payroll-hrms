@@ -105,6 +105,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     LEAVE_TYPE_DETAIL: (id) => `${BASE_URL}/leave/types/${id}/`,
     LEAVE_BALANCE: `${BASE_URL}/leave/balances/`,
     LEAVE_PROCESS: (id) => `${BASE_URL}/leave/requests/${id}/process/`,
+    LEAVE_GLOBAL_SETTINGS: `${BASE_URL}/leave/global-settings/`,
 
     // Payroll
     PAYROLL: `${BASE_URL}/payroll/`,
@@ -178,6 +179,8 @@ export const CLIENTADMIN_ENDPOINTS = {
     ASSET_REQUEST_DETAIL: (id) => `${BASE_URL}/assets/requests/${id}/`,
     ASSET_REQUEST_PROCESS: (id) => `${BASE_URL}/assets/requests/${id}/process/`,
     ASSET_HISTORY: `${BASE_URL}/assets/history/`,
+    ASSET_CATEGORIES: `${BASE_URL}/assets/categories/`,
+    ASSET_CATEGORY_DETAIL: (id) => `${BASE_URL}/assets/categories/${id}/`,
 
     // Performance
     PERFORMANCE_DASHBOARD: `${BASE_URL}/performance/dashboard/`,

@@ -5,7 +5,7 @@ import {
     Search, Plus, Target, Edit2, Trash2, CheckCircle, Clock,
     Calendar, TrendingUp, X, ChevronDown, MoreVertical,
     LayoutTemplate, Grid, Printer, Users, GripVertical, Check,
-    ChevronLeft, ChevronRight, RotateCcw, Zap, Star,
+    ChevronLeft, ChevronRight, Zap, Star,
     MessageSquare, Paperclip, Eye, Filter, SortAsc,
     Activity, Award, Sparkles, Timer, Flag, AlertCircle,
     GitBranch, Hash, Maximize2, Minimize2, Copy, Share2,
@@ -119,10 +119,12 @@ export default function Objectives() {
     const loadPeriods = async () => {
         try {
             const data = await getReviewPeriods();
-            setPeriods(data?.results || data || []);
-            if (data && data.length > 0) {
-                const activePeriod = data.find(p => p.status === 'active');
-                setSelectedPeriod(activePeriod?.id || data[0].id);
+            const periodsList = data?.results || data || [];
+            setPeriods(periodsList);
+            
+            if (periodsList.length > 0) {
+                const activePeriod = periodsList.find(p => p.status === 'active');
+                setSelectedPeriod(activePeriod?.id || periodsList[0].id);
             } else {
                 setLoading(false);
             }
@@ -316,25 +318,11 @@ export default function Objectives() {
     };
 
     // --- DRAG AND DROP LOGIC END ---
-
-    const DEFAULT_COLUMNS = [
-        { id: 'not_started', title: 'Not Started', color: '#64748b', icon: 'Clock' },
-        { id: 'in_progress', title: 'In Progress', color: '#D4AF37', icon: 'Activity' },
-        { id: 'completed', title: 'Completed', color: '#10b981', icon: 'CheckCircle' },
-        { id: 'cancelled', title: 'Cancelled', color: '#ef4444', icon: 'X' }
-    ];
-
     const handleAddColumn = () => {
         const newId = `stage_${Math.random().toString(36).substr(2, 6)}`;
         setColumns([...columns, { id: newId, title: 'New Phase', color: '#D4AF37', icon: 'Layers' }]);
         setEditingColumnId(newId);
         setTempColumnTitle('New Phase');
-    };
-
-    const handleResetColumns = () => {
-        if (window.confirm('Reset columns to default? Custom columns will be removed.')) {
-            setColumns(DEFAULT_COLUMNS);
-        }
     };
 
     const handleStartEditColumn = (col) => {
@@ -413,6 +401,18 @@ export default function Objectives() {
     const handleQuickCreate = async (columnId) => {
         if (!quickTitle.trim()) return;
 
+        let periodId = selectedPeriod;
+        
+        // Fallback: If no period selected, try to use the first available one
+        if (!periodId && periods.length > 0) {
+            periodId = periods[0].id;
+        }
+
+        if (!periodId) {
+            alert('No active Review Period found. Please create one in Review Periods first.');
+            return;
+        }
+
         const defaultDate = new Date();
         defaultDate.setDate(defaultDate.getDate() + 7);
 
@@ -421,7 +421,7 @@ export default function Objectives() {
                 title: quickTitle,
                 description: '',
                 status: columnId,
-                review_period: selectedPeriod,
+                review_period: periodId,
                 progress_percentage: columnId === 'completed' ? 100 : 0,
                 target_date: defaultDate.toISOString().split('T')[0],
                 priority: 'medium'
@@ -431,7 +431,7 @@ export default function Objectives() {
             loadObjectives();
         } catch (error) {
             console.error('Quick create failed:', error);
-            alert('Failed to create task');
+            alert('Failed to create task. Check if a Review Period is active.');
         }
     };
 
@@ -551,143 +551,48 @@ export default function Objectives() {
                 <div className="objectives-bg__grid"></div>
             </div>
 
-            {/* Command Bar */}
-            <div className="command-bar">
+            {/* Slim Header Consolidated from Command Bar */}
+            <div className="command-bar command-bar--slim">
                 <div className="command-bar__brand">
-                    <div className="command-bar__logo">
-                        <Target size={24} />
-                    </div>
+                    <div className="command-bar__logo"><Target size={24} /></div>
                     <div className="command-bar__title">
                         <h1>Momentum</h1>
-                        <p>Strategic Execution Platform</p>
+                        <p>Objectives Board</p>
                     </div>
                 </div>
-
+                
                 <div className="command-bar__actions">
-                    <button
-                        onClick={() => setShowInsights(!showInsights)}
-                        className={`command-btn ${showInsights ? 'command-btn--active' : ''}`}
-                    >
-                        <BarChart3 size={18} />
-                        <span>Insights</span>
+                    <button onClick={() => setShowFilters(!showFilters)} className={`command-btn ${showFilters ? 'command-btn--active' : ''}`}>
+                        <Filter size={18} /> <span>Filters</span>
                     </button>
-
-                    <button
-                        onClick={() => setFocusMode(!focusMode)}
-                        className="command-btn focus-toggle-btn"
-                    >
-                        {focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                        <span>{focusMode ? 'Exit' : 'Focus'}</span>
+                    <button onClick={() => setViewMode(viewMode === 'board' ? 'grid' : 'board')} className="command-btn">
+                        {viewMode === 'board' ? <Grid size={18} /> : <LayoutTemplate size={18} />}
+                        <span>{viewMode === 'board' ? 'Grid View' : 'Board View'}</span>
                     </button>
-
                     <div className="command-divider"></div>
-
                     <button onClick={() => { resetForm(); setShowModal(true); }} className="command-btn command-btn--primary">
-                        <Plus size={20} />
-                        <span>New Objective</span>
+                        <Plus size={20} /> <span>New Objective</span>
                     </button>
                 </div>
             </div>
 
-            {/* Insights Panel */}
-            {showInsights && (
-                <div className="insights-panel">
-                    <div className="insights-grid">
-                        <div className="insight-card">
-                            <div className="insight-card__icon" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}>
-                                <Target size={20} />
-                            </div>
-                            <div className="insight-card__content">
-                                <div className="insight-card__label">Total Objectives</div>
-                                <div className="insight-card__value">{analytics.totalTasks}</div>
-                            </div>
-                        </div>
 
-                        <div className="insight-card">
-                            <div className="insight-card__icon" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
-                                <CheckCircle size={20} />
-                            </div>
-                            <div className="insight-card__content">
-                                <div className="insight-card__label">Completed</div>
-                                <div className="insight-card__value">{analytics.completedTasks}</div>
-                            </div>
-                        </div>
+            {/* Insights Panel Removed for Simplicity */}
 
-                        <div className="insight-card">
-                            <div className="insight-card__icon" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
-                                <Activity size={20} />
-                            </div>
-                            <div className="insight-card__content">
-                                <div className="insight-card__label">In Progress</div>
-                                <div className="insight-card__value">{analytics.inProgressTasks}</div>
-                            </div>
-                        </div>
 
-                        <div className="insight-card">
-                            <div className="insight-card__icon" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' }}>
-                                <Sparkles size={20} />
-                            </div>
-                            <div className="insight-card__content">
-                                <div className="insight-card__label">Productivity Score</div>
-                                <div className="insight-card__value">{analytics.productivityScore}%</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Control Panel */}
+            {/* Search/Control Panel (Streamlined) */}
             <div className="control-panel">
-                <div className="control-panel__left">
-                    <div className="period-selector">
-                        <Calendar size={16} />
-                        <select
-                            value={selectedPeriod}
-                            onChange={(e) => setSelectedPeriod(e.target.value)}
-                            className="period-selector__select"
-                        >
-                            {periods.map(period => (
-                                <option key={period.id} value={period.id}>{period.name}</option>
-                            ))}
-                        </select>
-                        <ChevronDown size={14} />
-                    </div>
-
-                    <div className="search-box">
-                        <Search size={16} />
-                        <input
-                            type="text"
-                            placeholder="Search objectives..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                <div className="control-panel__right">
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`control-btn ${showFilters ? 'control-btn--active' : ''}`}
-                    >
-                        <Filter size={16} />
-                    </button>
-
-                    <div className="view-switcher">
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`view-switcher__btn ${viewMode === 'grid' ? 'view-switcher__btn--active' : ''}`}
-                        >
-                            <Grid size={16} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('board')}
-                            className={`view-switcher__btn ${viewMode === 'board' ? 'view-switcher__btn--active' : ''}`}
-                        >
-                            <LayoutTemplate size={16} />
-                        </button>
-                    </div>
+                <div className="search-box">
+                    <Search size={18} />
+                    <input
+                        type="text"
+                        placeholder="Search objectives..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
             </div>
+
 
             {/* Filters Dropdown */}
             {showFilters && (
@@ -1038,9 +943,6 @@ export default function Objectives() {
                                 <button onClick={handleAddColumn} className="kanban-control-btn" title="Add Column">
                                     <Plus size={20} />
                                 </button>
-                                <button onClick={handleResetColumns} className="kanban-control-btn" title="Reset to Default Columns">
-                                    <RotateCcw size={20} />
-                                </button>
                             </div>
                         </div>
                     )}
@@ -1108,66 +1010,54 @@ export default function Objectives() {
                                 </div>
 
                                 <div className="modal-sidebar-section">
-                                    <div className="sidebar-group">
-                                        <span className="sidebar-group__label">Status</span>
-                                        <select
-                                            value={formData.status}
-                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                            className="sidebar-select"
-                                        >
-                                            {columns.map(col => (
-                                                <option key={col.id} value={col.id}>{col.title}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="sidebar-group">
-                                        <span className="sidebar-group__label">Priority</span>
-                                        <select
-                                            value={formData.priority}
-                                            onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                                            className="sidebar-select"
-                                        >
-                                            <option value="low">Low</option>
-                                            <option value="medium">Medium</option>
-                                            <option value="high">High</option>
-                                            <option value="critical">Critical</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="sidebar-details-box">
-                                        <div className="details-box__header">
-                                            <Calendar size={14} />
-                                            Details
+                                    <div className="sidebar-field-group">
+                                        <div className="field-item">
+                                            <label>Status</label>
+                                            <select
+                                                value={formData.status}
+                                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                                className="sidebar-select"
+                                            >
+                                                {columns.map(col => (
+                                                    <option key={col.id} value={col.id}>{col.title}</option>
+                                                ))}
+                                            </select>
                                         </div>
-                                        <div className="detail-field">
+
+                                        <div className="field-item">
+                                            <label>Priority</label>
+                                            <select
+                                                value={formData.priority}
+                                                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                                                className="sidebar-select"
+                                            >
+                                                <option value="low">Low</option>
+                                                <option value="medium">Medium</option>
+                                                <option value="high">High</option>
+                                                <option value="critical">Critical</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="field-item">
                                             <label>Due Date</label>
-                                            <input
-                                                type="date"
-                                                value={formData.target_date}
-                                                onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
-                                                className="date-input"
-                                            />
-                                        </div>
-
-                                        {editingObjective && editingObjective.employee && (
-                                            <div className="detail-field">
-                                                <label className="checkbox-label">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={formData.assignToMe === false}
-                                                        onChange={(e) => setFormData({ ...formData, assignToMe: !e.target.checked })}
-                                                    />
-                                                    Unassign from me
-                                                </label>
+                                            <div className="field-input-wrap">
+                                                <Calendar size={14} className="field-icon" />
+                                                <input
+                                                    type="date"
+                                                    value={formData.target_date}
+                                                    onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
+                                                    className="date-input"
+                                                />
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
 
-                                    <div className="sidebar-progress-box">
-                                        <div className="progress-box__header">
+                                    <div className="sidebar-divider" />
+
+                                    <div className="sidebar-progress-section">
+                                        <div className="progress-header">
                                             <span>Progress</span>
-                                            <span className="progress-percentage">{formData.progress_percentage}%</span>
+                                            <span className="progress-value">{formData.progress_percentage}%</span>
                                         </div>
                                         <input
                                             type="range"
@@ -1178,6 +1068,19 @@ export default function Objectives() {
                                             className="progress-range"
                                         />
                                     </div>
+
+                                    {editingObjective && editingObjective.employee && (
+                                        <div className="sidebar-assign-section">
+                                            <label className="assign-checkbox">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.assignToMe === false}
+                                                    onChange={(e) => setFormData({ ...formData, assignToMe: !e.target.checked })}
+                                                />
+                                                <span>Unassign from me</span>
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

@@ -334,7 +334,7 @@ def employee_salary_list_create(request):
         elif request.method == 'POST':
             serializer = EmployeeSalarySerializer(data=request.data)
             if serializer.is_valid():
-                salary = serializer.save(gross_salary=0, net_salary=0, ctc=0)
+                salary = serializer.save(company=company, gross_salary=0, net_salary=0, ctc=0)
                 process_employee_salary_components(salary, request.data.get('components', []))
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

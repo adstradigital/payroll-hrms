@@ -5,10 +5,11 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from datetime import date
 import logging
-from .models import LeaveType, LeaveBalance, LeaveRequest
+from .models import LeaveType, LeaveBalance, LeaveRequest, GlobalLeaveSettings
 from .serializers import (
     LeaveTypeSerializer, LeaveBalanceSerializer, 
-    LeaveRequestSerializer, LeaveRequestApprovalSerializer
+    LeaveRequestSerializer, LeaveRequestApprovalSerializer,
+    GlobalLeaveSettingsSerializer
 )
 from apps.accounts.permissions import is_client_admin
 from apps.audit.utils import log_activity
@@ -173,12 +174,17 @@ def leave_request_list_create(request):
                 balance, _ = LeaveBalance.objects.get_or_create(employee=leave_request.employee, leave_type=leave_request.leave_type, year=leave_request.start_date.year, defaults={'allocated': leave_request.leave_type.days_per_year})
                 balance.pending += leave_request.days_count; balance.save()
                 
-                # Send notification to Dept Head
-                try:
-                    from .emails import send_leave_request_to_dept_head
-                    send_leave_request_to_dept_head(leave_request)
-                except Exception as e:
-                    logger.error(f"Failed to trigger dept head leave notification: {str(e)}")
+                # Check for Auto-approval
+                settings, _ = GlobalLeaveSettings.objects.get_or_create(company=company)
+                if settings.auto_approve_short_leave and leave_request.days_count <= 1.0:
+                    leave_request.approve(None) # Auto-approved by system
+                else:
+                    # Send notification to Dept Head (only if NOT auto-approved)
+                    try:
+                        from .emails import send_leave_request_to_dept_head
+                        send_leave_request_to_dept_head(leave_request)
+                    except Exception as e:
+                        logger.error(f"Failed to trigger dept head leave notification: {str(e)}")
                 
                 return Response(serializer.data, status=201)
             return Response(serializer.errors, status=400)
@@ -371,3 +377,35 @@ def leave_request_email_process(request, pk):
     except Exception as e:
         logger.error(f"Error processing email leave link: {str(e)}")
         return HttpResponse(f"<h1>Server Error</h1><p>{str(e)}</p>", status=500)
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def global_leave_settings(request):
+    """
+    Get or update global leave settings for the company
+    """
+    try:
+        company = get_client_company(request.user)
+        if not company:
+            return Response({'error': 'Company not found'}, status=404)
+            
+        settings, created = GlobalLeaveSettings.objects.get_or_create(company=company)
+        
+        if request.method == 'GET':
+            serializer = GlobalLeaveSettingsSerializer(settings)
+            return Response(serializer.data)
+            
+        elif request.method == 'PATCH':
+            if not is_client_admin(request.user):
+                return Response({'error': 'Admin access required'}, status=403)
+                
+            serializer = GlobalLeaveSettingsSerializer(settings, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
+            
+    except Exception as e:
+        logger.error(f"Error in global leave settings: {str(e)}")
+        return Response({'error': str(e)}, status=500)

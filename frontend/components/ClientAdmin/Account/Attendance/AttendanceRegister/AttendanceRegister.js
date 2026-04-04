@@ -138,7 +138,8 @@ export default function AttendanceRegister() {
         check_in_time: checkInFull,
         check_out_time: checkOutFull,
         status: formData.status,
-        remarks: 'Manual Entry'
+        remarks: formData.remarks || 'Manual Entry',
+        is_regularized: true
       };
 
       if (modalMode === 'add') {

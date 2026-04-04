@@ -25,6 +25,18 @@ class MyClaimsList(ListAPIView):
     def get_queryset(self):
         return ExpenseClaim.objects.filter(employee=self.request.user)
 
+class AllClaimsList(ListAPIView):
+    """Admin view: all claims, optionally filtered by status."""
+    serializer_class = ExpenseClaimSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get_queryset(self):
+        qs = ExpenseClaim.objects.all().order_by('-created_at')
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
+
 class PendingApprovals(ListAPIView):
     serializer_class = ExpenseClaimSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -40,12 +52,11 @@ class ApproveClaim(APIView):
         try:
             from .services.workflow_service import ClaimWorkflowService
             comments = request.data.get('comments', 'Approved by Admin')
-            # Higher-level 'approve' action handles the stage logic
             claim = ClaimWorkflowService.transition_claim(pk, request.user, 'approve', comments)
             serializer = ExpenseClaimSerializer(claim)
             return Response(serializer.data)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_GATEWAY)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class RejectClaim(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -58,7 +69,21 @@ class RejectClaim(APIView):
             serializer = ExpenseClaimSerializer(claim)
             return Response(serializer.data)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_GATEWAY)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class PayClaim(APIView):
+    """Mark a fully approved claim as paid."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def put(self, request, pk):
+        try:
+            from .services.workflow_service import ClaimWorkflowService
+            comments = request.data.get('comments', 'Payment processed by Finance')
+            claim = ClaimWorkflowService.transition_claim(pk, request.user, 'pay', comments)
+            serializer = ExpenseClaimSerializer(claim)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class CategoryListCreate(ListCreateAPIView):
     queryset = ExpenseCategory.objects.all()

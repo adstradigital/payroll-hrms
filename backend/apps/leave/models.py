@@ -235,3 +235,26 @@ class LeaveRequest(models.Model):
             balance.save()
         except LeaveBalance.DoesNotExist:
             pass
+
+
+class GlobalLeaveSettings(models.Model):
+    """Global leave rules and settings for an organization"""
+    company = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='leave_settings')
+    
+    # General Rules
+    fiscal_year_start = models.CharField(max_length=5, default='04-01', help_text='MM-DD format')
+    default_probation_months = models.PositiveIntegerField(default=6)
+    allow_negative_balance = models.BooleanField(default=False)
+    
+    # Automation
+    auto_approve_short_leave = models.BooleanField(default=False)
+    notify_manager_high_usage = models.BooleanField(default=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Global leave settings"
+
+    def __str__(self):
+        return f"{self.company.name} - Leave Settings"

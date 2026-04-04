@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import LeaveType, LeaveBalance, LeaveRequest
+from .models import LeaveType, LeaveBalance, LeaveRequest, GlobalLeaveSettings
 
 
 class LeaveTypeSerializer(serializers.ModelSerializer):
@@ -38,3 +38,10 @@ class LeaveRequestApprovalSerializer(serializers.Serializer):
     """For approving/rejecting leave requests"""
     action = serializers.ChoiceField(choices=['approve', 'reject'])
     rejection_reason = serializers.CharField(required=False, allow_blank=True)
+
+
+class GlobalLeaveSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalLeaveSettings
+        fields = '__all__'
+        read_only_fields = ['company', 'created_at', 'updated_at']

@@ -6,7 +6,7 @@ import { Search, Filter, Download, Eye, FileText } from 'lucide-react';
 import * as bulkUploadApi from '@/api/bulkUploadApi';
 import './UploadHistory.css';
 
-export default function UploadHistory() {
+export default function UploadHistory({ type: forcedType, isEmbedded = false }) {
     const router = useRouter();
     const [uploads, setUploads] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,13 +15,23 @@ export default function UploadHistory() {
 
     useEffect(() => {
         fetchHistory();
-    }, [filterStatus, searchQuery]); // In real app, might want to debounce search
+    }, [filterStatus, searchQuery, forcedType]); // Re-fetch if forcedType changes
 
     const fetchHistory = async () => {
         setLoading(true);
         try {
-            const data = await bulkUploadApi.getUploadHistory({ status: filterStatus, search: searchQuery });
-            setUploads(data);
+            const data = await bulkUploadApi.getUploadHistory({ 
+                status: filterStatus, 
+                search: searchQuery,
+                type: forcedType // Use forcedType for internal filtering
+            });
+            
+            // Further filter if type was passed as a prop
+            const filteredData = forcedType 
+                ? data.filter(u => u.type === forcedType) 
+                : data;
+                
+            setUploads(filteredData);
         } catch (error) {
             console.error('Failed to load history:', error);
         } finally {
@@ -43,17 +53,19 @@ export default function UploadHistory() {
     ];
 
     return (
-        <div className="bu-history">
-            <header className="bu-history__header">
-                <div>
-                    <h1>Upload History</h1>
-                    <p>Track and manage your past bulk data uploads</p>
-                </div>
-                <button className="bu-export-btn">
-                    <Download size={18} />
-                    Export to Excel
-                </button>
-            </header>
+        <div className={`bu-history ${isEmbedded ? 'bu-history--embedded' : ''}`}>
+            {!isEmbedded && (
+                <header className="bu-history__header">
+                    <div>
+                        <h1>Upload History</h1>
+                        <p>Track and manage your past bulk data uploads</p>
+                    </div>
+                    <button className="bu-export-btn">
+                        <Download size={18} />
+                        Export to Excel
+                    </button>
+                </header>
+            )}
 
             <div className="bu-history__controls">
                 <div className="bu-tabs">

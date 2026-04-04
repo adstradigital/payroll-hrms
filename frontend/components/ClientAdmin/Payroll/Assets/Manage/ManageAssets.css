@@ -425,6 +425,64 @@
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
+.ma-input-quick-add {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.ma-input-quick-add select {
+    flex: 1;
+}
+
+.ma-btn-icon-add {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--brand-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ma-btn-icon-add:hover, .ma-btn-icon-add.active {
+    background: var(--bg-tertiary);
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.ma-quick-add-popover {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin-top: 0.25rem;
+    animation: slideDown 0.2s ease-out;
+}
+
+.ma-quick-add-popover input {
+    flex: 1;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.875rem !important;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 .ma-modal-actions {
     display: flex;
     justify-content: flex-end;

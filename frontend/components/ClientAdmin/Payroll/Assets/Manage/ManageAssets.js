@@ -9,7 +9,8 @@ import {
     Smartphone, Monitor, HardDrive, Box, AlertCircle, X, FileText
 } from 'lucide-react';
 import {
-    getAssets, createAsset, updateAsset, deleteAsset
+    getAssets, createAsset, updateAsset, deleteAsset,
+    getAssetCategories, createAssetCategory
 } from '@/api/api_clientadmin';
 import './ManageAssets.css';
 
@@ -26,10 +27,13 @@ export default function ManageAssets() {
     const [selectedAssets, setSelectedAssets] = useState([]);
     const [showImportModal, setShowImportModal] = useState(false);
     const [importLoading, setImportLoading] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
     const [formData, setFormData] = useState({
         asset_id: '',
         name: '',
-        category: 'laptop',
+        category: '',
         model: '',
         serial_number: '',
         status: 'available'
@@ -37,7 +41,34 @@ export default function ManageAssets() {
 
     useEffect(() => {
         fetchAssets();
+        fetchCategories();
     }, [searchTerm, statusFilter]);
+
+    const fetchCategories = async () => {
+        try {
+            const response = await getAssetCategories();
+            setCategories(response.data);
+            if (response.data.length > 0 && !formData.category && !editMode) {
+                setFormData(prev => ({ ...prev, category: response.data[0].name }));
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        }
+    };
+
+    const handleQuickAddCategory = async () => {
+        if (!newCategoryName.trim()) return;
+        try {
+            const response = await createAssetCategory({ name: newCategoryName });
+            setCategories([...categories, response.data]);
+            setFormData({ ...formData, category: response.data.name });
+            setNewCategoryName('');
+            setShowQuickAdd(false);
+        } catch (error) {
+            console.error('Error adding category:', error);
+            alert('Failed to add category');
+        }
+    };
 
     const fetchAssets = async () => {
         try {
@@ -384,19 +415,39 @@ export default function ManageAssets() {
                             <div className="ma-form-row">
                                 <div className="ma-form-group">
                                     <label>Category *</label>
-                                    <select
-                                        value={formData.category}
-                                        onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                    >
-                                        <option value="laptop">Laptop</option>
-                                        <option value="monitor">Monitor</option>
-                                        <option value="mobile">Mobile</option>
-                                        <option value="tablet">Tablet</option>
-                                        <option value="peripherals">Peripherals</option>
-                                        <option value="audio">Audio</option>
-                                        <option value="printer">Printer</option>
-                                        <option value="other">Other</option>
-                                    </select>
+                                    <div className="ma-input-quick-add">
+                                        <select
+                                            value={formData.category}
+                                            onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                            required
+                                        >
+                                            <option value="" disabled>Select Category</option>
+                                            {categories.map(cat => (
+                                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                            ))}
+                                        </select>
+                                        <button 
+                                            type="button" 
+                                            className={`ma-btn-icon-add ${showQuickAdd ? 'active' : ''}`}
+                                            onClick={() => setShowQuickAdd(!showQuickAdd)}
+                                            title="Add New Category"
+                                        >
+                                            <Plus size={18} />
+                                        </button>
+                                    </div>
+                                    {showQuickAdd && (
+                                        <div className="ma-quick-add-popover">
+                                            <input 
+                                                type="text" 
+                                                placeholder="New Category..." 
+                                                value={newCategoryName}
+                                                onChange={e => setNewCategoryName(e.target.value)}
+                                                autoFocus
+                                            />
+                                            <button type="button" onClick={handleQuickAddCategory} className="ma-btn ma-btn--primary ma-btn--sm">Add</button>
+                                            <button type="button" onClick={() => setShowQuickAdd(false)} className="ma-btn ma-btn--outline ma-btn--sm">Cancel</button>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="ma-form-group">
                                     <label>Status</label>

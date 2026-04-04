@@ -6,8 +6,9 @@ from django.db.models import Sum, Count, Q
 from apps.leave.models import LeaveRequest, LeaveBalance, LeaveType
 from apps.accounts.models import Employee
 from apps.attendance.models import Attendance
-from apps.payroll.models import PaySlip
+from apps.payroll.models import PaySlip, AdhocPayment
 from datetime import date
+from calendar import monthrange
 from decimal import Decimal
 from django.utils import timezone
 
@@ -101,7 +102,7 @@ class AttendanceReportViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        """Get attendance summary for today"""
+        """Get attendance summary for today or a selected month/year"""
         company_id = request.query_params.get('company')
         if not company_id:
             # Try to get from user profile
@@ -111,11 +112,24 @@ class AttendanceReportViewSet(viewsets.ViewSet):
         
         if not company_id:
             return Response({'error': 'company parameter required'}, status=400)
-             
-        today = date.today()
-        attendances = Attendance.objects.filter(employee__company_id=company_id, date=today)
+
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+
+        if month and year:
+            start_date = date(int(year), int(month), 1)
+            end_date = date(int(year), int(month), monthrange(int(year), int(month))[1])
+            attendances = Attendance.objects.filter(
+                employee__company_id=company_id,
+                date__range=[start_date, end_date]
+            )
+            period_label = f"{year}-{str(month).zfill(2)}"
+        else:
+            today = date.today()
+            attendances = Attendance.objects.filter(employee__company_id=company_id, date=today)
+            period_label = str(today)
+
         total_employees = Employee.objects.filter(company_id=company_id, status='active').count()
-        
         present = attendances.filter(status='present').count()
         absent = attendances.filter(status='absent').count()
         late = attendances.filter(is_late=True).count()
@@ -127,12 +141,12 @@ class AttendanceReportViewSet(viewsets.ViewSet):
             'absent': absent,
             'late': late,
             'on_leave': on_leave,
-            'date': str(today)
+            'period': period_label
         })
 
     @action(detail=False, methods=['get'])
     def detailed(self, request):
-        """Get detailed daily attendance records"""
+        """Get detailed attendance records (by date or month/year)"""
         company_id = request.query_params.get('company')
         if not company_id:
             employee = getattr(request.user, 'employee_profile', None)
@@ -141,22 +155,90 @@ class AttendanceReportViewSet(viewsets.ViewSet):
         
         if not company_id:
             return Response({'error': 'company parameter required'}, status=400)
-            
-        today = date.today()
-        attendances = Attendance.objects.filter(employee__company_id=company_id, date=today).select_related('employee', 'shift')
+
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        specific_date = request.query_params.get('date')
+
+        if specific_date:
+            try:
+                target_date = date.fromisoformat(specific_date)
+            except ValueError:
+                return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
+            attendances = Attendance.objects.filter(
+                employee__company_id=company_id,
+                date=target_date
+            ).select_related('employee', 'shift')
+        elif month and year:
+            start_date = date(int(year), int(month), 1)
+            end_date = date(int(year), int(month), monthrange(int(year), int(month))[1])
+            attendances = Attendance.objects.filter(
+                employee__company_id=company_id,
+                date__range=[start_date, end_date]
+            ).select_related('employee', 'shift')
+        else:
+            today = date.today()
+            attendances = Attendance.objects.filter(employee__company_id=company_id, date=today).select_related('employee', 'shift')
         
         data = []
         for att in attendances:
             data.append({
                 'employee_name': att.employee.full_name,
                 'employee_id': att.employee.employee_id,
+                'date': str(att.date),
                 'status': att.status,
-                'check_in': str(att.check_in.time()) if att.check_in else 'N/A',
-                'check_out': str(att.check_out.time()) if att.check_out else 'N/A',
-                'working_hours': float(att.working_hours) if att.working_hours else 0,
+                'check_in': str(att.check_in_time.time()) if att.check_in_time else 'N/A',
+                'check_out': str(att.check_out_time.time()) if att.check_out_time else 'N/A',
+                'working_hours': float(att.total_hours) if att.total_hours else 0,
                 'is_late': att.is_late
             })
             
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def overtime(self, request):
+        """Get overtime analysis for a specific month/year"""
+        company_id = request.query_params.get('company')
+        if not company_id:
+            employee = getattr(request.user, 'employee_profile', None)
+            if employee:
+                company_id = employee.company_id
+
+        if not company_id:
+            return Response({'error': 'company parameter required'}, status=400)
+
+        month = request.query_params.get('month', date.today().month)
+        year = request.query_params.get('year', date.today().year)
+
+        start_date = date(int(year), int(month), 1)
+        end_date = date(int(year), int(month), monthrange(int(year), int(month))[1])
+
+        overtime_data = Attendance.objects.filter(
+            employee__company_id=company_id,
+            date__range=[start_date, end_date],
+            overtime_hours__gt=0
+        ).values(
+            'employee_id',
+            'employee__employee_id',
+            'employee__first_name',
+            'employee__last_name',
+            'employee__department__name'
+        ).annotate(
+            total_overtime_hours=Sum('overtime_hours'),
+            overtime_days=Count('id')
+        ).order_by('-total_overtime_hours')
+
+        data = [
+            {
+                'employee_name': f"{row['employee__first_name']} {row['employee__last_name']}".strip(),
+                'employee_id': row['employee__employee_id'],
+                'department': row['employee__department__name'] or 'N/A',
+                'overtime_hours': float(row['total_overtime_hours'] or 0),
+                'overtime_days': row['overtime_days']
+            }
+            for row in overtime_data
+        ]
+
         return Response(data)
 
 class PayrollReportViewSet(viewsets.ViewSet):
@@ -292,6 +374,78 @@ class PayrollReportViewSet(viewsets.ViewSet):
                 'pf_employer': float(pf_emplr),
                 'esi_employee': float(esi_emp),
                 'esi_employer': float(esi_emplr),
+            })
+
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def tds_summary(self, request):
+        """Get TDS summary for a specific month/year"""
+        company_id = request.query_params.get('company')
+        if not company_id:
+            employee = getattr(request.user, 'employee_profile', None)
+            if employee:
+                company_id = employee.company_id
+
+        if not company_id:
+            return Response({'error': 'company parameter required'}, status=400)
+
+        year = request.query_params.get('year', date.today().year)
+        month = request.query_params.get('month', date.today().month)
+
+        payslips = PaySlip.objects.filter(
+            employee__company_id=company_id,
+            payroll_period__year=year,
+            payroll_period__month=month
+        ).select_related('employee', 'employee__department').prefetch_related('components__component')
+
+        data = []
+        for p in payslips:
+            tds_amount = sum(c.amount for c in p.components.all() if c.component.statutory_type == 'tds')
+            data.append({
+                'employee_name': p.employee.full_name,
+                'employee_id': p.employee.employee_id,
+                'department': p.employee.department.name if p.employee.department else 'N/A',
+                'gross_salary': float(p.gross_earnings),
+                'tds_deduction': float(tds_amount),
+                'net_salary': float(p.net_salary)
+            })
+
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def bonus_report(self, request):
+        """Get bonus & incentives report for a specific month/year"""
+        company_id = request.query_params.get('company')
+        if not company_id:
+            employee = getattr(request.user, 'employee_profile', None)
+            if employee:
+                company_id = employee.company_id
+
+        if not company_id:
+            return Response({'error': 'company parameter required'}, status=400)
+
+        year = request.query_params.get('year', date.today().year)
+        month = request.query_params.get('month', date.today().month)
+        start_date = date(int(year), int(month), 1)
+        end_date = date(int(year), int(month), monthrange(int(year), int(month))[1])
+
+        payments = AdhocPayment.objects.filter(
+            employee__company_id=company_id,
+            date__range=[start_date, end_date]
+        ).select_related('employee', 'employee__department', 'component')
+
+        data = []
+        for p in payments:
+            data.append({
+                'employee_name': p.employee.full_name,
+                'employee_id': p.employee.employee_id,
+                'department': p.employee.department.name if p.employee.department else 'N/A',
+                'payment_name': p.name,
+                'component': p.component.name if p.component else 'N/A',
+                'amount': float(p.amount),
+                'status': p.status,
+                'date': str(p.date)
             })
 
         return Response(data)

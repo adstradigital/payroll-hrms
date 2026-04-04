@@ -31,8 +31,10 @@ export const expensesApi = {
 
   // Approvals
   getPendingApprovals: () => axiosInstance.get(`${API_BASE}/approvals/`),
-  approveClaim: (id) => axiosInstance.put(`${API_BASE}/approve/${id}/`),
-  rejectClaim: (id) => axiosInstance.put(`${API_BASE}/reject/${id}/`),
+  getAllClaims: (params = {}) => axiosInstance.get(`${API_BASE}/all-claims/`, { params }),
+  approveClaim: (id, comments = '') => axiosInstance.put(`${API_BASE}/approve/${id}/`, { comments }),
+  rejectClaim: (id, comments = '') => axiosInstance.put(`${API_BASE}/reject/${id}/`, { comments }),
+  payClaim: (id) => axiosInstance.put(`${API_BASE}/pay/${id}/`),
 };
 
 // Mock data for development

@@ -9,13 +9,17 @@ export default function AttendanceLogs() {
     const [selectedItems, setSelectedItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const pageSize = 10;
 
     const fetchLogs = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('accessToken');
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/logs/?date=${viewDate}`, {
+            // Corrected endpoint from /attendance/logs/ to /attendance/ with pagination
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/attendance/?date=${viewDate}&page=${currentPage}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -23,7 +27,14 @@ export default function AttendanceLogs() {
 
             if (response.ok) {
                 const data = await response.json();
-                setLogs(data.results || []);
+                // Handle DRF Paginated Response
+                if (data.results) {
+                    setLogs(data.results);
+                    setTotalCount(data.count || 0);
+                } else {
+                    setLogs(Array.isArray(data) ? data : []);
+                    setTotalCount(Array.isArray(data) ? data.length : 0);
+                }
             } else {
                 console.error('Failed to fetch attendance logs');
             }
@@ -35,8 +46,12 @@ export default function AttendanceLogs() {
     };
 
     useEffect(() => {
-        fetchLogs();
+        setCurrentPage(1); // Reset to page 1 when date changes
     }, [viewDate]);
+
+    useEffect(() => {
+        fetchLogs();
+    }, [viewDate, currentPage]);
 
     const toggleSelectAll = () => {
         if (selectedItems.length === logs.length) {
@@ -61,7 +76,22 @@ export default function AttendanceLogs() {
 
     const formatTime = (dateTimeStr) => {
         if (!dateTimeStr) return '-';
-        return new Date(dateTimeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        try {
+            return new Date(dateTimeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+            return '-';
+        }
+    };
+
+    const getLateStyle = (mins) => {
+        if (!mins || mins <= 0) return {};
+        if (mins > 30) return { color: '#ef4444', fontWeight: '700' }; // Hard late
+        return { color: '#f97316', fontWeight: '600' }; // Grace period or slight late
+    };
+
+    const getEarlyStyle = (mins) => {
+        if (!mins || mins <= 0) return {};
+        return { color: '#f59e0b', fontWeight: '600' };
     };
 
     return (
@@ -116,16 +146,18 @@ export default function AttendanceLogs() {
                             <th><div className="aa-th-content"><GripVertical size={14} /> Date</div></th>
                             <th>Check In</th>
                             <th>Check Out</th>
-                            <th>Shift (Assigned)</th>
+                            <th>Late (Min)</th>
+                            <th>Early (Min)</th>
+                            <th>Shift</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={8} className="text-center p-4">Loading logs...</td></tr>
+                            <tr><td colSpan={10} className="text-center p-4">Loading logs...</td></tr>
                         ) : logs.length === 0 ? (
-                            <tr><td colSpan={8} className="text-center p-4">No attendance logs found for this date</td></tr>
+                            <tr><td colSpan={10} className="text-center p-4">No attendance logs found for this date</td></tr>
                         ) : (
                             logs.map(row => (
                                 <tr key={row.id}>
@@ -149,6 +181,12 @@ export default function AttendanceLogs() {
                                     <td>{formatDate(row.date)}</td>
                                     <td className="font-medium text-green-600">{formatTime(row.check_in_time)}</td>
                                     <td className="font-medium text-red-500">{formatTime(row.check_out_time)}</td>
+                                    <td style={getLateStyle(row.late_by_minutes)}>
+                                        {row.late_by_minutes > 0 ? `${row.late_by_minutes}m` : '-'}
+                                    </td>
+                                    <td style={getEarlyStyle(row.early_departure_minutes)}>
+                                        {row.early_departure_minutes > 0 ? `${row.early_departure_minutes}m` : '-'}
+                                    </td>
                                     <td>{row.shift_name || '-'}</td>
                                     <td>
                                         <span className={`status-badge-log ${row.status}`}>
@@ -164,6 +202,32 @@ export default function AttendanceLogs() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalCount > pageSize && (
+                <div className="aa-pagination-bar">
+                    <div className="aa-pagination-info">
+                        Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} records
+                    </div>
+                    <div className="aa-pagination-btns">
+                        <button 
+                            className="aa-page-btn" 
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(prev => prev - 1)}
+                        >
+                            Previous
+                        </button>
+                        <span className="aa-page-num">Page {currentPage}</span>
+                        <button 
+                            className="aa-page-btn" 
+                            disabled={currentPage * pageSize >= totalCount}
+                            onClick={() => setCurrentPage(prev => prev + 1)}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <button className="aa-fab">
                 <Plus size={28} />

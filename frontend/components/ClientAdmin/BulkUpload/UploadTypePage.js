@@ -5,36 +5,48 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Info } from 'lucide-react';
 import * as bulkUploadApi from '@/api/bulkUploadApi';
 import UploadForm from './UploadForm';
+import UploadHistory from './UploadHistory';
 import './UploadTypePage.css';
 
 export default function UploadTypePage({ type, title, description }) {
     const router = useRouter();
-    const [recentUploads, setRecentUploads] = useState([]);
+    const [historyKey, setHistoryKey] = useState(0); // Used to refresh history component
     const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        // In a real app, query history filtering by type
-        // For mock, we just filter the dashboard stats data or reuse history mock
-        fetchRecentUploads();
-    }, [type]);
-
-    const fetchRecentUploads = async () => {
-        try {
-            const data = await bulkUploadApi.getDashboardStats(); // reusing for mock simplicity
-            setRecentUploads(data.recentUploads.filter(u => u.type === type));
-        } catch (error) {
-            console.error('Failed to load recent uploads', error);
-        }
-    };
+    const [progress, setProgress] = useState(0);
+    const [statusMessage, setStatusMessage] = useState('');
 
     const handleUpload = async (file, skipErrors) => {
         setLoading(true);
+        setProgress(0);
+        setStatusMessage('Initializing upload...');
+        
         try {
-            const result = await bulkUploadApi.uploadFile(type, file);
-            // Redirect to confirm or detail page
-            router.push(`/dashboard/payroll/bulk-upload/detail/${result.id}`);
+            const result = await bulkUploadApi.uploadFile(
+                type, 
+                file, 
+                (p, msg) => {
+                    setProgress(p);
+                    setStatusMessage(msg);
+                },
+                skipErrors
+            );
+            
+            if (result.status === 'failed') {
+                const errorMsg = result.errors && result.errors.length > 0 ? result.errors[0].error : 'Unknown error';
+                alert(`Upload completely failed. Reason: ${errorMsg}`);
+            } else if (result.status === 'partial') {
+                alert(`Upload finished with warnings. ${result.successCount || result.successRows} imported, ${result.failedCount || result.errorRows} failed. See history details for specific row errors.`);
+            } else {
+                alert(`Upload successful! ${result.successCount || result.successRows} rows imported.`);
+            }
+
+            // Refresh history table instead of redirecting
+            setHistoryKey(prev => prev + 1);
+            setStatusMessage('');
+            setProgress(0);
         } catch (error) {
-            alert('Upload failed: ' + error.message);
+            alert('Upload halted unexpectedly: ' + error.message);
+            setStatusMessage('Error: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -65,27 +77,15 @@ export default function UploadTypePage({ type, title, description }) {
             <div className="bu-layout-grid">
                 <div className="bu-upload-section">
                     <UploadForm type={type} onUpload={handleUpload} loading={loading} />
-
-                    <div className="bu-recent-type-uploads">
-                        <h3>Recent {title} Uploads</h3>
-                        <div className="bu-recent-list">
-                            {recentUploads.length > 0 ? (
-                                recentUploads.map(upload => (
-                                    <div key={upload.id} className="bu-recent-item" onClick={() => router.push(`/dashboard/payroll/bulk-upload/detail/${upload.id}`)}>
-                                        <div className="bu-recent-info">
-                                            <span className="bu-recent-name">{upload.fileName}</span>
-                                            <span className="bu-recent-date">{new Date(upload.date).toLocaleDateString()}</span>
-                                        </div>
-                                        <span className={`bu-status-badge bu-status-${upload.status}`}>
-                                            {upload.status}
-                                        </span>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="bu-empty-text">No recent uploads.</p>
-                            )}
+                    
+                    {loading && (
+                        <div className="bu-upload-progress">
+                            <div className="bu-progress-bar">
+                                <div className="bu-progress-fill" style={{ width: `${progress}%` }}></div>
+                            </div>
+                            <p className="bu-progress-text">{statusMessage}</p>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 <aside className="bu-info-sidebar">
@@ -109,6 +109,10 @@ export default function UploadTypePage({ type, title, description }) {
                         </div>
                     </div>
                 </aside>
+            </div>
+
+            <div className="bu-history-section">
+                <UploadHistory key={historyKey} type={type} isEmbedded={true} />
             </div>
         </div>
     );

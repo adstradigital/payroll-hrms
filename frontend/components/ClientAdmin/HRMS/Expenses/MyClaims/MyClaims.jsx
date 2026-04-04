@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { expensesApi, mockClaims } from '@/api/expensesApi';
+import { expensesApi } from '@/api/expensesApi';
 import './MyClaims.css';
 
 const MyClaims = () => {
@@ -17,8 +17,7 @@ const MyClaims = () => {
       const res = await expensesApi.getMyClaims();
       setClaims(Array.isArray(res.data) ? res.data : (res.data.results || []));
     } catch (err) {
-      console.error("Failed to fetch my claims, using mocks", err);
-      setClaims(mockClaims);
+      setClaims([]);
     } finally {
       setLoading(false);
     }

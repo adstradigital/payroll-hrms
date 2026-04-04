@@ -3,7 +3,10 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from datetime import timedelta
 from decimal import Decimal
+import logging
 from ..models import PerformanceReview, ReviewPeriod, BonusMapping, PerformanceCriteria, CriteriaRating
+
+logger = logging.getLogger(__name__)
 
 
 class AutomationService:
@@ -147,26 +150,32 @@ class AutomationService:
     
     @staticmethod
     @transaction.atomic
-    def calculate_bonus_for_completed_reviews(review_period_id):
+    def calculate_bonus_for_completed_reviews(review_period_id=None, review_id=None):
         """
-        Calculate bonus points for all completed reviews in a period.
+        Calculate bonus points for completed reviews.
+        Can calculate for a specific review or an entire period.
         
         Args:
-            review_period_id: UUID of the review period
+            review_period_id: UUID of the review period (optional if review_id provided)
+            review_id: UUID of a specific performance review (optional)
             
         Returns:
             dict: {calculated_count, bonus_details}
         """
-        try:
-            review_period = ReviewPeriod.objects.get(id=review_period_id)
-        except ReviewPeriod.DoesNotExist:
-            return {'error': 'Review period not found'}
-        
         # Get completed reviews with ratings
-        completed_reviews = review_period.reviews.filter(
+        queryset = PerformanceReview.objects.filter(
             status='completed',
             overall_rating__isnull=False
         )
+        
+        if review_id:
+            queryset = queryset.filter(id=review_id)
+        elif review_period_id:
+            queryset = queryset.filter(review_period_id=review_period_id)
+        else:
+            return {'error': 'Either review_period_id or review_id must be provided'}
+        
+        completed_reviews = queryset.select_related('employee', 'review_period')
         
         # Get bonus mappings
         bonus_mappings = BonusMapping.objects.filter(is_active=True).order_by('-min_rating')
@@ -204,16 +213,29 @@ class AutomationService:
                     employee_profile = getattr(review.employee, 'employee_profile', None)
                     
                     if employee_profile:
-                        current_salary = EmployeeSalary.objects.filter(
-                            employee=employee_profile,
-                            is_current=True
-                        ).first()
+                        # Get employee current salary
+                        salary_obj = EmployeeSalary.objects.filter(employee=employee_profile, is_current=True).first()
                         
-                        if current_salary:
-                            bonus_amount = (current_salary.basic_salary * sum([Decimal(bonus_percentage)/100])).quantize(Decimal('0.01'))
+                        # Use actual gross salary or fallback to default used in payroll generation
+                        if salary_obj:
+                            base_for_bonus = float(salary_obj.gross_salary)
+                        else:
+                            # Match the default '50000' used in payroll_generation.py
+                            base_for_bonus = 50000.0
+                            logger.info(f"No salary record for {employee_profile}. Using default 50000 for bonus calculation.")
+                        
+                        if base_for_bonus > 0:
+                            bonus_amount = (base_for_bonus * bonus_percentage) / 100.0
                             
                             # Create Adhoc Payment
-                            payment_name = f"Performance Bonus - {review_period.name}"
+                            payment_name = f"Performance Bonus - {review.review_period.name}"
+                            
+                            # Determine component to use
+                            bonus_component = SalaryComponent.objects.filter(
+                                company=employee_profile.company,
+                                name__icontains='Bonus',
+                                component_type='earning'
+                            ).first()
                             
                             # Check for duplicates
                             exists = AdhocPayment.objects.filter(

@@ -31,6 +31,7 @@ from .services.tds_calculator import TDSCalculator
 
 
 from rest_framework.decorators import api_view, permission_classes
+from apps.accounts.utils import get_employee_org_id
 
 
 @api_view(['POST'])
@@ -624,14 +625,17 @@ def export_epf_ecr(request):
     try:
         month = request.query_params.get('month')
         year = request.query_params.get('year')
-        company_id = request.query_params.get('company_id')
+        company_id = request.query_params.get('company_id') or get_employee_org_id(request.user)
 
         if not month or not year:
             return Response({'error': 'month and year are required'}, status=400)
 
         # Get payroll records
+        if not company_id:
+            return Response({'error': 'company_id is required or could not be determined'}, status=400)
+
         payslips = PaySlip.objects.filter(
-            employee__company_id=company_id if company_id else request.user.organization.id,
+            employee__company_id=company_id,
             payroll_period__month=month,
             payroll_period__year=year
         ).select_related('employee', 'employee_salary').prefetch_related('components__component')
@@ -640,7 +644,7 @@ def export_epf_ecr(request):
             return Response({'error': 'No payroll data found for this period'}, status=404)
 
         from .models import PayrollSettings
-        settings = PayrollSettings.objects.filter(company_id=company_id if company_id else request.user.organization.id).first()
+        settings = PayrollSettings.objects.filter(company_id=company_id).first()
 
         ecr_lines = []
         for ps in payslips:
@@ -693,7 +697,10 @@ def export_esi_challan(request):
     try:
         month = request.query_params.get('month')
         year = request.query_params.get('year')
-        company_id = request.query_params.get('company_id')
+        company_id = request.query_params.get('company_id') or get_employee_org_id(request.user)
+
+        if not company_id:
+            return Response({'error': 'company_id is required or could not be determined'}, status=400)
 
         payslips = PaySlip.objects.filter(
             employee__company_id=company_id if company_id else request.user.organization.id,
@@ -746,18 +753,12 @@ def export_salary_register(request):
     try:
         month = request.query_params.get('month')
         year = request.query_params.get('year')
-        company_id = request.query_params.get('company_id')
+        company_id = request.query_params.get('company_id') or get_employee_org_id(request.user)
 
         if not month or not year:
             return Response({'error': 'month and year are required'}, status=400)
-
-        # Infer company_id
         if not company_id:
-            user = request.user
-            if hasattr(user, 'employee_profile'):
-                company_id = user.employee_profile.company_id
-            elif hasattr(user, 'organization'):
-                company_id = user.organization.id
+            return Response({'error': 'company_id is required or could not be determined'}, status=400)
 
         payslips = PaySlip.objects.filter(
             employee__company_id=company_id,
@@ -784,17 +785,13 @@ def export_payroll_summary(request):
     try:
         month = request.query_params.get('month')
         year = request.query_params.get('year')
-        company_id = request.query_params.get('company_id')
+        company_id = request.query_params.get('company_id') or get_employee_org_id(request.user)
 
         if not month or not year:
             return Response({'error': 'month and year are required'}, status=400)
 
         if not company_id:
-            user = request.user
-            if hasattr(user, 'employee_profile'):
-                company_id = user.employee_profile.company_id
-            elif hasattr(user, 'organization'):
-                company_id = user.organization.id
+            return Response({'error': 'company_id is required or could not be determined'}, status=400)
 
         payslips = PaySlip.objects.filter(
             employee__company_id=company_id,
@@ -840,17 +837,13 @@ def get_salary_register_data(request):
     try:
         month = request.query_params.get('month')
         year = request.query_params.get('year')
-        company_id = request.query_params.get('company_id')
+        company_id = request.query_params.get('company_id') or get_employee_org_id(request.user)
 
         if not month or not year:
             return Response({'error': 'month and year are required'}, status=400)
 
         if not company_id:
-            user = request.user
-            if hasattr(user, 'employee_profile'):
-                company_id = user.employee_profile.company_id
-            elif hasattr(user, 'organization'):
-                company_id = user.organization.id
+            return Response({'error': 'company_id is required or could not be determined'}, status=400)
 
         payslips = PaySlip.objects.filter(
             employee__company_id=company_id,
@@ -887,17 +880,13 @@ def get_payroll_summary_data(request):
     try:
         month = request.query_params.get('month')
         year = request.query_params.get('year')
-        company_id = request.query_params.get('company_id')
+        company_id = request.query_params.get('company_id') or get_employee_org_id(request.user)
 
         if not month or not year:
             return Response({'error': 'month and year are required'}, status=400)
 
         if not company_id:
-            user = request.user
-            if hasattr(user, 'employee_profile'):
-                company_id = user.employee_profile.company_id
-            elif hasattr(user, 'organization'):
-                company_id = user.organization.id
+            return Response({'error': 'company_id is required or could not be determined'}, status=400)
 
         payslips = PaySlip.objects.filter(
             employee__company_id=company_id,

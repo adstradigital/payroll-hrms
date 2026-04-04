@@ -349,6 +349,7 @@ class Attendance(models.Model):
         ('holiday', 'Holiday'),
         ('week_off', 'Week Off'),
         ('work_from_home', 'Work From Home'),
+        ('late', 'Late'),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -471,15 +472,23 @@ class Attendance(models.Model):
                 if self.total_hours > overtime_threshold:
                     self.overtime_hours = round(self.total_hours - expected_hours, 2)
             
-            # Determine status based on hours
-            policy = self.employee.company.attendance_policies.filter(is_active=True).first()
-            if policy:
-                if self.total_hours >= float(policy.full_day_hours):
-                    self.status = 'present'
-                elif self.total_hours >= float(policy.half_day_hours):
-                    self.status = 'half_day'
-                else:
-                    self.status = 'absent'
+            # Determine status based on hours ONLY if in a auto-calculable state
+            # and NOT manually regularized/overridden by an admin
+            if self.status in ['present', 'half_day', 'absent'] and not self.is_regularized:
+                policy = self.employee.company.attendance_policies.filter(is_active=True).first()
+                if policy:
+                    if self.total_hours >= float(policy.full_day_hours):
+                        self.status = 'present'
+                    elif self.total_hours >= float(policy.half_day_hours):
+                        self.status = 'half_day'
+                    else:
+                        self.status = 'absent'
+            
+            # If manually set to late, ensure we reflect it in the status if not already set
+            if self.is_late and self.status == 'present':
+                # We often keep 'present' as primary status but can switch to 'late' if policy allows
+                # For this UI, 'late' is a primary status click, so we respect it.
+                pass 
 
     def check_late_arrival(self):
         """Check if employee arrived late"""
@@ -532,8 +541,15 @@ class Attendance(models.Model):
     def save(self, *args, **kwargs):
         """Override save to calculate hours"""
         self.calculate_hours()
+        
         self.check_late_arrival()
         self.check_early_departure()
+        
+        # If status was manually set to 'late', ensure is_late flag is also set
+        # We do this AFTER the checks to ensure manual override wins
+        if self.status == 'late':
+            self.is_late = True
+            
         super().save(*args, **kwargs)
 
 

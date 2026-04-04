@@ -112,13 +112,21 @@ class PerformanceReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at', 'reviewed_at', 'self_submitted_at']
 
     def get_department_name(self, obj):
-        if hasattr(obj.employee, 'employee_profile') and obj.employee.employee_profile.department:
-            return obj.employee.employee_profile.department.name
+        try:
+            profile = getattr(obj.employee, 'employee_profile', None)
+            if profile and profile.department:
+                return profile.department.name
+        except:
+            pass
         return None
 
     def get_designation_name(self, obj):
-        if hasattr(obj.employee, 'employee_profile') and obj.employee.employee_profile.designation:
-            return obj.employee.employee_profile.designation.name
+        try:
+            profile = getattr(obj.employee, 'employee_profile', None)
+            if profile and profile.designation:
+                return profile.designation.name
+        except:
+            pass
         return None
 
 
@@ -127,7 +135,7 @@ class PerformanceReviewCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = PerformanceReview
-        fields = ['employee', 'reviewer', 'review_period']
+        fields = ['id', 'employee', 'reviewer', 'review_period']
     
     def validate(self, data):
         """Check if review already exists for this employee and period"""

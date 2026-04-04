@@ -428,26 +428,24 @@ export default function MyAttendance() {
                         <div className="hero-grid">
                             {/* Welcome & Clock Card */}
                             <div className="welcome-box">
-                                <div>
+                                <div className="glass-shape gs-1"></div>
+                                <div className="glass-shape gs-2"></div>
+                                <div className="glass-shape gs-3"></div>
+                                
+                                <div className="welcome-content">
                                     <div className="date-badge">
                                         {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                                     </div>
-                                    <div style={{ fontSize: '1rem', opacity: 0.9 }}>Good Morning, {data.employee.name.split(' ')[0]}</div>
+                                    <h4 className="greeting">Good Morning, {data.employee.name.split(' ')[0]}</h4>
                                     <div className="clock-huge">
                                         {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        <span className="clock-blink">:</span>
+                                        {currentTime.toLocaleTimeString([], { second: '2-digit' }).split(':')[0]}
                                     </div>
+                                    
                                     {data.today.shift && (
-                                        <div className="shift-badge" style={{
-                                            background: 'rgba(255,255,255,0.1)',
-                                            padding: '0.4rem 0.8rem',
-                                            borderRadius: '6px',
-                                            fontSize: '0.8rem',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            marginTop: '0.5rem'
-                                        }}>
-                                            <Clock size={14} />
+                                        <div className="shift-info-glass">
+                                            <Clock size={14} className="icon-pulse" />
                                             <span>Shift: {data.today.shift.name} ({data.today.shift.start_time} - {data.today.shift.end_time})</span>
                                         </div>
                                     )}

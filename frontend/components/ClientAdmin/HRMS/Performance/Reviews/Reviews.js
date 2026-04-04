@@ -49,6 +49,17 @@ const downloadCsv = (filename, headers, rows) => {
     URL.revokeObjectURL(url);
 };
 
+const itemsToRows = (items) => items.map((review) => [
+    review.employee,
+    review.reviewer,
+    review.department,
+    review.period,
+    review.rating ?? 'Not Rated',
+    `${review.progress || 0}%`,
+    getStatusBadge(review.status).label,
+    review.date
+]);
+
 export default function Reviews() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -195,16 +206,6 @@ export default function Reviews() {
         setEditingReview(null);
     };
 
-    const getReviewRowsForExport = (items) => items.map((review) => [
-        review.employee,
-        review.reviewer,
-        review.department,
-        review.period,
-        review.rating ?? 'Not Rated',
-        `${review.progress}%`,
-        getStatusBadge(review.status).label,
-        review.date
-    ]);
 
     const handleExportSelected = () => {
         const selectedItems = filteredReviews.filter((review) => selectedReviews.includes(review.id));
@@ -216,7 +217,7 @@ export default function Reviews() {
         downloadCsv(
             `performance-reviews-${new Date().toISOString().slice(0, 10)}.csv`,
             ['Employee', 'Reviewer', 'Department', 'Period', 'Rating', 'Progress', 'Status', 'Due Date'],
-            getReviewRowsForExport(selectedItems)
+            itemsToRows(selectedItems)
         );
     };
 
@@ -390,16 +391,11 @@ export default function Reviews() {
                                 <div className="th-content">Employee {sortBy === 'employee' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
                             </th>
                             <th>Reviewer</th>
-                            <th>Department</th>
                             <th>Period</th>
                             <th onClick={() => handleSort('rating')} className="th-sortable">
-                                <div className="th-content">Rating {sortBy === 'rating' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
+                                <div className="th-content">Rating / Progress {sortBy === 'rating' && <ChevronDown size={14} />}</div>
                             </th>
-                            <th>Progress</th>
-                            <th>Status</th>
-                            <th onClick={() => handleSort('date')} className="th-sortable">
-                                <div className="th-content">Due Date {sortBy === 'date' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
-                            </th>
+                            <th>Status / Due</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -414,34 +410,36 @@ export default function Reviews() {
                                     <td>
                                         <div className="employee-cell">
                                             <div className="employee-avatar">{review.employee.split(' ').map(n => n[0]).join('')}</div>
-                                            <div className="employee-info"><div className="employee-name">{review.employee}</div></div>
+                                            <div className="employee-info">
+                                                <div className="employee-name">{review.employee}</div>
+                                                <div className="employee-dept">{review.department}</div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="text-secondary">{review.reviewer}</td>
-                                    <td><span className="department-badge">{review.department}</span></td>
                                     <td className="text-secondary">{review.period}</td>
                                     <td>
-                                        {review.rating ? (
-                                            <div className="rating-cell">
-                                                <div className="stars">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <Star key={i} size={14} className={i < Math.floor(review.rating) ? 'star--filled' : 'star--empty'} />
-                                                    ))}
+                                        <div className="combined-score-cell">
+                                            {review.rating ? (
+                                                <div className="rating-pill">
+                                                    <Star size={12} fill="var(--rv-color-gold)" />
+                                                    <span>{review.rating}</span>
                                                 </div>
-                                                <span className="rating-value">{review.rating}</span>
+                                            ) : <span className="text-muted">--</span>}
+                                            <div className="progress-mini">
+                                                <div className="progress-bar-mini">
+                                                    <div className="progress-fill-mini" style={{ width: `${review.progress}%` }}></div>
+                                                </div>
+                                                <span className="progress-val-mini">{review.progress}%</span>
                                             </div>
-                                        ) : <span className="text-muted">--</span>}
-                                    </td>
-                                    <td>
-                                        <div className="progress-cell">
-                                            <div className="progress-bar">
-                                                <div className="progress-bar__fill" style={{ width: `${review.progress}%` }}></div>
-                                            </div>
-                                            <span className="progress-text">{review.progress}%</span>
                                         </div>
                                     </td>
-                                    <td><span className={`badge ${statusBadge.class}`}><statusBadge.icon size={12} /> {statusBadge.label}</span></td>
-                                    <td className="text-secondary">{review.date}</td>
+                                    <td>
+                                        <div className="status-due-cell">
+                                            <span className={`badge badge--compact ${statusBadge.class}`}>{statusBadge.label}</span>
+                                            <span className="due-date-mini">{review.date}</span>
+                                        </div>
+                                    </td>
                                     <td>
                                         <div className="dropdown">
                                             <button className="btn-icon" onClick={(e) => {
@@ -486,6 +484,14 @@ export default function Reviews() {
                             <>
                                 <button className="dropdown-item" onClick={() => handleViewDetails(review)}><Eye size={16} /> View Details</button>
                                 <button className="dropdown-item" onClick={() => handleEditClick(review)}><Edit size={16} /> Edit</button>
+                                <button className="dropdown-item" onClick={() => {
+                                    downloadCsv(
+                                        `performance-review-${review.employee.replace(/\s+/g, '-')}-${review.id.slice(0, 8)}.csv`,
+                                        ['Employee', 'Reviewer', 'Department', 'Period', 'Rating', 'Progress', 'Status', 'Due Date'],
+                                        itemsToRows([review])
+                                    );
+                                    closeDropdown();
+                                }}><Download size={16} /> Download Report (CSV)</button>
                                 <div className="dropdown-divider"></div>
                                 <button className="dropdown-item dropdown-item--danger" onClick={() => handleDeleteReview(review.id)}><Trash2 size={16} /> Delete</button>
                             </>
@@ -568,6 +574,13 @@ function ReviewDetailsModal({ review, isOpen, onClose, onEdit }) {
                 </div>
                 <div className="modal-footer">
                     <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+                    <button type="button" className="btn btn-outline" onClick={() => {
+                        downloadCsv(
+                            `performance-review-${review.employee.replace(/\s+/g, '-')}-${review.id.slice(0, 8)}.csv`,
+                            ['Employee', 'Reviewer', 'Department', 'Period', 'Rating', 'Progress', 'Status', 'Due Date'],
+                            itemsToRows([review]) // Use the helper to get rows
+                        );
+                    }}><Download size={16} /> Download CSV</button>
                     <button type="button" className="btn btn-primary" onClick={onEdit}>Edit Review</button>
                 </div>
             </div>
@@ -594,32 +607,55 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
     }, [isOpen, review]);
 
     const loadData = async () => {
-        console.log("EDIT REVIEW OBJECT:", review)
-        console.log("REVIEW ID:", review?.id)
+        if (!review?.id) {
+            console.error("Missing Review ID in EditReviewModal");
+            setError("Review ID is missing. Please refresh the page and try again.");
+            setLoading(false);
+            return;
+        }
+
+        console.log("Loading details for Review ID:", review.id);
         setLoading(true);
+        setError(null);
+        
         try {
-            const [empRes, reviewDetail] = await Promise.all([
-                getAllEmployees({ page_size: 1000 }),
-                getPerformanceReview(review?.id)
-            ]);
-            
-            const empList = empRes.data?.results || empRes.data || [];
-            setEmployees(empList);
-            
+            // Fetch employees first
+            let empList = [];
+            try {
+                const empRes = await getAllEmployees({ page_size: 1000 });
+                empList = empRes.data?.results || empRes.data || [];
+                setEmployees(empList);
+            } catch (err) {
+                console.error("Employee fetch failed:", err);
+                throw new Error("Failed to load employee directory: " + (err.response?.data?.detail || err.message));
+            }
+
+            // Fetch review details
+            let reviewDetail = null;
+            try {
+                reviewDetail = await getPerformanceReview(review.id);
+            } catch (err) {
+                console.error("Review detail fetch failed:", err);
+                throw new Error("Failed to load review record from server: " + err.message);
+            }
+
             if (reviewDetail) {
-                let reviewerId = typeof reviewDetail.reviewer === 'object' ? reviewDetail.reviewer.id : reviewDetail.reviewer;
+                // Fix: added null check because typeof null is 'object'
+                let reviewerId = (reviewDetail.reviewer && typeof reviewDetail.reviewer === 'object') ? reviewDetail.reviewer.id : reviewDetail.reviewer;
                 
                 let managerUserId = null;
 
                 // Find reporting manager's USER ID
                 if (reviewDetail.employee) {
-                    const subjectUserId = typeof reviewDetail.employee === 'object' ? reviewDetail.employee.id : reviewDetail.employee;
+                    // Fix: added null check
+                    const subjectUserId = (reviewDetail.employee && typeof reviewDetail.employee === 'object') ? reviewDetail.employee.id : reviewDetail.employee;
+                    
                     // Find employee record by User ID
                     const subjectEmployee = empList.find(e => e.user === subjectUserId); 
                     
                     if (subjectEmployee?.reporting_manager) {
                         // subjectEmployee.reporting_manager is an Employee UUID
-                        const managerEmployee = empList.find(e => e.id === subjectEmployee.reporting_manager);
+                        const managerEmployee = empList.find(e => (e.id === subjectEmployee.reporting_manager || e.uuid === subjectEmployee.reporting_manager));
                         if (managerEmployee) {
                             managerUserId = managerEmployee.user; // User ID
                         }
@@ -646,8 +682,8 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                 setIsAutoReviewer(auto);
             }
         } catch (err) {
-            console.error("Failed to load edit data:", err);
-            setError("Failed to load review details.");
+            console.error("Detailed Modal Error:", err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -977,14 +1013,22 @@ function DropdownPortal({ anchor, onClose, children }) {
         if (anchor) {
             const updatePosition = () => {
                 const rect = anchor.getBoundingClientRect();
-                const menuWidth = 160; 
+                const menuWidth = 200; // Increased width for the new download option
+                const estimatedHeight = 220; // Approximate height for the menu items
+                
+                // Check if there is enough space below
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const shouldShowAbove = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
+                
                 setStyle({
                     position: 'fixed',
-                    top: `${rect.bottom + 5}px`,
-                    left: `${rect.right - menuWidth}px`,
-                    right: 'auto',
-                    zIndex: 1000,
-                    margin: 0
+                    top: shouldShowAbove ? `${rect.top - 5}px` : `${rect.bottom + 5}px`,
+                    left: `${Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 10)}px`,
+                    transform: shouldShowAbove ? 'translateY(-100%)' : 'none',
+                    zIndex: 2000,
+                    minWidth: `${menuWidth}px`,
+                    margin: 0,
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
                 });
             };
             updatePosition();
