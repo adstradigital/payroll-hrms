@@ -90,8 +90,13 @@
 }
 
 .sidebar__nav::-webkit-scrollbar-thumb {
-    background: var(--border-color);
+    background: transparent;
     border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+.sidebar__nav:hover::-webkit-scrollbar-thumb {
+    background: var(--border-color);
 }
 
 .sidebar__nav::-webkit-scrollbar-thumb:hover {
@@ -225,7 +230,6 @@
     flex-direction: column;
     gap: 2px;
     position: relative;
-    animation: slideDown 0.25s ease-out;
 }
 
 /* Vertical line connector */
@@ -266,7 +270,7 @@
 .sidebar__subitem:hover {
     background: var(--bg-tertiary);
     color: var(--text-primary);
-    padding-left: 16px;
+    transform: translateX(4px);
 }
 
 [data-theme="dark"] .sidebar__subitem:hover {
@@ -279,7 +283,7 @@
     background: var(--brand-primary-light);
     color: var(--brand-primary);
     font-weight: var(--font-weight-semibold);
-    padding-left: 16px;
+    transform: translateX(4px);
 }
 
 [data-theme="dark"] .sidebar__subitem--active {
@@ -337,13 +341,13 @@
 
 .sidebar__grand-subitem:hover {
     color: var(--text-primary);
-    padding-left: 14px;
+    transform: translateX(3px);
 }
 
 .sidebar__grand-subitem--active {
     color: var(--brand-primary);
     font-weight: 600;
-    padding-left: 14px;
+    transform: translateX(3px);
 }
 
 [data-theme="dark"] .sidebar__grand-subitem--active {
@@ -787,4 +791,60 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* ===============================
+   SUBMENU CONTAINER - Smooth CSS Animation
+   Replaces the abrupt JS conditional render
+   =============================== */
+
+.sidebar__submenu-container {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition:
+        max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.2s ease;
+}
+
+.sidebar__submenu-container--open {
+    max-height: 800px;
+    opacity: 1;
+}
+
+/* ===============================
+   SUBMENU SECTION DIVIDERS
+   For grouping complex menus (e.g. Payroll)
+   =============================== */
+
+.sidebar__submenu-divider {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    color: var(--text-muted);
+    padding: 10px 12px 3px;
+    margin-top: 4px;
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+.sidebar__submenu-divider:first-child {
+    margin-top: 0;
+    padding-top: 4px;
+}
+
+/* ===============================
+   SIDEBAR ITEM ARROW - Rotation Transition
+   Handles the smooth chevron spin on expand/collapse
+   =============================== */
+
+.sidebar__item-arrow {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+}
+
+.sidebar__item--active .sidebar__item-arrow {
+    color: currentColor;
 }

@@ -3,10 +3,15 @@ from .views import (
     asset_list_create, asset_detail, asset_allocate, asset_deallocate, asset_dashboard_stats,
     asset_batch_list_create, asset_batch_detail,
     asset_request_list_create, asset_request_detail, asset_request_process,
-    asset_history_list, asset_history_detail
+    asset_history_list, asset_history_detail,
+    asset_category_list_create, asset_category_detail
 )
 
 urlpatterns = [
+    # Asset Categories
+    path('categories/', asset_category_list_create, name='asset-category-list'),
+    path('categories/<uuid:pk>/', asset_category_detail, name='asset-category-detail'),
+
     # Asset Inventory
     path('inventory/', asset_list_create, name='asset-list'),
     path('inventory/dashboard-stats/', asset_dashboard_stats, name='asset-dashboard-stats'),

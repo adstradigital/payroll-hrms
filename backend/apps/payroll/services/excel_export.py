@@ -59,7 +59,7 @@ class ExcelExportService:
                 emp.department.name if emp.department else "N/A",
                 emp.designation.name if emp.designation else "N/A",
                 emp.bank_name or "N/A",
-                emp.account_number or "N/A"
+                emp.bank_account_number or "N/A"
             ]
 
             # Map components to values

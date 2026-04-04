@@ -305,8 +305,10 @@ def performance_review_list(request):
             # Use Create serializer for POST
             serializer = PerformanceReviewCreateSerializer(data=request.data)
             if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                instance = serializer.save()
+                # Return the full object including ID and nested models
+                full_serializer = PerformanceReviewSerializer(instance)
+                return Response(full_serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
     return safe_api(logic)

@@ -19,7 +19,7 @@ class ExpenseClaimSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseClaim
         fields = [
-            'id', 'employee', 'employee_name', 'title', 'category', 'category_name',
+            'id', 'employee', 'employee_name', 'title', 'category', 'category_id',
             'amount', 'claim_date', 'description', 'receipt', 'status',
             'current_stage', 'approval_history', 'created_at', 'updated_at', 'approved_by'
         ]

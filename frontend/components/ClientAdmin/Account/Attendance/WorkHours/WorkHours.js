@@ -48,17 +48,15 @@ export default function WorkHours() {
     const handleCalculateAll = async () => {
         setCalculating(true);
         try {
-            await Promise.all(
-                data.map(item =>
-                    attendanceApi.triggerSummaryGeneration({
-                        employee: item.employee,
-                        month: selectedMonth,
-                        year: selectedYear
-                    })
-                )
-            );
+            // Uniformly trigger bulk generation for the selected period
+            // The backend handles individual vs company-wide based on the presence of employee_id
+            await attendanceApi.triggerSummaryGeneration({
+                month: selectedMonth,
+                year: selectedYear
+            });
+            
             await fetchSummaries();
-            alert("Recalculation complete for all listed employees.");
+            alert("Recalculation complete for the selected period.");
         } catch (err) {
             console.error("Calculation failed:", err);
             alert("Some calculations failed. Please try again.");

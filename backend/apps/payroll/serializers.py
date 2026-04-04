@@ -95,7 +95,7 @@ class EmployeeSalarySerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeSalary
         fields = '__all__'
-        read_only_fields = ['gross_salary', 'net_salary', 'net_salary', 'ctc']
+        read_only_fields = ['company', 'gross_salary', 'net_salary', 'ctc']
 
 
 class PaySlipComponentSerializer(serializers.ModelSerializer):

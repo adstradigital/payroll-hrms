@@ -1,8 +1,5 @@
 from rest_framework import serializers
-from .models import (
-    LeaveType, LeaveBalance, LeaveRequest, 
-    LeaveEncashment, LeaveSettings
-)
+from .models import LeaveType, LeaveBalance, LeaveRequest, LeaveEncashment, LeaveSettings, GlobalLeaveSettings
 
 
 class LeaveTypeSerializer(serializers.ModelSerializer):
@@ -70,47 +67,29 @@ class LeaveRequestApprovalSerializer(serializers.Serializer):
     rejection_reason = serializers.CharField(required=False, allow_blank=True)
 
 
+class LeaveSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeaveSettings
+        fields = '__all__'
+
+
+class GlobalLeaveSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalLeaveSettings
+        fields = '__all__'
+
+
 class LeaveEncashmentSerializer(serializers.ModelSerializer):
-    employee_name = serializers.SerializerMethodField()
-    employee_id_display = serializers.SerializerMethodField()
-    leave_type_name = serializers.SerializerMethodField()
-    leave_type_code = serializers.SerializerMethodField()
-    approved_by_name = serializers.SerializerMethodField()
-    status_display = serializers.SerializerMethodField()
+    employee_name = serializers.ReadOnlyField(source='employee.full_name')
+    employee_id_display = serializers.ReadOnlyField(source='employee.employee_id')
+    leave_type_name = serializers.ReadOnlyField(source='leave_type.name')
+    approved_by_name = serializers.ReadOnlyField(source='approved_by.full_name')
 
     class Meta:
         model = LeaveEncashment
         fields = '__all__'
-        read_only_fields = ['total_amount', 'status', 'approved_by', 'approved_at']
-
-    def get_employee_name(self, obj):
-        return obj.employee.full_name if obj.employee else None
-
-    def get_employee_id_display(self, obj):
-        return obj.employee.employee_id if obj.employee else None
-
-    def get_leave_type_name(self, obj):
-        return obj.leave_type.name if obj.leave_type else None
-
-    def get_leave_type_code(self, obj):
-        return obj.leave_type.code if obj.leave_type else None
-
-    def get_approved_by_name(self, obj):
-        return obj.approved_by.full_name if obj.approved_by else None
-
-    def get_status_display(self, obj):
-        return obj.get_status_display()
 
 
 class LeaveEncashmentProcessSerializer(serializers.Serializer):
-    """For processing (approve/reject/mark_paid) an encashment request"""
     action = serializers.ChoiceField(choices=['approve', 'reject', 'mark_paid'])
     rejection_reason = serializers.CharField(required=False, allow_blank=True)
-
-
-class LeaveSettingsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = LeaveSettings
-        fields = ['id', 'is_encashment_enabled', 'fiscal_year_start', 'default_probation_months', 'allow_negative_balance']
-        read_only_fields = ['id']
-

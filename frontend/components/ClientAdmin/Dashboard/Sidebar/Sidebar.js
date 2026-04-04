@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     LayoutDashboard, Users, Calendar, Clock,
-    Wallet, FileText, Settings, ChevronDown,
+    Wallet, FileText, Settings,
     ChevronRight, LogOut, Bell, User, CheckCircle2,
     X, Loader, AlertCircle, HelpCircle, Upload, Activity,
     Box, Package, TrendingUp, UserCheck,
@@ -194,21 +194,25 @@ const menuItems = [
         permission: ['payroll.view', 'payroll.view_payslip', 'payroll.view_payslips'],
         children: [
             { id: 'payroll-dashboard', label: 'Dashboard', translationKey: 'common.dashboard', path: '/dashboard/payroll' },
+            { id: 'div-structure', type: 'divider', label: 'Structure & Salary' },
             { id: 'salary-components', label: 'Salary Components', translationKey: 'common.salaryComponents', path: '/dashboard/payroll/salarycomponents', permission: 'payroll.manage' },
             { id: 'salary-structure', label: 'Salary Structure', translationKey: 'common.salaryStructure', path: '/dashboard/payroll/structure', permission: 'payroll.manage' },
             { id: 'employee-salary', label: 'Employee Salary', translationKey: 'common.employeeSalary', path: '/dashboard/payroll/employee-salary', permission: 'payroll.manage' },
+            { id: 'div-runs', type: 'divider', label: 'Payroll Runs' },
+            { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
             { id: 'payslips', label: 'Payslips', translationKey: 'common.payslips', path: '/dashboard/payroll/payslips' },
+            { id: 'div-comp', type: 'divider', label: 'Compensation' },
             { id: 'encashments', label: 'Encashments & Reimbursements', translationKey: 'common.encashments', path: '/dashboard/payroll/encashments-reimbursements', permission: 'payroll.manage' },
             { id: 'bonus-incentives', label: 'Bonus & Incentives', path: '/dashboard/payroll/bonus-incentives', permission: 'payroll.manage' },
             { id: 'sales-commission', label: 'Sales Commission', path: '/dashboard/payroll/sales-commission', permission: 'payroll.manage' },
+            { id: 'ctc-calculator', label: 'CTC Calculator', path: '/dashboard/payroll/ctc-calculator', permission: 'payroll.view' },
+            { id: 'div-deductions', type: 'divider', label: 'Deductions & Loans' },
             { id: 'tax', label: 'Tax Management', translationKey: 'common.tax', path: '/dashboard/payroll/tax', permission: 'payroll.manage' },
             { id: 'advance-salary', label: 'Advance Salary', path: '/dashboard/payroll/advance-salary' },
             { id: 'advance-approvals', label: 'Advance Approvals', path: '/dashboard/payroll/advance-approvals', adminOnly: true },
             { id: 'loans', label: 'Loans & EMI', translationKey: 'common.loans', path: '/dashboard/payroll/loans', permission: 'payroll.manage' },
             { id: 'loan-approvals', label: 'Loan Approvals', path: '/dashboard/payroll/loan-approvals', adminOnly: true },
             { id: 'loan-repayment', label: 'Loan Repayment Tracking', path: '/dashboard/payroll/loan-repayment-tracking', permission: 'payroll.manage' },
-            { id: 'run-payroll', label: 'Run Payroll', translationKey: 'common.runPayroll', path: '/dashboard/payroll/run', permission: 'payroll.manage' },
-            { id: 'ctc-calculator', label: 'CTC Calculator', path: '/dashboard/payroll/ctc-calculator', permission: 'payroll.view' },
         ]
     },
     {
@@ -298,6 +302,7 @@ export default function Sidebar() {
     const [ticketStats, setTicketStats] = useState(null);
 
     const pathMatchesCurrent = (targetPath, { exact = false } = {}) => {
+        if (!targetPath) return false;
         const [basePath, queryString = ''] = targetPath.split('?');
         const targetParams = new URLSearchParams(queryString);
         const targetEntries = Array.from(targetParams.entries());
@@ -403,15 +408,31 @@ export default function Sidebar() {
         }
     }, [pathname, searchParams]);
 
+    // Scroll active subitem into view on every navigation
+    useEffect(() => {
+        requestAnimationFrame(() => {
+            const activeEl = document.querySelector('.sidebar__subitem--active');
+            activeEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    }, [pathname]);
+
     useEffect(() => {
         // Fetch ticket stats on component mount
         fetchTicketStats();
     }, []);
 
     const toggleExpand = (itemId) => {
-        setExpandedItems(prev =>
-            prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
-        );
+        const isTopLevel = menuItems.some(mi => mi.id === itemId);
+        setExpandedItems(prev => {
+            if (isTopLevel) {
+                // Accordion: only one top-level section open at a time
+                return prev.includes(itemId) ? [] : [itemId];
+            }
+            // Sub-level: just toggle (no accordion)
+            return prev.includes(itemId)
+                ? prev.filter(id => id !== itemId)
+                : [...prev, itemId];
+        });
     };
 
     const isActive = (path) => pathMatchesCurrent(path, { exact: true });
@@ -485,7 +506,8 @@ export default function Sidebar() {
     // Also filter children based on permissions
     const filterChildren = (children) => {
         if (!children) return [];
-        return children.filter(checkPermission);
+        // Keep dividers, filter regular items by permission
+        return children.filter(child => child.type === 'divider' || checkPermission(child));
     };
 
     // Logout Flow Handlers
@@ -625,16 +647,19 @@ export default function Sidebar() {
                                     >
                                         <Icon className="sidebar__item-icon" size={20} />
                                         <span className="sidebar__item-label">{t(item.translationKey) || item.label}</span>
-                                        {isExpanded ? (
-                                            <ChevronDown className="sidebar__item-arrow" size={16} />
-                                        ) : (
-                                            <ChevronRight className="sidebar__item-arrow" size={16} />
-                                        )}
+                                        <ChevronRight
+                                            className="sidebar__item-arrow"
+                                            size={16}
+                                            style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                                        />
                                     </button>
 
-                                    {isExpanded && (
+                                    <div className={`sidebar__submenu-container${isExpanded ? ' sidebar__submenu-container--open' : ''}`}>
                                         <div className="sidebar__submenu">
                                             {filterChildren(item.children).map(child => {
+                                                if (child.type === 'divider') {
+                                                    return <div key={child.id} className="sidebar__submenu-divider">{child.label}</div>;
+                                                }
                                                 const hasGrandChildren = child.children && child.children.length > 0;
                                                 const isChildExpanded = expandedItems.includes(child.id);
                                                 const isChildActive = isParentActive(child);
@@ -651,13 +676,13 @@ export default function Sidebar() {
                                                                     <span className="sidebar__subitem-dot"></span>
                                                                     {ChildIcon && <ChildIcon className="sidebar__subitem-icon" size={16} />}
                                                                     <span className="sidebar__subitem-label">{t(child.translationKey) || child.label}</span>
-                                                                    {isChildExpanded ? (
-                                                                        <ChevronDown className="sidebar__item-arrow" size={14} />
-                                                                    ) : (
-                                                                        <ChevronRight className="sidebar__item-arrow" size={14} />
-                                                                    )}
+                                                                    <ChevronRight
+                                                                        className="sidebar__item-arrow"
+                                                                        size={14}
+                                                                        style={{ transform: isChildExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                                                                    />
                                                                 </button>
-                                                                {isChildExpanded && (
+                                                                <div className={`sidebar__submenu-container${isChildExpanded ? ' sidebar__submenu-container--open' : ''}`}>
                                                                     <div className="sidebar__grand-submenu">
                                                                         {filterChildren(child.children).map(grandChild => (
                                                                             <Link
@@ -670,7 +695,7 @@ export default function Sidebar() {
                                                                             </Link>
                                                                         ))}
                                                                     </div>
-                                                                )}
+                                                                </div>
                                                             </>
                                                         ) : (
                                                             <Link
@@ -691,7 +716,7 @@ export default function Sidebar() {
                                                 );
                                             })}
                                         </div>
-                                    )}
+                                    </div>
                                 </>
                             ) : (
                                 <Link

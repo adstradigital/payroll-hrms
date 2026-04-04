@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { expensesApi, mockCategories } from '@/api/expensesApi';
+import { expensesApi } from '@/api/expensesApi';
 import { Plus, Edit2, Trash2, X, Check } from 'lucide-react';
 import './Categories.css';
 
@@ -18,8 +18,7 @@ const Categories = () => {
       const res = await expensesApi.getCategories();
       setCategories(Array.isArray(res.data) ? res.data : (res.data.results || []));
     } catch (err) {
-      console.error("Failed to fetch categories", err);
-      setCategories(mockCategories);
+      setCategories([]);
     } finally {
       setLoading(false);
     }

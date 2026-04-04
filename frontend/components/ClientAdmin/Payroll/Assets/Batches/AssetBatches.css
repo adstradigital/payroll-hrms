@@ -304,11 +304,25 @@
     color: var(--text-primary);
 }
 
-.ab-batch-card-id {
-    margin-top: 0.125rem;
-    font-family: monospace;
-    font-size: 0.8125rem;
-    color: var(--brand-primary);
+.ab-batch-card-id-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.ab-batch-card-id-value {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    display: inline-block;
+    border: 1px solid var(--border-color);
 }
 
 .ab-batch-card-meta {

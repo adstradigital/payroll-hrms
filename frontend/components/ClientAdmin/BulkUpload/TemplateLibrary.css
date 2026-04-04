@@ -126,7 +126,7 @@
 }
 
 .bu-btn-primary:hover {
-    background: var(--brand-primary-dark);
+    background: var(--brand-primary-hover);
 }
 
 .bu-btn-secondary {

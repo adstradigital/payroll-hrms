@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Bell, Settings, Globe, ChevronDown, Building2, Check, MapPin } from 'lucide-react';
 import ThemeToggle from '@/components/ClientAdmin/Dashboard/ThemeToggle/ThemeToggle';
@@ -28,6 +28,9 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
     const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
     const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
     const [enableGlobalSearch, setEnableGlobalSearch] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchReadOnly, setSearchReadOnly] = useState(true);
+    const searchInputRef = useRef(null);
     const companyDropdownRef = useRef(null);
     const languageDropdownRef = useRef(null);
 
@@ -141,9 +144,16 @@ export default function Header({ title, subtitle, breadcrumbs = [] }) {
                     <div className="header__search">
                         <Search size={16} className="header__search-icon" />
                         <input
+                            ref={searchInputRef}
                             type="text"
                             placeholder={t('common.search')}
                             className="header__search-input"
+                            autoComplete="off"
+                            readOnly={searchReadOnly}
+                            value={searchQuery}
+                            onFocus={() => setSearchReadOnly(false)}
+                            onBlur={() => setSearchReadOnly(true)}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                 </div>

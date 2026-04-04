@@ -32,6 +32,7 @@ urlpatterns = [
     
     # ==================== SUPER ADMIN ====================
     path('users/', views.user_list, name='user_list'),
+    path('super-admin/stats/', views.super_admin_stats, name='super_admin_stats'),
     
     # ==================== ORGANIZATION REGISTRATION APPROVALS ====================
     path('registrations/submit/', views.submit_organization_registration, name='submit_registration'),

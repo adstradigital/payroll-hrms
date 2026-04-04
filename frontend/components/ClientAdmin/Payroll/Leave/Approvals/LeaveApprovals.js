@@ -15,6 +15,7 @@ export default function LeaveApprovals() {
     const [processingId, setProcessingId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentUser, setCurrentUser] = useState(null);
+    const [rejectModal, setRejectModal] = useState({ show: false, requestId: null, reason: '' });
 
     useEffect(() => {
         fetchData();
@@ -52,14 +53,23 @@ export default function LeaveApprovals() {
         }
     };
 
-    const handleReject = async (id) => {
-        const reason = prompt('Please enter a reason for rejection:');
-        if (reason === null) return;
+    const openRejectModal = (id) => {
+        setRejectModal({ show: true, requestId: id, reason: '' });
+    };
+
+    const closeRejectModal = () => {
+        setRejectModal({ show: false, requestId: null, reason: '' });
+    };
+
+    const submitReject = async () => {
+        const { requestId, reason } = rejectModal;
+        if (!reason.trim()) return;
 
         try {
-            setProcessingId(id);
-            await rejectLeave(id, reason);
-            setPendingRequests(prev => prev.filter(req => req.id !== id));
+            setProcessingId(requestId);
+            closeRejectModal();
+            await rejectLeave(requestId, reason);
+            setPendingRequests(prev => prev.filter(req => req.id !== requestId));
         } catch (err) {
             alert('Failed to reject leave request.');
         } finally {
@@ -83,11 +93,12 @@ export default function LeaveApprovals() {
 
     return (
         <div className="leave-approvals">
-            {/* Header & Stats */}
             <div className="approvals-header">
                 <div className="approvals-stats">
-                    <div className="approval-stat">
-                        <Clock className="text-warning" size={20} />
+                    <div className="approval-stat approval-stat--pending">
+                        <div className="approval-stat__icon-wrapper">
+                            <Clock className="text-warning" size={24} />
+                        </div>
                         <div className="approval-stat__info">
                             <span className="approval-stat__count">{pendingRequests.length}</span>
                             <span className="approval-stat__label">Pending Approvals</span>
@@ -149,7 +160,7 @@ export default function LeaveApprovals() {
                             <div className="approval-item__actions">
                                 <button
                                     className="reject-btn"
-                                    onClick={() => handleReject(request.id)}
+                                    onClick={() => openRejectModal(request.id)}
                                     disabled={processingId === request.id}
                                 >
                                     <XCircle size={18} />
@@ -166,6 +177,40 @@ export default function LeaveApprovals() {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Reject Modal */}
+            {rejectModal.show && (
+                <div className="reject-modal-overlay">
+                    <div className="reject-modal">
+                        <div className="reject-modal__header">
+                            <h3>Reject Leave Request</h3>
+                            <button className="reject-modal__close" onClick={closeRejectModal}>
+                                <XCircle size={24} strokeWidth={1.5} />
+                            </button>
+                        </div>
+                        <div className="reject-modal__body">
+                            <label>Reason for Rejection <span className="text-danger">*</span></label>
+                            <textarea
+                                placeholder="Please provide a valid reason..."
+                                value={rejectModal.reason}
+                                onChange={(e) => setRejectModal(prev => ({ ...prev, reason: e.target.value }))}
+                                autoFocus
+                                rows={4}
+                            />
+                        </div>
+                        <div className="reject-modal__footer">
+                            <button className="btn-cancel" onClick={closeRejectModal}>Cancel</button>
+                            <button 
+                                className="btn-confirm-reject" 
+                                onClick={submitReject}
+                                disabled={!rejectModal.reason.trim()}
+                            >
+                                Confirm Rejection
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

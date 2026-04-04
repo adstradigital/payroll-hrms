@@ -1230,6 +1230,143 @@
     border-radius: var(--radius-full);
 }
 
+/* ── Sidebar Redesign ── */
+.modal-sidebar-section {
+    width: 320px;
+    padding: var(--space-xl);
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 1px solid var(--obj-border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+}
+
+.sidebar-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.field-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.field-item label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--obj-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sidebar-select, .date-input {
+    width: 100%;
+    background: var(--obj-input-bg);
+    border: 1px solid var(--obj-border);
+    border-radius: var(--radius-lg);
+    padding: 10px 14px;
+    color: var(--obj-text);
+    font-size: 0.875rem;
+    outline: none;
+    transition: all var(--transition-normal);
+}
+
+.sidebar-select:focus, .date-input:focus {
+    border-color: var(--color-primary);
+}
+
+.field-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.field-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--color-primary);
+    pointer-events: none;
+}
+
+.field-input-wrap .date-input {
+    padding-left: 36px;
+}
+
+.sidebar-divider {
+    height: 1px;
+    background: var(--obj-border);
+    opacity: 0.5;
+}
+
+.sidebar-progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.progress-header span:first-child {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--obj-text-secondary);
+    text-transform: uppercase;
+}
+
+.progress-value {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-primary-light);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.progress-range {
+    width: 100%;
+    height: 6px;
+    background: var(--obj-input-bg);
+    border-radius: var(--radius-full);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.progress-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    border: 2px solid var(--obj-bg);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+.sidebar-assign-section {
+    margin-top: auto;
+}
+
+.assign-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--obj-text-secondary);
+}
+
+.assign-checkbox input {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    accent-color: var(--color-primary);
+}
+
 .progress-slider::-webkit-slider-thumb {
     appearance: none;
     width: 12px;

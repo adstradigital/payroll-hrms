@@ -3,12 +3,13 @@
 import { createPortal } from 'react-dom';
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Plus, Star, Calendar, TrendingUp, Filter, 
+import {
+    Search, Plus, Star, Calendar, TrendingUp, Filter,
     Download, MoreVertical, ChevronDown, Eye, Edit, Trash2, Clock,
     CheckCircle, AlertCircle, XCircle
 } from 'lucide-react';
-import { 
-    getPerformanceReviews, 
+import {
+    getPerformanceReviews,
     getPerformanceReview,
     updatePerformanceReview,
     deletePerformanceReview
@@ -49,6 +50,17 @@ const downloadCsv = (filename, headers, rows) => {
     URL.revokeObjectURL(url);
 };
 
+const itemsToRows = (items) => items.map((review) => [
+    review.employee,
+    review.reviewer,
+    review.department,
+    review.period,
+    review.rating ?? 'Not Rated',
+    `${review.progress || 0}%`,
+    getStatusBadge(review.status).label,
+    review.date
+]);
+
 export default function Reviews() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -81,7 +93,7 @@ export default function Reviews() {
         try {
             const response = await getPerformanceReviews();
             const data = response?.results || response || [];
-            
+
             const mappedReviews = data.map(r => ({
                 id: r.id,
                 employee: r.employee?.full_name || r.employee_name || 'Unknown',
@@ -108,8 +120,8 @@ export default function Reviews() {
         const pending = reviews.filter(r => r.status === 'pending').length;
         const inProgress = reviews.filter(r => r.status === 'in_progress').length;
         const ratedReviews = reviews.filter(r => r.rating);
-        const avgRating = ratedReviews.length > 0 
-            ? ratedReviews.reduce((acc, r) => acc + r.rating, 0) / ratedReviews.length 
+        const avgRating = ratedReviews.length > 0
+            ? ratedReviews.reduce((acc, r) => acc + r.rating, 0) / ratedReviews.length
             : 0;
 
         return { completed, pending, inProgress, avgRating: avgRating.toFixed(1) };
@@ -195,16 +207,6 @@ export default function Reviews() {
         setEditingReview(null);
     };
 
-    const getReviewRowsForExport = (items) => items.map((review) => [
-        review.employee,
-        review.reviewer,
-        review.department,
-        review.period,
-        review.rating ?? 'Not Rated',
-        `${review.progress}%`,
-        getStatusBadge(review.status).label,
-        review.date
-    ]);
 
     const handleExportSelected = () => {
         const selectedItems = filteredReviews.filter((review) => selectedReviews.includes(review.id));
@@ -216,7 +218,7 @@ export default function Reviews() {
         downloadCsv(
             `performance-reviews-${new Date().toISOString().slice(0, 10)}.csv`,
             ['Employee', 'Reviewer', 'Department', 'Period', 'Rating', 'Progress', 'Status', 'Due Date'],
-            getReviewRowsForExport(selectedItems)
+            itemsToRows(selectedItems)
         );
     };
 
@@ -390,16 +392,11 @@ export default function Reviews() {
                                 <div className="th-content">Employee {sortBy === 'employee' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
                             </th>
                             <th>Reviewer</th>
-                            <th>Department</th>
                             <th>Period</th>
                             <th onClick={() => handleSort('rating')} className="th-sortable">
-                                <div className="th-content">Rating {sortBy === 'rating' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
+                                <div className="th-content">Rating / Progress {sortBy === 'rating' && <ChevronDown size={14} />}</div>
                             </th>
-                            <th>Progress</th>
-                            <th>Status</th>
-                            <th onClick={() => handleSort('date')} className="th-sortable">
-                                <div className="th-content">Due Date {sortBy === 'date' && <ChevronDown size={14} className={sortOrder === 'asc' ? 'rotate-180' : ''} />}</div>
-                            </th>
+                            <th>Status / Due</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -414,34 +411,36 @@ export default function Reviews() {
                                     <td>
                                         <div className="employee-cell">
                                             <div className="employee-avatar">{review.employee.split(' ').map(n => n[0]).join('')}</div>
-                                            <div className="employee-info"><div className="employee-name">{review.employee}</div></div>
+                                            <div className="employee-info">
+                                                <div className="employee-name">{review.employee}</div>
+                                                <div className="employee-dept">{review.department}</div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="text-secondary">{review.reviewer}</td>
-                                    <td><span className="department-badge">{review.department}</span></td>
                                     <td className="text-secondary">{review.period}</td>
                                     <td>
-                                        {review.rating ? (
-                                            <div className="rating-cell">
-                                                <div className="stars">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <Star key={i} size={14} className={i < Math.floor(review.rating) ? 'star--filled' : 'star--empty'} />
-                                                    ))}
+                                        <div className="combined-score-cell">
+                                            {review.rating ? (
+                                                <div className="rating-pill">
+                                                    <Star size={12} fill="var(--rv-color-gold)" />
+                                                    <span>{review.rating}</span>
                                                 </div>
-                                                <span className="rating-value">{review.rating}</span>
+                                            ) : <span className="text-muted">--</span>}
+                                            <div className="progress-mini">
+                                                <div className="progress-bar-mini">
+                                                    <div className="progress-fill-mini" style={{ width: `${review.progress}%` }}></div>
+                                                </div>
+                                                <span className="progress-val-mini">{review.progress}%</span>
                                             </div>
-                                        ) : <span className="text-muted">--</span>}
-                                    </td>
-                                    <td>
-                                        <div className="progress-cell">
-                                            <div className="progress-bar">
-                                                <div className="progress-bar__fill" style={{ width: `${review.progress}%` }}></div>
-                                            </div>
-                                            <span className="progress-text">{review.progress}%</span>
                                         </div>
                                     </td>
-                                    <td><span className={`badge ${statusBadge.class}`}><statusBadge.icon size={12} /> {statusBadge.label}</span></td>
-                                    <td className="text-secondary">{review.date}</td>
+                                    <td>
+                                        <div className="status-due-cell">
+                                            <span className={`badge badge--compact ${statusBadge.class}`}>{statusBadge.label}</span>
+                                            <span className="due-date-mini">{review.date}</span>
+                                        </div>
+                                    </td>
                                     <td>
                                         <div className="dropdown">
                                             <button className="btn-icon" onClick={(e) => {
@@ -468,8 +467,8 @@ export default function Reviews() {
                 </div>
             )}
 
-            <CreateReviewModal 
-                isOpen={activeDropdown === 'create_modal'} 
+            <CreateReviewModal
+                isOpen={activeDropdown === 'create_modal'}
                 onClose={handleCloseCreateModal}
                 onSuccess={() => { handleCloseCreateModal(); fetchReviews(); }}
             />
@@ -486,6 +485,14 @@ export default function Reviews() {
                             <>
                                 <button className="dropdown-item" onClick={() => handleViewDetails(review)}><Eye size={16} /> View Details</button>
                                 <button className="dropdown-item" onClick={() => handleEditClick(review)}><Edit size={16} /> Edit</button>
+                                <button className="dropdown-item" onClick={() => {
+                                    downloadCsv(
+                                        `performance-review-${review.employee.replace(/\s+/g, '-')}-${review.id.slice(0, 8)}.csv`,
+                                        ['Employee', 'Reviewer', 'Department', 'Period', 'Rating', 'Progress', 'Status', 'Due Date'],
+                                        itemsToRows([review])
+                                    );
+                                    closeDropdown();
+                                }}><Download size={16} /> Download Report (CSV)</button>
                                 <div className="dropdown-divider"></div>
                                 <button className="dropdown-item dropdown-item--danger" onClick={() => handleDeleteReview(review.id)}><Trash2 size={16} /> Delete</button>
                             </>
@@ -568,6 +575,13 @@ function ReviewDetailsModal({ review, isOpen, onClose, onEdit }) {
                 </div>
                 <div className="modal-footer">
                     <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+                    <button type="button" className="btn btn-outline" onClick={() => {
+                        downloadCsv(
+                            `performance-review-${review.employee.replace(/\s+/g, '-')}-${review.id.slice(0, 8)}.csv`,
+                            ['Employee', 'Reviewer', 'Department', 'Period', 'Rating', 'Progress', 'Status', 'Due Date'],
+                            itemsToRows([review]) // Use the helper to get rows
+                        );
+                    }}><Download size={16} /> Download CSV</button>
                     <button type="button" className="btn btn-primary" onClick={onEdit}>Edit Review</button>
                 </div>
             </div>
@@ -594,32 +608,55 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
     }, [isOpen, review]);
 
     const loadData = async () => {
-        console.log("EDIT REVIEW OBJECT:", review)
-        console.log("REVIEW ID:", review?.id)
+        if (!review?.id) {
+            console.error("Missing Review ID in EditReviewModal");
+            setError("Review ID is missing. Please refresh the page and try again.");
+            setLoading(false);
+            return;
+        }
+
+        console.log("Loading details for Review ID:", review.id);
         setLoading(true);
+        setError(null);
+
         try {
-            const [empRes, reviewDetail] = await Promise.all([
-                getAllEmployees({ page_size: 1000 }),
-                getPerformanceReview(review?.id)
-            ]);
-            
-            const empList = empRes.data?.results || empRes.data || [];
-            setEmployees(empList);
-            
+            // Fetch employees first
+            let empList = [];
+            try {
+                const empRes = await getAllEmployees({ page_size: 1000 });
+                empList = empRes.data?.results || empRes.data || [];
+                setEmployees(empList);
+            } catch (err) {
+                console.error("Employee fetch failed:", err);
+                throw new Error("Failed to load employee directory: " + (err.response?.data?.detail || err.message));
+            }
+
+            // Fetch review details
+            let reviewDetail = null;
+            try {
+                reviewDetail = await getPerformanceReview(review.id);
+            } catch (err) {
+                console.error("Review detail fetch failed:", err);
+                throw new Error("Failed to load review record from server: " + err.message);
+            }
+
             if (reviewDetail) {
+                // Fix: added null check because typeof null is 'object'
                 let reviewerId = (reviewDetail.reviewer && typeof reviewDetail.reviewer === 'object') ? reviewDetail.reviewer.id : reviewDetail.reviewer;
-                
+
                 let managerUserId = null;
 
                 // Find reporting manager's USER ID
                 if (reviewDetail.employee) {
-                    const subjectUserId = typeof reviewDetail.employee === 'object' ? reviewDetail.employee.id : reviewDetail.employee;
+                    // Fix: added null check
+                    const subjectUserId = (reviewDetail.employee && typeof reviewDetail.employee === 'object') ? reviewDetail.employee.id : reviewDetail.employee;
+
                     // Find employee record by User ID
-                    const subjectEmployee = empList.find(e => e.user === subjectUserId); 
-                    
+                    const subjectEmployee = empList.find(e => e.user === subjectUserId);
+
                     if (subjectEmployee?.reporting_manager) {
                         // subjectEmployee.reporting_manager is an Employee UUID
-                        const managerEmployee = empList.find(e => e.id === subjectEmployee.reporting_manager);
+                        const managerEmployee = empList.find(e => (e.id === subjectEmployee.reporting_manager || e.uuid === subjectEmployee.reporting_manager));
                         if (managerEmployee) {
                             managerUserId = managerEmployee.user; // User ID
                         }
@@ -639,15 +676,15 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                     }
                 }
 
-                setFormData({ 
-                    reviewer_id: effectiveReviewerId || '', 
-                    status: reviewDetail.status 
+                setFormData({
+                    reviewer_id: effectiveReviewerId || '',
+                    status: reviewDetail.status
                 });
                 setIsAutoReviewer(auto);
             }
         } catch (err) {
-            console.error("Failed to load edit data:", err);
-            setError("Failed to load review details.");
+            console.error("Detailed Modal Error:", err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -659,7 +696,7 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
         if (checked && reportingManagerId) {
             setFormData(prev => ({ ...prev, reviewer_id: reportingManagerId }));
         } else if (!checked) {
-             // When switching to manual, keep current ID but allow edit
+            // When switching to manual, keep current ID but allow edit
         }
     };
 
@@ -669,7 +706,7 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
         setError(null);
         try {
             await updatePerformanceReview(review.id, {
-                reviewer_id: formData.reviewer_id || null, 
+                reviewer_id: formData.reviewer_id || null,
                 status: formData.status
             });
             onSuccess();
@@ -708,10 +745,10 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                                         <label style={{ margin: 0 }}>Reviewer</label>
                                         {reportingManagerId && (
                                             <div className="form-check" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    id="manualOverride" 
-                                                    checked={!isAutoReviewer} 
+                                                <input
+                                                    type="checkbox"
+                                                    id="manualOverride"
+                                                    checked={!isAutoReviewer}
                                                     onChange={(e) => {
                                                         const isManual = e.target.checked;
                                                         setIsAutoReviewer(!isManual);
@@ -729,12 +766,12 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     {isAutoReviewer && reportingManagerId ? (
-                                        <div style={{ 
-                                            padding: '0.75rem', 
-                                            background: 'rgba(255, 255, 255, 0.05)', 
-                                            borderRadius: '6px', 
+                                        <div style={{
+                                            padding: '0.75rem',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            borderRadius: '6px',
                                             border: '1px solid rgba(255, 255, 255, 0.1)',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -743,13 +780,13 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                                         }}>
                                             <CheckCircle size={16} color="var(--rv-color-success)" />
                                             <span>
-                                                Reviewer: <strong>{employees.find(e => e.user === reportingManagerId)?.first_name} {employees.find(e => e.user === reportingManagerId)?.last_name}</strong> <span style={{opacity: 0.7, fontSize: '0.9em'}}>(Auto from reporting manager)</span>
+                                                Reviewer: <strong>{employees.find(e => e.user === reportingManagerId)?.first_name} {employees.find(e => e.user === reportingManagerId)?.last_name}</strong> <span style={{ opacity: 0.7, fontSize: '0.9em' }}>(Auto from reporting manager)</span>
                                             </span>
                                         </div>
                                     ) : (
-                                        <select 
-                                            value={formData.reviewer_id} 
-                                            onChange={e => setFormData({...formData, reviewer_id: e.target.value})}
+                                        <select
+                                            value={formData.reviewer_id}
+                                            onChange={e => setFormData({ ...formData, reviewer_id: e.target.value })}
                                             className="form-select"
                                         >
                                             <option value="">-- No Reviewer --</option>
@@ -763,7 +800,7 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                                 </div>
                                 <div className="form-group">
                                     <label>Status</label>
-                                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="form-select">
+                                    <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="form-select">
                                         <option value="pending">Pending</option>
                                         <option value="self_submitted">Self Assessment Submitted</option>
                                         <option value="under_review">Under Manager Review</option>
@@ -806,10 +843,10 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
         try {
             const { getReviewPeriods } = require('../services/performanceService');
             const { getAllEmployees } = require('../../../../../api/api_clientadmin');
-            
+
             const [periodsRes, employeesRes] = await Promise.all([
                 getReviewPeriods(),
-                getAllEmployees({ page_size: 1000 }) 
+                getAllEmployees({ page_size: 1000 })
             ]);
 
             const periodList = periodsRes?.results || periodsRes || [];
@@ -821,7 +858,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
             });
 
             setPeriods(prioritizedPeriods);
-            
+
             if (prioritizedPeriods.length > 0) {
                 setFormData(prev => ({ ...prev, review_period: prioritizedPeriods[0].id }));
             }
@@ -839,7 +876,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
         e.preventDefault();
         console.log("Submitting:", formData);
         console.log("Review Period:", formData.review_period);
-    console.log("Employee IDs:", formData.employee_ids);
+        console.log("Employee IDs:", formData.employee_ids);
         if (!formData.review_period || formData.employee_ids.length === 0) {
             setError('Please select a review period and at least one employee.');
             return;
@@ -888,15 +925,15 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                     <h2>Start New Review</h2>
                     <button className="modal-close" onClick={onClose}><XCircle size={24} /></button>
                 </div>
-                
+
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
                         {error && (
-                            <div style={{ 
-                                background: 'rgba(239, 68, 68, 0.1)', 
-                                border: '1px solid rgba(239, 68, 68, 0.2)', 
-                                color: 'var(--rv-color-danger)', 
-                                padding: '0.75rem', 
+                            <div style={{
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                color: 'var(--rv-color-danger)',
+                                padding: '0.75rem',
                                 borderRadius: '0.5rem',
                                 marginBottom: '1.5rem',
                                 display: 'flex',
@@ -910,10 +947,10 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
 
                         <div className="form-group">
                             <label className="form-label">Review Period</label>
-                            <select 
+                            <select
                                 className="form-select"
                                 value={formData.review_period}
-                                onChange={e => setFormData({...formData, review_period: e.target.value})}
+                                onChange={e => setFormData({ ...formData, review_period: e.target.value })}
                                 required
                             >
                                 <option value="" disabled>Select a period</option>
@@ -945,7 +982,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                                         <label key={emp.id} className="multi-select-option">
                                             <input type="checkbox" checked={formData.employee_ids.includes(emp.id)} onChange={() => toggleEmployee(emp.id)} />
                                             <span style={{ color: 'white' }}>
-                                                {emp.full_name || 'Unknown'} 
+                                                {emp.full_name || 'Unknown'}
                                                 <span style={{ color: 'var(--rv-color-mist)', marginLeft: '0.5rem' }}>({emp.employee_id})</span>
                                             </span>
                                             <span style={{ color: 'var(--rv-color-mist)', fontSize: '0.75rem', marginLeft: 'auto' }}>{emp.department?.name}</span>
@@ -977,14 +1014,22 @@ function DropdownPortal({ anchor, onClose, children }) {
         if (anchor) {
             const updatePosition = () => {
                 const rect = anchor.getBoundingClientRect();
-                const menuWidth = 160; 
+                const menuWidth = 200; // Increased width for the new download option
+                const estimatedHeight = 220; // Approximate height for the menu items
+
+                // Check if there is enough space below
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const shouldShowAbove = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
+
                 setStyle({
                     position: 'fixed',
-                    top: `${rect.bottom + 5}px`,
-                    left: `${rect.right - menuWidth}px`,
-                    right: 'auto',
-                    zIndex: 1000,
-                    margin: 0
+                    top: shouldShowAbove ? `${rect.top - 5}px` : `${rect.bottom + 5}px`,
+                    left: `${Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 10)}px`,
+                    transform: shouldShowAbove ? 'translateY(-100%)' : 'none',
+                    zIndex: 2000,
+                    minWidth: `${menuWidth}px`,
+                    margin: 0,
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
                 });
             };
             updatePosition();

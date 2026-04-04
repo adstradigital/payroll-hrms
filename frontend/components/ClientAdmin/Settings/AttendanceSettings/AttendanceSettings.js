@@ -62,7 +62,11 @@ export default function AttendanceSettings() {
         allowedIps: '',
         autoClockoutEnabled: false,
         autoClockoutTime: '22:00',
-        maxRegularizationAttempts: 5
+        maxRegularizationAttempts: 5,
+        enableGeoFencing: false,
+        officeLatitude: '',
+        officeLongitude: '',
+        geoFenceRadiusMeters: 100
     });
 
     const [notification, setNotification] = useState(null);
@@ -96,7 +100,11 @@ export default function AttendanceSettings() {
                     allowedIps: policy.allowed_ips || '',
                     autoClockoutEnabled: policy.auto_clockout_enabled || false,
                     autoClockoutTime: policy.auto_clockout_time || '22:00',
-                    maxRegularizationAttempts: policy.max_regularization_attempts_per_month || 5
+                    maxRegularizationAttempts: policy.max_regularization_attempts_per_month || 5,
+                    enableGeoFencing: policy.enable_geo_fencing || false,
+                    officeLatitude: policy.office_latitude || '',
+                    officeLongitude: policy.office_longitude || '',
+                    geoFenceRadiusMeters: policy.geo_fence_radius_meters || 100
                 });
 
                 setRequestSettings({
@@ -151,6 +159,12 @@ export default function AttendanceSettings() {
                 auto_clockout_enabled: advancedSettings.autoClockoutEnabled,
                 auto_clockout_time: advancedSettings.autoClockoutTime,
                 max_regularization_attempts_per_month: advancedSettings.maxRegularizationAttempts,
+                
+                // Geofencing
+                enable_geo_fencing: advancedSettings.enableGeoFencing,
+                office_latitude: advancedSettings.officeLatitude,
+                office_longitude: advancedSettings.officeLongitude,
+                geo_fence_radius_meters: advancedSettings.geoFenceRadiusMeters,
                 
                 // Add Request Settings
                 enable_attendance_requests: requestSettings.enableAttendanceRequests,
@@ -772,6 +786,67 @@ export default function AttendanceSettings() {
                                 <span className="field-hint">Max requests allowed per employee per month</span>
                             </div>
                         </div>
+
+                        <div className="att-divider" />
+
+                        {/* GPS Geofencing */}
+                        <div className="att-toggle-row">
+                            <div className="att-toggle-item wide">
+                                <div className="toggle-info">
+                                    <div className="flex items-center gap-2">
+                                        <Globe size={16} className="text-green-500" />
+                                        <span className="toggle-label">GPS Geofencing Enforcement</span>
+                                    </div>
+                                    <span className="toggle-desc">Require employees to be within a specific radius of the office to clock in</span>
+                                </div>
+                                <label className="toggle-switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={advancedSettings.enableGeoFencing}
+                                        onChange={(e) => setAdvancedSettings({ ...advancedSettings, enableGeoFencing: e.target.checked })}
+                                    />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {advancedSettings.enableGeoFencing && (
+                            <div className="att-field-row animate-fade-in">
+                                <div className="att-field">
+                                    <label>Office Latitude</label>
+                                    <input
+                                        type="number"
+                                        step="0.000001"
+                                        value={advancedSettings.officeLatitude}
+                                        onChange={(e) => setAdvancedSettings({ ...advancedSettings, officeLatitude: e.target.value })}
+                                        placeholder="e.g. 23.8103"
+                                        className="att-input"
+                                    />
+                                </div>
+                                <div className="att-field">
+                                    <label>Office Longitude</label>
+                                    <input
+                                        type="number"
+                                        step="0.000001"
+                                        value={advancedSettings.officeLongitude}
+                                        onChange={(e) => setAdvancedSettings({ ...advancedSettings, officeLongitude: e.target.value })}
+                                        placeholder="e.g. 90.4125"
+                                        className="att-input"
+                                    />
+                                </div>
+                                <div className="att-field">
+                                    <label>Allowed Radius (Meters)</label>
+                                    <input
+                                        type="number"
+                                        value={advancedSettings.geoFenceRadiusMeters}
+                                        onChange={(e) => setAdvancedSettings({ ...advancedSettings, geoFenceRadiusMeters: parseInt(e.target.value) })}
+                                        className="att-input"
+                                        min="10"
+                                    />
+                                    <span className="field-hint">Radius from office center</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div className="att-card-footer">
                         <button 

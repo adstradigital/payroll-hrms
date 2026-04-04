@@ -3,55 +3,44 @@
  * Handles all API calls related to the Performance Management module
  */
 
-import BASE_URL from '../../../../../api/config';
+import axiosInstance from '../../../../../api/axiosInstance';
 
-const PERFORMANCE_BASE = `${BASE_URL}/performance`;
+const PERFORMANCE_BASE = 'performance'; // Relative to /api/ baseURL
 
-const formatApiError = (error) => {
-    if (!error || typeof error !== 'object') {
-        return 'Request failed';
+// Helper for formatted errors
+const getErrorMessage = (error) => {
+    if (error.response?.data) {
+        const data = error.response.data;
+        if (typeof data.detail === 'string') return data.detail;
+        if (typeof data.error === 'string') return data.error;
+        if (typeof data.message === 'string') return data.message;
+        
+        // Field errors
+        return Object.entries(data)
+            .filter(([_, v]) => v !== null)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)[0] || 'Validation failed';
     }
-
-    if (typeof error.detail === 'string') {
-        return error.detail;
-    }
-
-    if (typeof error.message === 'string') {
-        return error.message;
-    }
-
-    const fieldErrors = Object.entries(error)
-        .filter(([_, value]) => value !== null && value !== undefined)
-        .map(([field, value]) => {
-            const message = Array.isArray(value) ? value.join(', ') : String(value);
-            return `${field}: ${message}`;
-        });
-
-    return fieldErrors[0] || 'Request failed';
+    return error.message || 'Request failed';
 };
 
-// Helper function for authenticated requests
+// Generic request wrapper to maintain compatibility with existing service calls
 const authFetch = async (url, options = {}) => {
-    const token = localStorage.getItem('accessToken');
-    const headers = {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers
-    };
-
-    const response = await fetch(url, { ...options, headers });
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-        throw new Error(formatApiError(error));
+    try {
+        const isAbsolute = url.startsWith('http');
+        const config = {
+            url: url,
+            method: options.method || 'GET',
+            data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
+            params: options.params,
+            headers: options.headers
+        };
+        
+        const response = await axiosInstance(config);
+        return response.data;
+    } catch (error) {
+        console.error("Performance Service Error:", error);
+        throw new Error(getErrorMessage(error));
     }
-
-    // Handle 204 No Content
-    if (response.status === 204) {
-        return null;
-    }
-
-    return response.json();
 };
 
 // ==================== DASHBOARD ====================

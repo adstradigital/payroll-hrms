@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react';
 import {
     Send, CheckCircle2, XCircle, Clock,
-    User, Box, MessageSquare, Filter,
+    Plus, User, Box, MessageSquare, Filter,
     Search, ArrowUpRight, Calendar
 } from 'lucide-react';
-import { getAssetRequests, createAssetRequest } from '@/api/api_clientadmin';
+import { 
+    getAssetRequests, createAssetRequest, 
+    getAssetCategories, createAssetCategory 
+} from '@/api/api_clientadmin';
 import './AssetRequests.css';
 
-const INITIAL_FORM_DATA = { asset_type: '', priority: 'medium', reason: '' };
+const INITIAL_FORM_DATA = { asset_type: '', asset_name: '', priority: 'medium', reason: '', needed_by: '' };
 
 export default function AssetRequests() {
     const [requests, setRequests] = useState([]);
@@ -19,10 +22,39 @@ export default function AssetRequests() {
     const [formData, setFormData] = useState(INITIAL_FORM_DATA);
     const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });
     const [showRequestForm, setShowRequestForm] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [savingCategory, setSavingCategory] = useState(false);
 
     useEffect(() => {
         fetchRequests();
+        fetchCategories();
     }, []);
+
+    const fetchCategories = async () => {
+        try {
+            const resp = await getAssetCategories();
+            setCategories(resp.data.results || resp.data);
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        }
+    };
+
+    const handleQuickAddCategory = async () => {
+        if (!newCategoryName.trim()) return;
+        try {
+            setSavingCategory(true);
+            await createAssetCategory({ name: newCategoryName });
+            setNewCategoryName('');
+            setShowQuickAdd(false);
+            fetchCategories();
+        } catch (error) {
+            console.error('Error adding category:', error);
+        } finally {
+            setSavingCategory(false);
+        }
+    };
 
     const fetchRequests = async () => {
         try {
@@ -64,6 +96,7 @@ export default function AssetRequests() {
     const filteredRequests = requests.filter(req => {
         const matchesTab = activeTab === 'all' ? true : req.status === activeTab;
         const matchesSearch = req.asset_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (req.asset_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (req.reason || '').toLowerCase().includes(searchTerm.toLowerCase());
         return matchesTab && matchesSearch;
     });
@@ -112,51 +145,119 @@ export default function AssetRequests() {
             </div>
 
             {showRequestForm && (
-                <div className="ar-card ar-form-card is-open">
-                    <div className="ar-card-header ar-card-header--split">
-                        <h3><Send size={18} /> New Asset Request</h3>
-                    </div>
-
-                    <form className="ar-form" onSubmit={handleSubmit}>
-                        <div className="ar-form-row">
-                            <div className="ar-form-group">
-                                <label>Asset Type</label>
-                                <select
-                                    value={formData.asset_type}
-                                    onChange={(e) => setFormData({ ...formData, asset_type: e.target.value })}
-                                    required
-                                >
-                                    <option value="">Select Asset Type</option>
-                                    <option value="Laptop">Laptop</option>
-                                    <option value="Monitor">Monitor</option>
-                                    <option value="Mobile">Mobile</option>
-                                    <option value="Peripherals">Peripherals</option>
-                                </select>
-                            </div>
-                            <div className="ar-form-group">
-                                <label>Priority</label>
-                                <div className="ar-priority-options">
-                                    <label><input type="radio" name="priority" value="low" checked={formData.priority === 'low'} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} /> Low</label>
-                                    <label><input type="radio" name="priority" value="medium" checked={formData.priority === 'medium'} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} /> Medium</label>
-                                    <label><input type="radio" name="priority" value="high" checked={formData.priority === 'high'} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} /> High</label>
+                <div className="ar-modal-overlay" onClick={handleCloseRequestForm}>
+                    <div className="ar-modal" onClick={e => e.stopPropagation()}>
+                        <div className="ar-modal-header">
+                            <h3><Send size={18} /> New Asset Request</h3>
+                            <button className="ar-modal-close" onClick={handleCloseRequestForm}>
+                                <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
+                            </button>
+                        </div>
+                        <form className="ar-modal-form" onSubmit={handleSubmit}>
+                            <div className="ar-form-row">
+                                <div className="ar-form-group">
+                                    <label>Asset Type *</label>
+                                    <div className="ar-input-quick-add">
+                                        <select
+                                            value={formData.asset_type}
+                                            onChange={(e) => setFormData({ ...formData, asset_type: e.target.value })}
+                                            required
+                                        >
+                                            <option value="">Select Asset Type</option>
+                                            {categories.length > 0 ? (
+                                                categories.map(cat => (
+                                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                                ))
+                                            ) : (
+                                                <>
+                                                    <option value="Laptop">Laptop</option>
+                                                    <option value="Monitor">Monitor</option>
+                                                    <option value="Mobile">Mobile</option>
+                                                </>
+                                            )}
+                                        </select>
+                                        <button 
+                                            type="button" 
+                                            className={`ar-btn-icon-add ${showQuickAdd ? 'active' : ''}`}
+                                            onClick={() => setShowQuickAdd(!showQuickAdd)}
+                                            title="Add New Category"
+                                        >
+                                            <Plus size={18} />
+                                        </button>
+                                    </div>
+                                    {showQuickAdd && (
+                                        <div className="ar-quick-add-popover">
+                                            <input 
+                                                type="text" 
+                                                placeholder="New Asset Category..." 
+                                                value={newCategoryName}
+                                                onChange={e => setNewCategoryName(e.target.value)}
+                                                autoFocus
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={handleQuickAddCategory} 
+                                                className="ar-btn-primary ar-btn--xs"
+                                                disabled={savingCategory}
+                                            >
+                                                {savingCategory ? '...' : 'Add'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="ar-form-group">
+                                    <label>Date Needed By *</label>
+                                    <div className="ar-input-with-icon">
+                                        <Calendar size={16} />
+                                        <input
+                                            type="date"
+                                            value={formData.needed_by}
+                                            onChange={(e) => setFormData({ ...formData, needed_by: e.target.value })}
+                                            required
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="ar-form-group">
-                            <label>Reason for Request</label>
-                            <textarea
-                                rows={3}
-                                placeholder="Explain why you need this asset..."
-                                value={formData.reason}
-                                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                                required
-                            ></textarea>
-                        </div>
-                        <div className="ar-form-actions">
-                            <button type="button" className="ar-btn-secondary" onClick={handleCloseRequestForm}>Cancel</button>
-                            <button type="submit" className="ar-btn-primary">Send Request</button>
-                        </div>
-                    </form>
+                            <div className="ar-form-row">
+                                <div className="ar-form-group">
+                                    <label>Asset Name *</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. MacBook Pro 16-inch"
+                                        value={formData.asset_name}
+                                        onChange={(e) => setFormData({ ...formData, asset_name: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="ar-form-group">
+                                    <label>Priority Level *</label>
+                                    <select
+                                        value={formData.priority}
+                                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                                        required
+                                    >
+                                        <option value="low">Low Priority</option>
+                                        <option value="medium">Medium Priority</option>
+                                        <option value="high">High Priority</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="ar-form-group">
+                                <label>Reason for Request *</label>
+                                <input
+                                    type="text"
+                                    placeholder="Briefly explain why you need this..."
+                                    value={formData.reason}
+                                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="ar-modal-actions">
+                                <button type="button" className="ar-btn-outline" onClick={handleCloseRequestForm}>Cancel</button>
+                                <button type="submit" className="ar-btn-primary">Submit Request</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 
@@ -192,11 +293,15 @@ export default function AssetRequests() {
                             <div key={req.id} className="ar-request-item">
                                 <div className="ar-req-main">
                                     <div className="ar-req-info">
-                                        <span className="ar-req-id">{req.id}</span>
-                                        <h4 className="ar-req-title">{req.asset_type} Request</h4>
+                                        <span className="ar-req-id">{req.request_id || req.id}</span>
+                                        <h4 className="ar-req-title">{req.asset_type}</h4>
+                                        <p className="ar-req-subtitle">{req.asset_name}</p>
                                         <div className="ar-req-meta">
                                             <span><User size={14} /> {req.employee_details ? req.employee_details.full_name : '-'}</span>
-                                            <span><Calendar size={14} /> {req.date}</span>
+                                            <span><Calendar size={14} /> Created: {req.date}</span>
+                                            {req.needed_by && (
+                                                <span className="ar-needed-by"><Clock size={14} /> Needed: {req.needed_by}</span>
+                                            )}
                                             <span className={`ar-priority-tag ar-priority--${req.priority.toLowerCase()}`}>{req.priority} Priority</span>
                                         </div>
                                     </div>

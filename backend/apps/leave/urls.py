@@ -7,6 +7,8 @@ from .views import (
     leave_encashment_list_create, leave_encashment_detail,
     leave_encashment_process, leave_encashment_eligibility,
     leave_settings_detail,
+    leave_request_email_process, leave_request_cancel, leave_request_stats,
+    global_leave_settings
 )
 
 urlpatterns = [
@@ -40,4 +42,8 @@ urlpatterns = [
     path('encashments/eligibility/', leave_encashment_eligibility, name='leave-encashment-eligibility'),
     path('encashments/<int:pk>/', leave_encashment_detail, name='leave-encashment-detail'),
     path('encashments/<int:pk>/process/', leave_encashment_process, name='leave-encashment-process'),
+    path('requests/stats/', leave_request_stats, name='leave-request-stats'),
+    
+    # Settings
+    path('global-settings/', global_leave_settings, name='global-leave-settings'),
 ]

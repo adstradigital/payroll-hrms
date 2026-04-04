@@ -75,7 +75,7 @@ class ClaimWorkflowService:
 
     @staticmethod
     def notify_employee(claim, status, comments=""):
-        """Mock notification trigger - Will link to email service later"""
+        """Send email notification to the employee about their claim status."""
         from ..emails import send_claim_status_email
         try:
             send_claim_status_email(claim, status, comments)
@@ -84,6 +84,9 @@ class ClaimWorkflowService:
 
     @staticmethod
     def notify_manager(claim, stage):
-        """Mock notification for next approver"""
-        # In a real system, we'd lookup the Finance team or Dept Manager
-        pass
+        """Send email to Finance/Admin users when a claim needs Level 2 review."""
+        from ..emails import send_manager_notification_email
+        try:
+            send_manager_notification_email(claim, stage)
+        except Exception as e:
+            logger.error(f"Failed to send manager notification: {e}")

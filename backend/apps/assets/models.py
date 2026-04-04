@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from apps.accounts.models import BaseModel, Organization, Employee
 import uuid
+from datetime import datetime
 
 class AssetBatch(BaseModel):
     """Batch of assets added or maintained together"""
@@ -19,6 +20,7 @@ class AssetBatch(BaseModel):
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    batch_id = models.CharField(max_length=50, unique=True, blank=True, null=True, db_index=True)
     company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='asset_batches')
     name = models.CharField(max_length=150)
     batch_type = models.CharField(max_length=20, choices=BATCH_TYPE_CHOICES, default='purchase')
@@ -26,23 +28,35 @@ class AssetBatch(BaseModel):
     date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned')
     vendor = models.CharField(max_length=150, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.batch_id:
+            # Generate a unique batch_id like BAT-2026-0001
+            import datetime
+            prefix = "BAT"
+            year = datetime.datetime.now().year
+            count = AssetBatch.objects.filter(company=self.company).count() + 1
+            self.batch_id = f"{prefix}-{year}-{count:04d}"
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return f"{self.name} ({self.batch_type})"
 
+class AssetCategory(BaseModel):
+    """Category of assets (e.g. Laptop, Mobile)"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='asset_categories')
+
+    class Meta:
+        verbose_name_plural = "Asset Categories"
+        unique_together = ('name', 'company')
+
+    def __str__(self):
+        return self.name
+
 class Asset(BaseModel):
     """Individual asset record"""
-    CATEGORY_CHOICES = [
-        ('laptop', 'Laptop'),
-        ('monitor', 'Monitor'),
-        ('mobile', 'Mobile'),
-        ('tablet', 'Tablet'),
-        ('peripherals', 'Peripherals'),
-        ('audio', 'Audio'),
-        ('printer', 'Printer'),
-        ('other', 'Other'),
-    ]
-    
     STATUS_CHOICES = [
         ('available', 'Available'),
         ('allocated', 'Allocated'),
@@ -54,7 +68,7 @@ class Asset(BaseModel):
     asset_id = models.CharField(max_length=50, unique=True, db_index=True)
     company = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='assets')
     name = models.CharField(max_length=150)
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    category = models.CharField(max_length=50, blank=True, null=True)
     model = models.CharField(max_length=150, blank=True)
     serial_number = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
@@ -85,10 +99,13 @@ class AssetRequest(BaseModel):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='asset_requests')
+    request_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
     asset_type = models.CharField(max_length=100)
+    asset_name = models.CharField(max_length=255, blank=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     reason = models.TextField()
     date = models.DateField(auto_now_add=True)
+    needed_by = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
     approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='asset_request_approvals')

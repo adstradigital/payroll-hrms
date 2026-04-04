@@ -12,6 +12,8 @@ from django.db import transaction
 from django.db.models import Q, Sum, Count, Avg
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+import math
+from datetime import date, datetime, timedelta
 import uuid
 from apps.accounts.permissions import is_client_admin
 from apps.audit.utils import log_activity
@@ -64,12 +66,28 @@ def safe_api(fn):
     except Exception as e:
         logger.exception(e)
         # Handle DRF-specific exceptions if needed, but for now simple catch-all
-        if hasattr(e, 'detail'):
-            return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
         return Response(
             {'error': str(e)},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """
+    Calculate the great circle distance between two points 
+    on the earth (specified in decimal degrees)
+    Returns distance in meters.
+    """
+    # Convert decimal degrees to radians 
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+
+    # Haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a)) 
+    r = 6371000 # Radius of earth in meters.
+    return c * r
 
 
 # ================== ATTENDANCE POLICY ==================
@@ -319,6 +337,13 @@ def assignment_detail(request, pk):
 
 # ================== ATTENDANCE ==================
 
+from rest_framework.pagination import PageNumberPagination
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 # ---------------- ATTENDANCE CORE ----------------
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -348,8 +373,11 @@ def attendance_list(request):
             is_late = request.query_params.get('is_late')
             if is_late is not None: queryset = queryset.filter(is_late=is_late.lower() == 'true')
             
-            serializer = AttendanceSerializer(queryset, many=True)
-            return Response(serializer.data)
+            # Apply Pagination
+            paginator = StandardResultsSetPagination()
+            result_page = paginator.paginate_queryset(queryset, request)
+            serializer = AttendanceSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
         elif request.method == 'POST':
             serializer = AttendanceSerializer(data=request.data)
@@ -441,40 +469,90 @@ def attendance_detail(request, pk):
 def check_in(request):
     def logic():
         employee = get_object_or_404(Employee, pk=request.data.get('employee'))
-        today = timezone.localdate()
-
-        attendance, _ = Attendance.objects.get_or_create(employee=employee, date=today)
+        now = timezone.now()
+        local_now = timezone.localtime(now)
         
-        # Check IP Restriction
-        policy = employee.company.attendance_policies.filter(is_active=True).first()
-        if policy and policy.ip_restriction_enabled and policy.allowed_ips:
-            allowed_ips = [ip.strip() for ip in policy.allowed_ips.split(',')]
-            client_ip = request.META.get('REMOTE_ADDR')
-            # Handle X-Forwarded-For if behind a proxy
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                client_ip = x_forwarded_for.split(',')[0].strip()
-            
-            if client_ip not in allowed_ips:
-                return Response({
-                    'error': f'Check-in not allowed from your current network (IP: {client_ip}). Please use the company office network.'
-                }, status=status.HTTP_403_FORBIDDEN)
+        # 1. Determine Work Date (Midnight Shift Logic)
+        # Default work date is current local date
+        work_date = local_now.date()
         
-        # Assign shift if not already assigned
-        if not attendance.shift:
-            # 1. Check for assigned shift
+        # If user clocks in before 4 AM, check if they have a shift from yesterday that crosses midnight
+        if local_now.hour < 4:
+            yesterday = work_date - timedelta(days=1)
+            # Check for yesterday's shift assignment
             assignment = EmployeeShiftAssignment.objects.filter(
                 employee=employee,
                 is_active=True,
-                effective_from__lte=today
+                effective_from__lte=yesterday
             ).filter(
-                Q(effective_to__isnull=True) | Q(effective_to__gte=today)
+                Q(effective_to__isnull=True) | Q(effective_to__gte=yesterday)
+            ).first()
+            
+            if assignment and assignment.shift:
+                # If shift ends before start (crosses midnight)
+                if assignment.shift.end_time < assignment.shift.start_time:
+                    # Attribution to yesterday
+                    work_date = yesterday
+
+        # 2. Get or Create Attendance for the resolved Work Date
+        attendance, created = Attendance.objects.get_or_create(employee=employee, date=work_date)
+        
+        # If record already exists and has a check-in, don't overwrite unless regularizing
+        if not created and attendance.check_in_time:
+            return Response({
+                'error': f'You have already checked in for {work_date}.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3. Validation: Geofencing & IP Restriction
+        policy = employee.company.attendance_policies.filter(is_active=True).first()
+        if policy:
+            # Check IP Restriction
+            if policy.ip_restriction_enabled and policy.allowed_ips:
+                allowed_ips = [ip.strip() for ip in policy.allowed_ips.split(',')]
+                client_ip = request.META.get('REMOTE_ADDR')
+                x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+                if x_forwarded_for:
+                    client_ip = x_forwarded_for.split(',')[0].strip()
+                
+                if client_ip not in allowed_ips:
+                    return Response({
+                        'error': f'Check-in not allowed from your current network (IP: {client_ip}).'
+                    }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Check GPS Geofencing (New Improvement)
+            lat = request.data.get('latitude')
+            lon = request.data.get('longitude')
+            
+            if policy.enable_geo_fencing and policy.office_latitude and policy.office_longitude:
+                if lat is not None and lon is not None:
+                    distance = haversine_distance(
+                        float(lat), float(lon), 
+                        float(policy.office_latitude), float(policy.office_longitude)
+                    )
+                    
+                    if distance > policy.geo_fence_radius_meters:
+                        return Response({
+                            'error': f'You are outside the allowed office radius ({int(distance)}m away). Allowed radius: {policy.geo_fence_radius_meters}m.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+                else:
+                    # If geofencing is enabled but coordinates are missing
+                    return Response({
+                        'error': 'Location coordinates are required for check-in as per company policy.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 4. Assign Shift (if not determined by work date logic)
+        if not attendance.shift:
+            assignment = EmployeeShiftAssignment.objects.filter(
+                employee=employee,
+                is_active=True,
+                effective_from__lte=work_date
+            ).filter(
+                Q(effective_to__isnull=True) | Q(effective_to__gte=work_date)
             ).first()
             
             if assignment:
                 attendance.shift = assignment.shift
             else:
-                # 2. Check for default company shift
                 default_shift = Shift.objects.filter(
                     company=employee.company, 
                     is_default=True,
@@ -483,25 +561,25 @@ def check_in(request):
                 if default_shift:
                     attendance.shift = default_shift
 
-        attendance.check_in_time = timezone.now()
+        # 5. Record Punch
+        attendance.check_in_time = now
         attendance.check_in_device = request.data.get('device', '')
         attendance.check_in_ip = request.META.get('REMOTE_ADDR')
-        attendance.status = 'present'  # Mark as present when clocking in
+        attendance.check_in_latitude = request.data.get('latitude')
+        attendance.check_in_longitude = request.data.get('longitude')
+        attendance.status = 'present'
         
-        # Calculate Late Status
+        # Calculate Late Status (relative to the work_date)
         if attendance.shift:
-            # Combine today's date with shift start time to get naive datetime
-            shift_start_naive = datetime.combine(today, attendance.shift.start_time)
-            # Make it timezone aware matching the check_in_time's timezone
+            shift_start_naive = datetime.combine(work_date, attendance.shift.start_time)
+            # If cross-day shift, and we are on the "next" day of the shift
+            # (handled by work_date logic already, but shift_start_naive is always on work_date)
             shift_start_aware = timezone.make_aware(shift_start_naive)
             
-            # Add grace period
-            from datetime import timedelta
             grace_limit = shift_start_aware + timedelta(minutes=attendance.shift.grace_period_minutes)
             
             if attendance.check_in_time > grace_limit:
                 attendance.is_late = True
-                # Calculate minutes late from actual start time (not grace limit)
                 late_delta = attendance.check_in_time - shift_start_aware
                 attendance.late_by_minutes = int(late_delta.total_seconds() / 60)
         
@@ -511,7 +589,7 @@ def check_in(request):
             user=request.user,
             action_type='UPDATE',
             module='ATTENDANCE',
-            description=f"Checked in at {timezone.localtime(attendance.check_in_time).strftime('%H:%M')}",
+            description=f"Checked in for {work_date} at {timezone.localtime(attendance.check_in_time).strftime('%H:%M')}",
             reference_id=str(attendance.id)
         )
         
@@ -526,8 +604,20 @@ def check_out(request):
     def logic():
         employee = get_object_or_404(Employee, pk=request.data.get('employee'))
         today = timezone.localdate()
+        yesterday = today - timedelta(days=1)
+        
+        # Look for an active attendance record (checked-in but not checked-out)
+        # We priority check today then yesterday if today doesn't have an active one
+        attendance = Attendance.objects.filter(
+            employee=employee,
+            date__in=[today, yesterday],
+            check_out_time__isnull=True
+        ).order_by('-date', '-check_in_time').first()
 
-        attendance = get_object_or_404(Attendance, employee=employee, date=today)
+        if not attendance:
+            return Response({
+                'error': 'No active check-in record found. Please check-in first.'
+            }, status=status.HTTP_404_NOT_FOUND)
         
         # Validation: Ensure at least 1 minute has passed since check-in
         if attendance.check_in_time:
@@ -1634,46 +1724,47 @@ def generate_monthly_summary(request):
         year = request.data.get('year')
         month = request.data.get('month')
 
-        if not employee_id or not year or not month:
-            return Response({'error': 'employee, year, and month are required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not year or not month:
+            return Response({'error': 'year and month are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         year = int(year)
         month = int(month)
-        employee = get_object_or_404(Employee, pk=employee_id)
-        start_date = date(year, month, 1)
-        end_date = date(year, month, monthrange(year, month)[1])
+        user = request.user
+        
+        # Determine company context
+        company = None
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            company = user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            company = user.organization
+            
+        if not company:
+             return Response({'error': 'Could not determine company context.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        attendances = Attendance.objects.filter(employee=employee, date__range=(start_date, end_date))
-        aggregates = attendances.aggregate(
-            total_days=Count('id'),
-            present_days=Count('id', filter=Q(status='present')),
-            absent_days=Count('id', filter=Q(status='absent')),
-            half_days=Count('id', filter=Q(status='half_day')),
-            leave_days=Count('id', filter=Q(status='on_leave')),
-            late_days=Count('id', filter=Q(is_late=True)),
-            total_hours=Sum('total_hours'),
-            overtime_hours=Sum('overtime_hours')
-        )
-
-        summary, created = AttendanceSummary.objects.update_or_create(
-            employee=employee,
-            year=year,
-            month=month,
-            defaults={
-                'total_working_days': aggregates['total_days'] or 0,
-                'present_days': aggregates['present_days'] or 0,
-                'absent_days': aggregates['absent_days'] or 0,
-                'half_days': aggregates['half_days'] or 0,
-                'leave_days': aggregates['leave_days'] or 0,
-                'total_hours_worked': aggregates['total_hours'] or 0,
-                'overtime_hours': aggregates['overtime_hours'] or 0,
-                'late_arrivals': aggregates['late_days'] or 0,
-                'generated_at': timezone.now()
-            }
-        )
-
-        serializer = AttendanceSummarySerializer(summary)
-        return Response({'created': created, 'summary': serializer.data}, status=status.HTTP_200_OK)
+        if employee_id:
+            # Individual generation
+            employee = get_object_or_404(Employee, pk=employee_id, company=company)
+            summary, created = AttendanceSummary.objects.get_or_create(
+                employee=employee, year=year, month=month
+            )
+            summary.calculate_summary()
+            serializer = AttendanceSummarySerializer(summary)
+            return Response({'created': created, 'summary': serializer.data}, status=status.HTTP_200_OK)
+        else:
+            # Bulk generation for all active employees of the company
+            employees = Employee.objects.filter(company=company, status='active')
+            processed_count = 0
+            for emp in employees:
+                summary, _ = AttendanceSummary.objects.get_or_create(
+                    employee=emp, year=year, month=month
+                )
+                summary.calculate_summary()
+                processed_count += 1
+            
+            return Response({
+                'message': f'Successfully processed {processed_count} employee summaries.',
+                'processed_count': processed_count
+            }, status=status.HTTP_200_OK)
     
     return safe_api(logic)
 

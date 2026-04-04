@@ -238,9 +238,48 @@ class LeaveRequest(models.Model):
             pass
 
 
-class LeaveEncashment(models.Model):
-    """Track leave encashment (converting unused leave days to cash)"""
+class GlobalLeaveSettings(models.Model):
+    """Global leave rules and settings for an organization"""
+    company = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='leave_settings')
+    
+    # General Rules
+    fiscal_year_start = models.CharField(max_length=5, default='04-01', help_text='MM-DD format')
+    default_probation_months = models.PositiveIntegerField(default=6)
+    allow_negative_balance = models.BooleanField(default=False)
+    
+    # Automation
+    auto_approve_short_leave = models.BooleanField(default=False)
+    notify_manager_high_usage = models.BooleanField(default=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name_plural = "Global leave settings"
+
+    def __str__(self):
+        return f"{self.company.name} - Leave Settings"
+
+
+class LeaveSettings(models.Model):
+    """Specific settings for advanced leave features like encashment"""
+    company = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='advanced_leave_settings')
+    is_encashment_enabled = models.BooleanField(default=False)
+    min_days_for_encashment = models.DecimalField(max_digits=5, decimal_places=2, default=1.0)
+    max_encashable_days_per_year = models.DecimalField(max_digits=5, decimal_places=2, default=10.0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Leave settings"
+
+    def __str__(self):
+        return f"{self.company.name} - Adv Leave Settings"
+
+
+class LeaveEncashment(models.Model):
+    """Record of leave converted to salary"""
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('approved', 'Approved'),
@@ -248,99 +287,55 @@ class LeaveEncashment(models.Model):
         ('paid', 'Paid'),
     ]
 
-    employee = models.ForeignKey(
-        Employee, on_delete=models.CASCADE, related_name='leave_encashments'
-    )
-    leave_type = models.ForeignKey(
-        LeaveType, on_delete=models.CASCADE,
-        help_text='Must have is_encashable=True'
-    )
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='encashments')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE)
     year = models.PositiveIntegerField()
-    days_encashed = models.DecimalField(
-        max_digits=5, decimal_places=2,
-        help_text='Number of leave days being encashed'
-    )
-    daily_rate = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0,
-        help_text='Employee daily salary rate at time of request (gross/26)'
-    )
-    total_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0,
-        help_text='days_encashed × daily_rate'
-    )
-
+    
+    days_encashed = models.DecimalField(max_digits=5, decimal_places=2)
+    daily_rate = models.DecimalField(max_digits=12, decimal_places=2, help_text="Rate at the time of encashment")
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-
-    approved_by = models.ForeignKey(
-        Employee, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='approved_encashments'
-    )
-    approved_at = models.DateTimeField(null=True, blank=True)
-    rejection_reason = models.TextField(blank=True)
     remarks = models.TextField(blank=True)
-
+    rejection_reason = models.TextField(blank=True)
+    
+    approved_by = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_encashments')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'Leave Encashment'
-        verbose_name_plural = 'Leave Encashments'
-
-    def __str__(self):
-        return f"{self.employee.employee_id} – {self.leave_type.code} – {self.days_encashed}d (₹{self.total_amount})"
 
     def save(self, *args, **kwargs):
-        # Auto-compute total_amount
-        from decimal import Decimal
-        self.total_amount = (Decimal(str(self.days_encashed)) * Decimal(str(self.daily_rate))).quantize(Decimal('0.01'))
+        if not self.total_amount:
+            self.total_amount = float(self.days_encashed) * float(self.daily_rate)
         super().save(*args, **kwargs)
 
-    def approve(self, approved_by_employee):
-        """Approve the encashment request"""
+    def approve(self, approver):
         from django.utils import timezone
         self.status = 'approved'
-        self.approved_by = approved_by_employee
+        self.approved_by = approver
         self.approved_at = timezone.now()
         self.save()
 
-    def reject(self, rejection_reason):
-        """Reject the encashment request and restore leave balance"""
+    def reject(self, reason):
         self.status = 'rejected'
-        self.rejection_reason = rejection_reason
+        self.rejection_reason = reason
         self.save()
-        # Restore the deducted leave days
+        
+        # Restore leave balance
         try:
-            balance = LeaveBalance.objects.get(
-                employee=self.employee,
-                leave_type=self.leave_type,
-                year=self.year
-            )
+            balance = LeaveBalance.objects.get(employee=self.employee, leave_type=self.leave_type, year=self.year)
             balance.used -= self.days_encashed
             balance.save()
         except LeaveBalance.DoesNotExist:
-            pass
+            logger.warning(f"Could not restore balance for rejected encashment {self.id}: Balance record missing")
 
     def mark_paid(self):
-        """Mark the encashment as disbursed"""
+        from django.utils import timezone
         self.status = 'paid'
+        self.paid_at = timezone.now()
         self.save()
-
-class LeaveSettings(BaseModel):
-    """Global leave and accrual settings for an organization"""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    company = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='leave_settings')
-    
-    # Feature Toggles
-    is_encashment_enabled = models.BooleanField(default=True, help_text='Enable/Disable the entire Leave Encashment module')
-    
-    # Global Rules
-    fiscal_year_start = models.CharField(max_length=5, default='04-01', help_text='MM-DD format (default April 1st)')
-    default_probation_months = models.PositiveIntegerField(default=6, help_text='Standard probation period for new employees')
-    allow_negative_balance = models.BooleanField(default=False, help_text='Permit advance leaves')
-    
-    class Meta:
-        verbose_name_plural = 'Leave Settings'
-
-    def __str__(self):
-        return f"Leave Settings - {self.company.name}"

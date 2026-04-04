@@ -67,6 +67,18 @@ export default function ReviewPeriods() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Basic date validation
+        if (new Date(formData.end_date) <= new Date(formData.start_date)) {
+            alert('End date must be after start date');
+            return;
+        }
+
+        if (new Date(formData.submission_deadline) < new Date(formData.end_date)) {
+            alert('Submission deadline must be on or after the end date');
+            return;
+        }
+
         try {
             if (editingPeriod) {
                 await updateReviewPeriod(editingPeriod.id, formData);
@@ -78,7 +90,7 @@ export default function ReviewPeriods() {
             loadPeriods();
         } catch (error) {
             console.error('Failed to save period:', error);
-            alert('Failed to save period. Please try again.');
+            alert(error.message || 'Failed to save period. Please try again.');
         }
     };
 

@@ -37,6 +37,7 @@ export const SUPERADMIN_ENDPOINTS = {
     REGISTRATION_DETAIL: (id) => `${BASE_URL}/account/registrations/${id}/`,
     APPROVE_REGISTRATION: (id) => `${BASE_URL}/account/registrations/${id}/approve/`,
     REJECT_REGISTRATION: (id) => `${BASE_URL}/account/registrations/${id}/reject/`,
+    SUPER_ADMIN_STATS: `${BASE_URL}/account/super-admin/stats/`,
 };
 
 // =============================================================================
@@ -108,6 +109,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     LEAVE_BALANCE: `${BASE_URL}/leave/balances/`,
     LEAVE_PROCESS: (id) => `${BASE_URL}/leave/requests/${id}/process/`,
     LEAVE_SETTINGS: `${BASE_URL}/leave/settings/`,
+    LEAVE_GLOBAL_SETTINGS: `${BASE_URL}/leave/global-settings/`,
     // Leave Encashment
     LEAVE_ENCASHMENTS: `${BASE_URL}/leave/encashments/`,
     LEAVE_ENCASHMENT_DETAIL: (id) => `${BASE_URL}/leave/encashments/${id}/`,
@@ -186,6 +188,8 @@ export const CLIENTADMIN_ENDPOINTS = {
     ASSET_REQUEST_DETAIL: (id) => `${BASE_URL}/assets/requests/${id}/`,
     ASSET_REQUEST_PROCESS: (id) => `${BASE_URL}/assets/requests/${id}/process/`,
     ASSET_HISTORY: `${BASE_URL}/assets/history/`,
+    ASSET_CATEGORIES: `${BASE_URL}/assets/categories/`,
+    ASSET_CATEGORY_DETAIL: (id) => `${BASE_URL}/assets/categories/${id}/`,
 
     // Performance
     PERFORMANCE_DASHBOARD: `${BASE_URL}/performance/dashboard/`,

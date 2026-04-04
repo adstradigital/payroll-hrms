@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
     Clock, User, Tag, ArrowRight,
     History, Search, Filter, Box,
-    ChevronRight, AlertCircle, CheckCircle2
+    ChevronRight, AlertCircle, CheckCircle2, CircleSlash
 } from 'lucide-react';
 import { getAssetHistory } from '@/api/api_clientadmin';
 import './AssetHistory.css';
@@ -80,17 +80,39 @@ export default function AssetHistory() {
                                         </div>
                                     </div>
                                     <div className="ah-event-body">
-                                        <div className="ah-asset-pill">
-                                            <Box size={14} />
-                                            <span>{event.asset_details ? event.asset_details.name : 'Unknown Asset'}</span>
+                                        <div className="ah-asset-card">
+                                            <div className="ah-asset-main">
+                                                <div className="ah-asset-icon">
+                                                    <Box size={20} />
+                                                </div>
+                                                <div className="ah-asset-info">
+                                                    <span className="ah-asset-id">{event.asset_details?.asset_id || 'N/A'}</span>
+                                                    <h5 className="ah-asset-name">{event.asset_details?.name || 'Unknown Asset'}</h5>
+                                                </div>
+                                            </div>
+                                            {event.asset_details && (
+                                                <div className="ah-asset-meta">
+                                                    <span><strong>SN:</strong> {event.asset_details.serial_number || '-'}</span>
+                                                    <span><strong>Model:</strong> {event.asset_details.model || '-'}</span>
+                                                    <span className="ah-category-tag">{event.asset_details.category}</span>
+                                                </div>
+                                            )}
                                         </div>
-                                        <ArrowRight size={14} className="ah-arrow" />
-                                        <div className="ah-user-pill">
-                                            <User size={14} />
-                                            <span>{event.user_details ? event.user_details.full_name : 'System'}</span>
+
+                                        <div className="ah-event-footer">
+                                            <div className="ah-user-info">
+                                                <div className="ah-user-avatar">
+                                                    {event.user_details?.full_name?.charAt(0) || 'S'}
+                                                </div>
+                                                <div className="ah-user-text">
+                                                    <span className="ah-user-label">Performer</span>
+                                                    <span className="ah-user-name">{event.user_details?.full_name || 'System Auto'}</span>
+                                                </div>
+                                            </div>
+                                            <CircleSlash size={14} className="ah-footer-sep" />
+                                            <p className="ah-event-desc">{event.details}</p>
                                         </div>
                                     </div>
-                                    <p className="ah-event-details">{event.details}</p>
                                 </div>
                             </div>
                         );

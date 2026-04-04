@@ -239,6 +239,10 @@ class ReviewWorkflowService:
         review.status = 'completed'
         review.save()
         
+        # Automatically trigger bonus calculation for this review
+        from .automation_service import AutomationService
+        AutomationService.calculate_bonus_for_completed_reviews(review_id=review_id)
+        
         # Send notification to employee and manager
         NotificationService.notify_review_approved(review)
         
