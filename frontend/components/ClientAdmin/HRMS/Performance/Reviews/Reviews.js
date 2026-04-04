@@ -607,7 +607,7 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
             setEmployees(empList);
             
             if (reviewDetail) {
-                let reviewerId = typeof reviewDetail.reviewer === 'object' ? reviewDetail.reviewer.id : reviewDetail.reviewer;
+                let reviewerId = (reviewDetail.reviewer && typeof reviewDetail.reviewer === 'object') ? reviewDetail.reviewer.id : reviewDetail.reviewer;
                 
                 let managerUserId = null;
 
