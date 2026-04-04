@@ -590,6 +590,19 @@ class Interview(models.Model):
             models.Index(fields=['status', 'scheduled_date']),
         ]
     
+    def save(self, *args, **kwargs):
+        # Result should be PENDING if the status is not COMPLETED
+        if self.status in ['SCHEDULED', 'CANCELLED', 'RESCHEDULED'] and self.result != 'PENDING':
+            if self.status == 'CANCELLED':
+                 self.result = 'PENDING'
+        
+        # Ensure title is set if missing
+        if not self.title:
+            type_label = dict(self.TYPE_CHOICES).get(self.interview_type, 'Interview')
+            self.title = f"{type_label} Interview"
+
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         return f"{self.title} - {self.candidate.full_name} on {self.scheduled_date.strftime('%Y-%m-%d')}"
 

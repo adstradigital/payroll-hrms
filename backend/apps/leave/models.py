@@ -1,5 +1,6 @@
 from django.db import models
-from apps.accounts.models import Organization, Employee
+from apps.accounts.models import Organization, Employee, BaseModel
+import uuid
 from datetime import date
 import logging
 
@@ -258,3 +259,83 @@ class GlobalLeaveSettings(models.Model):
 
     def __str__(self):
         return f"{self.company.name} - Leave Settings"
+
+
+class LeaveSettings(models.Model):
+    """Specific settings for advanced leave features like encashment"""
+    company = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name='advanced_leave_settings')
+    is_encashment_enabled = models.BooleanField(default=False)
+    min_days_for_encashment = models.DecimalField(max_digits=5, decimal_places=2, default=1.0)
+    max_encashable_days_per_year = models.DecimalField(max_digits=5, decimal_places=2, default=10.0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Leave settings"
+
+    def __str__(self):
+        return f"{self.company.name} - Adv Leave Settings"
+
+
+class LeaveEncashment(models.Model):
+    """Record of leave converted to salary"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('paid', 'Paid'),
+    ]
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='encashments')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE)
+    year = models.PositiveIntegerField()
+    
+    days_encashed = models.DecimalField(max_digits=5, decimal_places=2)
+    daily_rate = models.DecimalField(max_digits=12, decimal_places=2, help_text="Rate at the time of encashment")
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    remarks = models.TextField(blank=True)
+    rejection_reason = models.TextField(blank=True)
+    
+    approved_by = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_encashments')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.total_amount:
+            self.total_amount = float(self.days_encashed) * float(self.daily_rate)
+        super().save(*args, **kwargs)
+
+    def approve(self, approver):
+        from django.utils import timezone
+        self.status = 'approved'
+        self.approved_by = approver
+        self.approved_at = timezone.now()
+        self.save()
+
+    def reject(self, reason):
+        self.status = 'rejected'
+        self.rejection_reason = reason
+        self.save()
+        
+        # Restore leave balance
+        try:
+            balance = LeaveBalance.objects.get(employee=self.employee, leave_type=self.leave_type, year=self.year)
+            balance.used -= self.days_encashed
+            balance.save()
+        except LeaveBalance.DoesNotExist:
+            logger.warning(f"Could not restore balance for rejected encashment {self.id}: Balance record missing")
+
+    def mark_paid(self):
+        from django.utils import timezone
+        self.status = 'paid'
+        self.paid_at = timezone.now()
+        self.save()

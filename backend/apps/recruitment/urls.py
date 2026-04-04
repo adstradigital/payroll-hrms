@@ -47,12 +47,14 @@ urlpatterns = [
     path('candidates/', views.candidate_list_create, name='candidate-list-create'),
     path('candidates/<int:pk>/', views.candidate_detail, name='candidate-detail'),
     path('candidates/stats/', views.candidate_stats, name='candidate-stats'),
+    path('candidates/bulk-upload/', views.resume_bulk_upload, name='candidate-bulk-upload'),
     path('candidates/bulk-update/', views.candidate_bulk_update, name='candidate-bulk-update'),
     path('candidates/<int:pk>/add-note/', views.candidate_add_note, name='candidate-add-note'),
     path('candidates/<int:pk>/status/', views.candidate_update_status, name='candidate-update-status'),
     path('candidates/<int:pk>/stage/', views.candidate_update_status, name='candidate-update-stage'),
     path('candidates/<int:pk>/toggle-star/', views.candidate_toggle_star, name='candidate-toggle-star'),
     path('candidates/<int:pk>/apply/', views.candidate_apply_to_job, name='candidate-apply-to-job'),
+    path('candidates/<int:pk>/hire/', views.hire_candidate, name='hire-candidate'),
     
     # Applications (additional stage action)
     path('applications/<int:pk>/stage/', views.application_update_stage, name='application-update-stage'),

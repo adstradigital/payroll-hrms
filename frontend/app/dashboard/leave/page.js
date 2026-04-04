@@ -10,6 +10,7 @@ import LeaveTypes from '@/components/ClientAdmin/Payroll/Leave/LeaveTypes/LeaveT
 import HolidayCalendar from '@/components/ClientAdmin/Payroll/Leave/HolidayCalendar/HolidayCalendar';
 import LeaveReports from '@/components/ClientAdmin/Payroll/Leave/Reports/LeaveReports';
 import LeaveSettings from '@/components/ClientAdmin/Payroll/Leave/Settings/LeaveSettings';
+import LeaveEncashment from '@/components/ClientAdmin/Payroll/Leave/LeaveEncashment/LeaveEncashment';
 import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 import ModuleGuard from '@/components/ClientAdmin/ModuleGuard';
 import { usePermissions } from '@/context/PermissionContext';
@@ -42,29 +43,31 @@ export default function LeavePage() {
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'dashboard': return <LeaveDashboard currentUser={currentUser} />;
-            case 'requests': return <MyLeaveRequests currentUser={currentUser} />;
+            case 'dashboard':   return <LeaveDashboard currentUser={currentUser} />;
+            case 'requests':    return <MyLeaveRequests currentUser={currentUser} />;
             case 'all-requests': return <LeaveList currentUser={currentUser} />;
-            case 'approvals': return <LeaveApprovals />;
-            case 'balance': return <LeaveBalance />;
-            case 'types': return <LeaveTypes />;
-            case 'holidays': return <HolidayCalendar />;
-            case 'reports': return <LeaveReports />;
-            case 'settings': return <LeaveSettings />;
-            default: return <LeaveDashboard currentUser={currentUser} />;
+            case 'approvals':   return <LeaveApprovals />;
+            case 'balance':     return <LeaveBalance />;
+            case 'types':       return <LeaveTypes />;
+            case 'holidays':    return <HolidayCalendar />;
+            case 'encashment':  return <LeaveEncashment currentUser={currentUser} />;
+            case 'reports':     return <LeaveReports />;
+            case 'settings':    return <LeaveSettings />;
+            default:            return <LeaveDashboard currentUser={currentUser} />;
         }
     };
 
     const tabs = [
-        { id: 'dashboard', label: 'Overview' },
-        { id: 'requests', label: 'My Requests' },
-        { id: 'all-requests', label: 'All Requests', adminOnly: true },
-        { id: 'approvals', label: 'Approvals' },
-        { id: 'balance', label: 'Balances' },
-        { id: 'types', label: 'Leave Types', adminOnly: true },
-        { id: 'holidays', label: 'Holidays' },
-        { id: 'reports', label: 'Reports' },
-        { id: 'settings', label: 'Settings', adminOnly: true },
+        { id: 'dashboard',     label: 'Overview' },
+        { id: 'requests',      label: 'My Requests' },
+        { id: 'all-requests',  label: 'All Requests', adminOnly: true },
+        { id: 'approvals',     label: 'Approvals' },
+        { id: 'balance',       label: 'Balances' },
+        { id: 'types',         label: 'Leave Types', adminOnly: true },
+        { id: 'holidays',      label: 'Holidays' },
+        { id: 'encashment',    label: 'Encashment' },
+        { id: 'reports',       label: 'Reports' },
+        { id: 'settings',      label: 'Settings', adminOnly: true },
     ].filter(tab => !tab.adminOnly || isAdmin);
 
     return (

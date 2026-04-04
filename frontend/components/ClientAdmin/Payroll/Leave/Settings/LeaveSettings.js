@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, AlertCircle, Loader2, Info, Settings, Calendar, RefreshCcw, Check } from 'lucide-react';
-import { getLeaveTypes, getGlobalLeaveSettings, updateGlobalLeaveSettings } from '@/api/api_clientadmin';
+import { Save, AlertCircle, Loader2, Info, Settings, Calendar, RefreshCcw } from 'lucide-react';
+import { getLeaveTypes, updateLeaveType, getGlobalLeaveSettings, updateGlobalLeaveSettings, getLeaveSettings, updateLeaveSettings } from '@/api/api_clientadmin';
 import './LeaveSettings.css';
 
 export default function LeaveSettings() {
@@ -11,7 +11,7 @@ export default function LeaveSettings() {
         defaultProbationMonths: 6,
         allowNegativeBalance: false,
         autoApproveShortLeave: false,
-        notifyManagerHighUsage: true,
+        isEncashmentEnabled: false,
     });
 
     const [leaveTypes, setLeaveTypes] = useState([]);
@@ -27,23 +27,25 @@ export default function LeaveSettings() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [typesRes, settingsRes] = await Promise.all([
+            const [typesRes, globalRes, encashmentRes] = await Promise.all([
                 getLeaveTypes(),
-                getGlobalLeaveSettings()
+                getGlobalLeaveSettings().catch(() => ({ data: {} })),
+                getLeaveSettings().catch(() => ({ data: {} }))
             ]);
             
             setLeaveTypes(typesRes.data.results || typesRes.data || []);
             
-            if (settingsRes.data) {
-                const s = settingsRes.data;
-                setSettings({
-                    fiscalYearStart: s.fiscal_year_start,
-                    defaultProbationMonths: s.default_probation_months,
-                    allowNegativeBalance: s.allow_negative_balance,
-                    autoApproveShortLeave: s.auto_approve_short_leave,
-                    notifyManagerHighUsage: s.notify_manager_high_usage,
-                });
-            }
+            const globalData = globalRes.data || {};
+            const encashmentData = encashmentRes.data || {};
+            
+            setSettings({
+                fiscalYearStart: globalData.fiscal_year_start || '04-01',
+                defaultProbationMonths: globalData.default_probation_months || 6,
+                allowNegativeBalance: globalData.allow_negative_balance || false,
+                autoApproveShortLeave: globalData.auto_approve_short_leave || false,
+                isEncashmentEnabled: encashmentData.is_encashment_enabled || false,
+            });
+            
             setError(null);
         } catch (err) {
             console.error('Error fetching settings:', err);
@@ -58,23 +60,30 @@ export default function LeaveSettings() {
             setSaving(true);
             setSuccess(null);
             
-            const payload = {
-                fiscal_year_start: settings.fiscalYearStart,
-                default_probation_months: settings.defaultProbationMonths,
-                allow_negative_balance: settings.allowNegativeBalance,
-                auto_approve_short_leave: settings.autoApproveShortLeave,
-                notify_manager_high_usage: settings.notifyManagerHighUsage,
-            };
-
-            await updateGlobalLeaveSettings(payload);
+            await Promise.all([
+                updateGlobalLeaveSettings({
+                    fiscal_year_start: settings.fiscalYearStart,
+                    default_probation_months: settings.defaultProbationMonths,
+                    allow_negative_balance: settings.allowNegativeBalance,
+                    auto_approve_short_leave: settings.autoApproveShortLeave,
+                }),
+                updateLeaveSettings({
+                    is_encashment_enabled: settings.isEncashmentEnabled
+                })
+            ]);
+            
             setSuccess('Settings updated successfully!');
             setTimeout(() => setSuccess(null), 3000);
         } catch (err) {
-            setError('Failed to save settings.');
+            console.error('Error saving settings:', err);
+            setError(err.response?.data?.error || 'Failed to save settings.');
         } finally {
             setSaving(false);
         }
     };
+
+    const toggle = (field) =>
+        setSettings(prev => ({ ...prev, [field]: !prev[field] }));
 
     if (loading) {
         return (
@@ -89,8 +98,8 @@ export default function LeaveSettings() {
         <div className="leave-settings-modern">
             <div className="settings-header-glass">
                 <div className="header-info">
-                    <h2>Leave Policies & Settings</h2>
-                    <p>Configure global leave rules and automated accrual behaviors for your organization.</p>
+                    <h2>Leave Policies &amp; Settings</h2>
+                    <p>Configure global leave rules and feature toggles for your organization.</p>
                 </div>
                 <button
                     className="settings-btn settings-btn--primary"
@@ -98,13 +107,20 @@ export default function LeaveSettings() {
                     disabled={saving}
                 >
                     {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                    Save Changes
+                    {saving ? 'Saving…' : 'Save Changes'}
                 </button>
             </div>
 
+            {error && (
+                <div className="settings-alert-modern error">
+                    <AlertCircle size={18} />
+                    <span>{error}</span>
+                </div>
+            )}
+
             {success && (
                 <div className="settings-alert-modern success">
-                    <Check size={18} />
+                    <Info size={18} />
                     <span>{success}</span>
                 </div>
             )}
@@ -113,16 +129,14 @@ export default function LeaveSettings() {
                 {/* Global Rules */}
                 <div className="settings-card-glass">
                     <div className="card-header-modern">
-                        <div className="title-icon-wrapper">
-                            <Settings size={20} />
-                        </div>
+                        <Settings size={20} />
                         <h3>General Rules</h3>
                     </div>
                     <div className="card-body-modern">
                         <div className="setting-item-modern">
                             <div className="setting-info-modern">
                                 <label>Fiscal Year Start</label>
-                                <span>The date when leave balances reset for the fiscal year cycle.</span>
+                                <span>The date when leave balances reset for the fiscal year cycle (MM-DD).</span>
                             </div>
                             <input
                                 type="text"
@@ -151,14 +165,14 @@ export default function LeaveSettings() {
                                 <label>Allow Negative Balance</label>
                                 <span>Permit employees to take more leave than currently accrued (Advance Leave).</span>
                             </div>
-                            <label className="setting-toggle-modern">
+                            <div className="setting-toggle-modern">
                                 <input
                                     type="checkbox"
                                     checked={settings.allowNegativeBalance}
                                     onChange={(e) => setSettings({ ...settings, allowNegativeBalance: e.target.checked })}
                                 />
-                                <span className="toggle-slider-modern"></span>
-                            </label>
+                                <span className="toggle-slider-modern" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -166,9 +180,7 @@ export default function LeaveSettings() {
                 {/* Accrual Configuration Summary */}
                 <div className="settings-card-glass">
                     <div className="card-header-modern">
-                        <div className="title-icon-wrapper">
-                            <RefreshCcw size={20} />
-                        </div>
+                        <RefreshCcw size={20} />
                         <h3>Accrual Overview</h3>
                     </div>
                     <div className="card-body-modern">
@@ -179,6 +191,7 @@ export default function LeaveSettings() {
                                         <span className="type-name-modern">{type.name}</span>
                                         <span className="type-meta-modern">
                                             {type.days_per_year} days/year • {type.accrual_type || 'Full Year'}
+                                            {type.is_encashable && <span className="encashable-tag">Encashable</span>}
                                         </span>
                                     </div>
                                     <div className={`accrual-status-modern ${type.is_active ? 'active' : 'inactive'}`}>
@@ -189,7 +202,7 @@ export default function LeaveSettings() {
                         </div>
                         <p className="helper-text-modern">
                             <Info size={14} />
-                            Modify individual accrual rates in the <strong>Leave Types</strong> section.
+                            Manage encashability per leave type in the <strong>Leave Types</strong> tab.
                         </p>
                     </div>
                 </div>
@@ -197,9 +210,7 @@ export default function LeaveSettings() {
                 {/* Automation */}
                 <div className="settings-card-glass full-width">
                     <div className="card-header-modern">
-                        <div className="title-icon-wrapper">
-                            <Calendar size={20} />
-                        </div>
+                        <Calendar size={20} />
                         <h3>Automation & Notifications</h3>
                     </div>
                     <div className="card-body-modern grid-2">
@@ -208,32 +219,33 @@ export default function LeaveSettings() {
                                 <label>Auto-approve Short Leaves</label>
                                 <span>Automatically approve leave requests of 1 day or less.</span>
                             </div>
-                            <label className="setting-toggle-modern">
+                            <div className="setting-toggle-modern">
                                 <input
                                     type="checkbox"
                                     checked={settings.autoApproveShortLeave}
                                     onChange={(e) => setSettings({ ...settings, autoApproveShortLeave: e.target.checked })}
                                 />
-                                <span className="toggle-slider-modern"></span>
-                            </label>
+                                <span className="toggle-slider-modern" />
+                            </div>
                         </div>
 
                         <div className="setting-item-modern">
                             <div className="setting-info-modern">
-                                <label>Notify Manager on High Usage</label>
-                                <span>Send alert if an employee's leave usage exceeds 80% of quota.</span>
+                                <label>Enable Leave Encashment</label>
+                                <span>Allow employees to encash their unused leaves at year end.</span>
                             </div>
-                            <label className="setting-toggle-modern">
+                            <div className="setting-toggle-modern">
                                 <input
                                     type="checkbox"
-                                    checked={settings.notifyManagerHighUsage}
-                                    onChange={(e) => setSettings({ ...settings, notifyManagerHighUsage: e.target.checked })}
+                                    checked={settings.isEncashmentEnabled}
+                                    onChange={(e) => setSettings({ ...settings, isEncashmentEnabled: e.target.checked })}
                                 />
-                                <span className="toggle-slider-modern"></span>
-                            </label>
+                                <span className="toggle-slider-modern" />
+                            </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     );

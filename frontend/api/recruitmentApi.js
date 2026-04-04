@@ -65,6 +65,7 @@ const recruitmentApi = {
     },
     updateCandidateStage: (id, stageId) => axiosInstance.patch(`/recruitment/candidates/${id}/stage/`, { stage_id: stageId }),
     toggleCandidateStar: (id) => axiosInstance.put(`/recruitment/candidates/${id}/toggle-star/`),
+    hireCandidate: (id, data) => axiosInstance.post(`/recruitment/candidates/${id}/hire/`, data),
     
     // Interviews
     getInterviews: (params) => axiosInstance.get('/recruitment/interviews/', { params }),

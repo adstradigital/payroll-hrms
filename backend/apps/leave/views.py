@@ -3,13 +3,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 from datetime import date
 import logging
-from .models import LeaveType, LeaveBalance, LeaveRequest, GlobalLeaveSettings
+from .models import LeaveType, LeaveBalance, LeaveRequest, LeaveEncashment, LeaveSettings, GlobalLeaveSettings
 from .serializers import (
-    LeaveTypeSerializer, LeaveBalanceSerializer, 
+    LeaveTypeSerializer, LeaveBalanceSerializer,
     LeaveRequestSerializer, LeaveRequestApprovalSerializer,
-    GlobalLeaveSettingsSerializer
+    LeaveEncashmentSerializer, LeaveEncashmentProcessSerializer,
+    LeaveSettingsSerializer, GlobalLeaveSettingsSerializer
 )
 from apps.accounts.permissions import is_client_admin
 from apps.audit.utils import log_activity
@@ -17,10 +20,21 @@ from apps.audit.utils import log_activity
 logger = logging.getLogger(__name__)
 
 def get_client_company(user):
-    if hasattr(user, 'employee_profile') and user.employee_profile:
-        return user.employee_profile.company
-    elif hasattr(user, 'organization') and user.organization:
-        return user.organization
+    """
+    Safely retrieve the organization/company context for the current user.
+    """
+    try:
+        if user.is_superuser:
+            from apps.accounts.models import Organization
+            return Organization.objects.first()
+        
+        if hasattr(user, 'employee_profile') and user.employee_profile:
+            return user.employee_profile.company
+        elif hasattr(user, 'organization') and user.organization:
+            return user.organization
+    except Exception as e:
+        logger.error(f"Error retrieving company context for user {user.username}: {str(e)}")
+    
     return None
 
 
@@ -42,7 +56,10 @@ def leave_type_list_create(request):
                 serializer.save(company=company)
                 return Response(serializer.data, status=201)
             return Response(serializer.errors, status=400)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
@@ -63,7 +80,10 @@ def leave_type_detail(request, pk):
             if not is_client_admin(request.user):
                 return Response({'error': 'Admin access required'}, status=403)
             leave_type.delete(); return Response(status=204)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 
 @api_view(['GET', 'POST'])
@@ -85,7 +105,10 @@ def leave_balance_list_create(request):
             if serializer.is_valid():
                 serializer.save(); return Response(serializer.data, status=201)
             return Response(serializer.errors, status=400)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
@@ -102,7 +125,10 @@ def leave_balance_detail(request, pk):
         elif request.method == 'DELETE':
             if not is_client_admin(request.user): return Response({'error': 'Admin access required'}, status=403)
             balance.delete(); return Response(status=204)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -113,7 +139,10 @@ def leave_balance_my_balance(request):
         if not employee_id: return Response({'error': 'employee parameter required'}, status=400)
         balances = LeaveBalance.objects.filter(employee_id=employee_id, year=year)
         return Response(LeaveBalanceSerializer(balances, many=True).data)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -131,7 +160,10 @@ def leave_balance_allocate(request):
                 _, was_created = LeaveBalance.objects.get_or_create(employee_id=emp_id, leave_type=lt, year=year, defaults={'allocated': lt.days_per_year})
                 if was_created: created += 1
         return Response({'message': f'Created {created} leave balance records'})
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -152,7 +184,10 @@ def leave_balance_run_accrual(request):
                 accrual_amount = lt.days_per_year / 4
                 accrued_count += LeaveBalance.objects.filter(leave_type=lt, year=today.year).update(allocated=F('allocated') + accrual_amount)
         return Response({'message': f'Accrued leaves for {accrued_count} records'})
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 
 @api_view(['GET', 'POST'])
@@ -188,7 +223,10 @@ def leave_request_list_create(request):
                 
                 return Response(serializer.data, status=201)
             return Response(serializer.errors, status=400)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
@@ -203,7 +241,10 @@ def leave_request_detail(request, pk):
             return Response(serializer.errors, status=400)
         elif request.method == 'DELETE':
             leave_request.delete(); return Response(status=204)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -253,7 +294,10 @@ def leave_request_process(request, pk):
                 
                 return Response({'message': 'Leave rejected'})
         return Response(serializer.errors, status=400)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -279,7 +323,10 @@ def leave_request_cancel(request, pk):
             
             return Response({'message': 'Leave cancelled and balance restored'})
         except LeaveBalance.DoesNotExist: return Response({'message': 'Leave cancelled (no balance record found to restore)'})
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -299,7 +346,10 @@ def leave_request_stats(request):
         recent_list = queryset.order_by('-created_at')[:5]
         stats['recent_requests'] = LeaveRequestSerializer(recent_list, many=True).data
         return Response(stats)
-    except Exception as e: return Response({'error': str(e)}, status=500)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in {request.resolver_match.func.__name__ if hasattr(request, 'resolver_match') else 'Leave View'}: {str(e)}\n{traceback.format_exc()}")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['GET'])
 @permission_classes([]) # Public but signed
@@ -377,6 +427,356 @@ def leave_request_email_process(request, pk):
     except Exception as e:
         logger.error(f"Error processing email leave link: {str(e)}")
         return HttpResponse(f"<h1>Server Error</h1><p>{str(e)}</p>", status=500)
+
+
+# ─────────────────────────────────────────────
+# Leave Settings Views
+# ─────────────────────────────────────────────
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def leave_settings_detail(request):
+    """Retrieve or update global leave settings for the company"""
+    try:
+        company = get_client_company(request.user)
+        # Ensure settings exist
+        settings, created = LeaveSettings.objects.get_or_create(company=company)
+        
+        if request.method == 'GET':
+            return Response(LeaveSettingsSerializer(settings).data)
+            
+        elif request.method == 'PATCH':
+            if not is_client_admin(request.user):
+                return Response({'error': 'Admin permissions required to modify settings'}, status=403)
+                
+            serializer = LeaveSettingsSerializer(settings, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
+            
+    except Exception as e:
+        logger.error(f"Error in leave_settings_detail: {str(e)}")
+        return Response({'error': str(e)}, status=500)
+
+
+# ─────────────────────────────────────────────
+# Leave Encashment Views
+# ─────────────────────────────────────────────
+
+def _get_employee_instance(employee_id, company, request_user=None):
+    """
+    Robust employee lookup. Resolves employee by:
+    1. Primary Key (UUID)
+    2. employee_id (public character field)
+    3. User PK fallback (if provided ID matches request_user.id)
+    """
+    from apps.accounts.models import Employee as EmpModel
+    
+    # Empty ID – try to use current user
+    if not employee_id:
+        if request_user and hasattr(request_user, 'employee_profile'):
+            return request_user.employee_profile
+        return None
+
+    # Try standard lookups
+    try:
+        return EmpModel.objects.get(
+            Q(pk=employee_id) | Q(employee_id=employee_id),
+            company=company
+        )
+    except (EmpModel.DoesNotExist, ValidationError):
+        # Fallback – check if ID matches User PK
+        if request_user and str(request_user.id) == str(employee_id) and hasattr(request_user, 'employee_profile'):
+            return request_user.employee_profile
+    return None
+
+
+def _get_employee_daily_rate(employee):
+    """
+    Compute the daily salary rate for an employee.
+    Uses: gross_salary / 26  (standard Indian payroll practice).
+    Falls back to 0 if no salary record is found.
+    """
+    from decimal import Decimal
+    try:
+        from apps.payroll.models import EmployeeSalary
+        salary = EmployeeSalary.objects.filter(employee=employee, is_current=True).first()
+        if salary and salary.gross_salary:
+            return (salary.gross_salary / Decimal('26')).quantize(Decimal('0.01'))
+    except Exception as e:
+        logger.warning(f"Could not compute daily rate for {employee}: {e}")
+    return Decimal('0')
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def leave_encashment_list_create(request):
+    """
+    GET  – list encashments (admin: all in company; employee: own only)
+    POST – employee submits an encashment request
+    """
+    try:
+        company = get_client_company(request.user)
+
+        if request.method == 'GET':
+            queryset = LeaveEncashment.objects.filter(
+                employee__company=company
+            ).select_related('employee', 'leave_type', 'approved_by')
+
+            # Non-admins only see their own records
+            if not is_client_admin(request.user):
+                employee = getattr(request.user, 'employee_profile', None)
+                if employee:
+                    queryset = queryset.filter(employee=employee)
+                else:
+                    return Response([])
+
+            # Filters
+            emp_id = request.query_params.get('employee')
+            status_filter = request.query_params.get('status')
+            year_filter = request.query_params.get('year')
+            if emp_id:
+                queryset = queryset.filter(employee_id=emp_id)
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+            if year_filter:
+                queryset = queryset.filter(year=year_filter)
+
+            return Response(LeaveEncashmentSerializer(queryset, many=True).data)
+
+        elif request.method == 'POST':
+            from decimal import Decimal
+
+            # Check if encashment is enabled globally
+            settings, _ = LeaveSettings.objects.get_or_create(company=company)
+            if not settings.is_encashment_enabled:
+                return Response({'error': 'Leave encashment is currently disabled for this organization.'}, status=400)
+
+            employee_id = request.data.get('employee')
+            leave_type_id = request.data.get('leave_type')
+            days_requested = request.data.get('days_encashed')
+            year = request.data.get('year', date.today().year)
+            remarks = request.data.get('remarks', '')
+
+            if not all([employee_id, leave_type_id, days_requested]):
+                return Response({'error': 'employee, leave_type and days_encashed are required'}, status=400)
+
+            # Validate leave type is encashable
+            leave_type = get_object_or_404(LeaveType, pk=leave_type_id, company=company)
+            if not leave_type.is_encashable:
+                return Response({'error': f'{leave_type.name} is not eligible for encashment'}, status=400)
+
+            # Validate employee belongs to this company
+            employee = _get_employee_instance(employee_id, company, request.user)
+            if not employee:
+                return Response({'error': 'Employee record not found'}, status=404)
+
+            days_dec = Decimal(str(days_requested))
+            if days_dec <= 0:
+                return Response({'error': 'days_encashed must be greater than 0'}, status=400)
+
+            # Check available balance
+            try:
+                balance = LeaveBalance.objects.get(employee=employee, leave_type=leave_type, year=year)
+                if balance.available < days_dec:
+                    return Response({
+                        'error': f'Insufficient balance. Available: {balance.available} days'
+                    }, status=400)
+            except LeaveBalance.DoesNotExist:
+                return Response({'error': 'No leave balance record found for this employee and leave type'}, status=400)
+
+            # Compute daily rate
+            daily_rate = _get_employee_daily_rate(employee)
+
+            # Deduct from leave balance (treated as used)
+            balance.used += days_dec
+            balance.save()
+
+            # Create encashment record
+            encashment = LeaveEncashment.objects.create(
+                employee=employee,
+                leave_type=leave_type,
+                year=year,
+                days_encashed=days_dec,
+                daily_rate=daily_rate,
+                remarks=remarks,
+            )
+
+            log_activity(
+                user=request.user,
+                action_type='CREATE',
+                module='LEAVE',
+                description=f"Leave encashment requested: {days_dec} days of {leave_type.name} by {employee.full_name}",
+                reference_id=str(encashment.id)
+            )
+
+            return Response(LeaveEncashmentSerializer(encashment).data, status=201)
+
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in leave_encashment_list_create: {str(e)}\n{traceback.format_exc()}")
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def leave_encashment_detail(request, pk):
+    """Retrieve, partially update, or delete a single encashment record."""
+    try:
+        company = get_client_company(request.user)
+        encashment = get_object_or_404(LeaveEncashment, pk=pk, employee__company=company)
+
+        if request.method == 'GET':
+            return Response(LeaveEncashmentSerializer(encashment).data)
+
+        elif request.method == 'PATCH':
+            if not is_client_admin(request.user):
+                return Response({'error': 'Admin access required'}, status=403)
+            serializer = LeaveEncashmentSerializer(encashment, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
+
+        elif request.method == 'DELETE':
+            if not is_client_admin(request.user):
+                return Response({'error': 'Admin access required'}, status=403)
+            if encashment.status not in ['pending', 'rejected']:
+                return Response({'error': 'Only pending or rejected encashments can be deleted'}, status=400)
+            encashment.delete()
+            return Response(status=204)
+
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in leave_encashment_detail: {str(e)}\n{traceback.format_exc()}")
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def leave_encashment_process(request, pk):
+    """
+    Admin action: approve / reject / mark_paid an encashment request.
+    POST { action: 'approve' | 'reject' | 'mark_paid', rejection_reason: '...' }
+    """
+    try:
+        if not is_client_admin(request.user):
+            return Response({'error': 'Admin access required'}, status=403)
+
+        encashment = get_object_or_404(LeaveEncashment, pk=pk)
+        serializer = LeaveEncashmentProcessSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        action_type = serializer.validated_data['action']
+
+        if action_type == 'approve':
+            if encashment.status != 'pending':
+                return Response({'error': f'Cannot approve a {encashment.status} request'}, status=400)
+            approver = getattr(request.user, 'employee_profile', None)
+            encashment.approve(approver)
+            log_activity(
+                user=request.user,
+                action_type='APPROVE',
+                module='LEAVE',
+                description=f"Leave encashment #{encashment.id} approved (₹{encashment.total_amount})",
+                reference_id=str(encashment.id)
+            )
+            return Response({'message': 'Encashment approved successfully', 'total_amount': str(encashment.total_amount)})
+
+        elif action_type == 'reject':
+            if encashment.status != 'pending':
+                return Response({'error': f'Cannot reject a {encashment.status} request'}, status=400)
+            reason = serializer.validated_data.get('rejection_reason', '')
+            encashment.reject(reason)  # This also restores leave balance
+            log_activity(
+                user=request.user,
+                action_type='REJECT',
+                module='LEAVE',
+                description=f"Leave encashment #{encashment.id} rejected",
+                reference_id=str(encashment.id),
+                new_value={'reason': reason}
+            )
+            return Response({'message': 'Encashment rejected and leave balance restored'})
+
+        elif action_type == 'mark_paid':
+            if encashment.status != 'approved':
+                return Response({'error': 'Only approved encashments can be marked as paid'}, status=400)
+            encashment.mark_paid()
+            log_activity(
+                user=request.user,
+                action_type='UPDATE',
+                module='LEAVE',
+                description=f"Leave encashment #{encashment.id} marked as paid (₹{encashment.total_amount})",
+                reference_id=str(encashment.id)
+            )
+            return Response({'message': 'Encashment marked as paid'})
+
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in leave_encashment_process: {str(e)}\n{traceback.format_exc()}")
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def leave_encashment_eligibility(request):
+    """
+    Returns encashable leave balances for an employee.
+    GET ?employee=<id>&year=<year>
+    """
+    try:
+        employee_id = request.query_params.get('employee')
+        year = request.query_params.get('year', date.today().year)
+        company = get_client_company(request.user)
+        
+        # Check if encashment is enabled globally
+        settings, _ = LeaveSettings.objects.get_or_create(company=company)
+        if not settings.is_encashment_enabled:
+             return Response({
+                 'employee_id': employee_id, 
+                 'daily_rate': 0, 
+                 'eligibility': [], 
+                 'is_enabled': False,
+                 'message': 'Leave encashment is currently disabled by your organization.'
+             })
+
+        employee = _get_employee_instance(employee_id, company, request.user)
+        
+        if not employee:
+            return Response({'error': 'Employee record not found'}, status=404)
+
+        # Get balances for encashable leave types
+        balances = LeaveBalance.objects.filter(
+            employee=employee,
+            year=year,
+            leave_type__is_encashable=True,
+            leave_type__is_active=True
+        ).select_related('leave_type')
+
+        daily_rate = _get_employee_daily_rate(employee)
+
+        result = []
+        for b in balances:
+            available = float(b.available)
+            result.append({
+                'leave_type_id': b.leave_type.id,
+                'leave_type_name': b.leave_type.name,
+                'leave_type_code': b.leave_type.code,
+                'year': b.year,
+                'available_days': available,
+                'daily_rate': float(daily_rate),
+                'estimated_amount': round(available * float(daily_rate), 2),
+            })
+
+        return Response({'employee_id': employee_id, 'daily_rate': float(daily_rate), 'eligibility': result})
+
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in leave_encashment_eligibility: {str(e)}\n{traceback.format_exc()}")
+        return Response({'error': str(e)}, status=500)
 
 
 @api_view(['GET', 'PATCH'])

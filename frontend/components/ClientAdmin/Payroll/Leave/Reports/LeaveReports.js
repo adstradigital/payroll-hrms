@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import {
     FileText, Download, Filter, Search,
-    Calendar, User, Loader2, AlertCircle, ChevronDown, CheckCircle, XCircle, Clock
+    Calendar, User, Loader2, RefreshCw as RefreshIcon, AlertCircle, ChevronDown, CheckCircle, XCircle, Clock
 } from 'lucide-react';
-import { getLeaveReports, getAllEmployees, getMyProfile } from '@/api/api_clientadmin';
+import { getLeaveReports, getAllEmployees, getMyProfile, exportSalaryRegister } from '@/api/api_clientadmin';
 import './LeaveReports.css';
 
 export default function LeaveReports() {
@@ -14,6 +14,7 @@ export default function LeaveReports() {
     const [loading, setLoading] = useState(false);
     const [employees, setEmployees] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
+    const [error, setError] = useState(null);
 
     const [filters, setFilters] = useState({
         employee: '',
@@ -39,8 +40,15 @@ export default function LeaveReports() {
                 getMyProfile(),
                 getAllEmployees()
             ]);
-            setCurrentUser(profRes.data.employee || profRes.data);
+            const user = profRes.data.employee || profRes.data;
+            setCurrentUser(user);
             setEmployees(empRes.data.results || empRes.data || []);
+
+            // Set company filter from the user profile correctly
+            const companyId = user.company?.id || profRes.data.company_id || user.company_id;
+            if (companyId) {
+                setFilters(prev => ({ ...prev, company: companyId }));
+            }
             setFilters(prev => ({ ...prev, company: profRes.data.company_id || profRes.data.company?.id }));
         } catch (err) {
             console.error('Error fetching initial data:', err);
@@ -52,11 +60,13 @@ export default function LeaveReports() {
             setLoading(true);
             const params = {
                 ...filters,
-                company: currentUser?.company_id || currentUser?.company?.id
+                company: filters.company || currentUser?.company_id || currentUser?.company?.id
             };
 
-            // Clean empty params
-            Object.keys(params).forEach(key => !params[key] && delete params[key]);
+            // Remove empty keys
+            Object.keys(params).forEach(key => (params[key] === null || params[key] === undefined || params[key] === '') && delete params[key]);
+
+            console.log('Fetching report with params:', params);
 
             let res;
             if (activeTab === 'summary') {
@@ -66,8 +76,15 @@ export default function LeaveReports() {
             }
 
             setData(res.data);
+            setError(null);
         } catch (err) {
-            console.error('Error fetching report:', err);
+            console.error('Full Axios Error Object:', err);
+            if (err.response) {
+                console.error('Error Response Data:', err.response.data);
+                setError(err.response.data?.error || err.response.data?.detail || 'Failed to fetch report data');
+            } else {
+                setError(err.message || 'Failed to fetch report data');
+            }
         } finally {
             setLoading(false);
         }
@@ -94,7 +111,7 @@ export default function LeaveReports() {
         if (activeTab === 'summary') {
             // Summary columns
             csvRows.push(['Employee Name', 'Employee ID', 'Department', 'Leave Type Balances (Used/Total)']);
-            
+
             data.forEach(row => {
                 const leaveDetails = (row.leaves || []).map(l => `${l.type}: ${l.used}/${l.total}`).join(' | ');
                 csvRows.push([
@@ -107,7 +124,7 @@ export default function LeaveReports() {
         } else {
             // History columns
             csvRows.push(['Date', 'Employee Name', 'Leave Type', 'Days', 'Status', 'Reason']);
-            
+
             data.forEach(row => {
                 csvRows.push([
                     row.start_date,
@@ -130,6 +147,33 @@ export default function LeaveReports() {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
+    };
+
+    const handleDownloadSalaryRegister = async () => {
+        try {
+            setLoading(true);
+            const params = {
+                company: filters.company || currentUser?.company_id || currentUser?.company?.id
+            };
+            
+            const response = await exportSalaryRegister(params);
+            
+            // Create a blob from the response data
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const urlObject = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = urlObject;
+            link.setAttribute('download', `Salary_Register_${new Date().toISOString().split('T')[0]}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(urlObject);
+        } catch (err) {
+            console.error('Error downloading salary register:', err);
+            alert('Failed to download salary register. Please try again or contact support.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getStatusIcon = (status) => {
@@ -206,7 +250,11 @@ export default function LeaveReports() {
 
                 <div className="filters-actions">
                     <button className="icon-btn-refresh" onClick={fetchReport} disabled={loading} title="Refresh Data">
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                        <RefreshIcon size={18} className={loading ? 'animate-spin' : ''} />
+                    </button>
+                    <button className="icon-btn-download-excel" onClick={handleDownloadSalaryRegister} disabled={loading} title="Latest Payroll Register">
+                        <Download size={18} className={loading ? 'animate-pulse' : ''} />
+                        <span>Payroll Register</span>
                     </button>
                     <button className="btn-export-csv" onClick={handleExportCSV} disabled={loading || data.length === 0}>
                         <Download size={16} /> Export CSV
@@ -221,6 +269,14 @@ export default function LeaveReports() {
                         <Loader2 size={48} className="animate-spin spinner-modern" />
                         <p>Crunching the numbers...</p>
                     </div>
+                ) : error ? (
+                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--danger-color)' }}>
+                        <AlertCircle size={48} style={{ marginBottom: '1rem' }} />
+                        <p>{error}</p>
+                        <button className="report-btn report-btn--secondary" onClick={fetchReport} style={{ marginTop: '1rem' }}>
+                            Try Again
+                        </button>
+                    </div>
                 ) : data.length === 0 ? (
                     <div className="reports-empty-state">
                         <div className="empty-icon-wrapper">
@@ -230,83 +286,85 @@ export default function LeaveReports() {
                         <p>There are no leave records matching your current filter criteria.</p>
                     </div>
                 ) : (
-                    <div className="table-responsive">
-                        <table className="modern-data-table">
-                            <thead>
-                                {activeTab === 'summary' ? (
-                                    <tr>
-                                        <th>Employee Details</th>
-                                        <th>Department</th>
-                                        <th>Leave Balance Overview</th>
-                                    </tr>
-                                ) : (
-                                    <tr>
-                                        <th>Request Date</th>
-                                        <th>Employee</th>
-                                        <th>Leave Type</th>
-                                        <th>Duration</th>
-                                        <th>Status</th>
-                                        <th>Reason/Notes</th>
-                                    </tr>
-                                )}
-                            </thead>
-                            <tbody>
-                                {activeTab === 'summary' ? (
-                                    data.map((row, idx) => (
-                                        <tr key={idx}>
-                                            <td>
-                                                <div className="emp-primary-info">{row.name}</div>
-                                                <div className="emp-secondary-info">{row.employee_id}</div>
-                                            </td>
-                                            <td>
-                                                <span className="dept-tag">{row.department || 'Unassigned'}</span>
-                                            </td>
-                                            <td>
-                                                <div className="leave-quota-grid">
-                                                    {(row.leaves || []).map((l, i) => {
-                                                        const used = parseFloat(l.used || 0);
-                                                        const total = parseFloat(l.total || 0);
-                                                        const percentage = total > 0 ? Math.min((used / total) * 100, 100) : 0;
-                                                        
-                                                        return (
-                                                            <div key={i} className="quota-card">
-                                                                <div className="quota-header">
-                                                                    <span className="quota-type">{l.type}</span>
-                                                                    <span className="quota-text">{used} / {total}</span>
-                                                                </div>
-                                                                <div className="quota-progress-track">
-                                                                    <div 
-                                                                        className={`quota-progress-fill ${percentage >= 90 ? 'critical' : percentage >= 75 ? 'warning' : 'healthy'}`}
-                                                                        style={{ width: `${percentage}%` }}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </td>
+                    <>
+                        <div className="table-responsive">
+                            <table className="modern-data-table">
+                                <thead>
+                                    {activeTab === 'summary' ? (
+                                        <tr>
+                                            <th>Employee Details</th>
+                                            <th>Department</th>
+                                            <th>Leave Balance Overview</th>
                                         </tr>
-                                    ))
-                                ) : (
-                                    data.map((row) => (
-                                        <tr key={row.id}>
-                                            <td className="date-cell">{row.start_date}</td>
-                                            <td className="emp-primary-info">{row.employee_name}</td>
-                                            <td><span className="type-tag">{row.leave_type}</span></td>
-                                            <td className="duration-cell">{row.days} Days</td>
-                                            <td>
-                                                <div className={`status-badge-modern status-${row.status?.toLowerCase() || 'pending'}`}>
-                                                    {getStatusIcon(row.status)}
-                                                    {row.status}
-                                                </div>
-                                            </td>
-                                            <td className="reason-cell">{row.reason || '-'}</td>
+                                    ) : (
+                                        <tr>
+                                            <th>Request Date</th>
+                                            <th>Employee</th>
+                                            <th>Leave Type</th>
+                                            <th>Duration</th>
+                                            <th>Status</th>
+                                            <th>Reason/Notes</th>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                    )}
+                                </thead>
+                                <tbody>
+                                    {activeTab === 'summary' ? (
+                                        data.map((row, idx) => (
+                                            <tr key={idx}>
+                                                <td>
+                                                    <div className="emp-primary-info">{row.name}</div>
+                                                    <div className="emp-secondary-info">{row.employee_id}</div>
+                                                </td>
+                                                <td>
+                                                    <span className="dept-tag">{row.department || 'Unassigned'}</span>
+                                                </td>
+                                                <td>
+                                                    <div className="leave-quota-grid">
+                                                        {(row.leaves || []).map((l, i) => {
+                                                            const used = parseFloat(l.used || 0);
+                                                            const total = parseFloat(l.total || 0);
+                                                            const percentage = total > 0 ? Math.min((used / total) * 100, 100) : 0;
+
+                                                            return (
+                                                                <div key={i} className="quota-card">
+                                                                    <div className="quota-header">
+                                                                        <span className="quota-type">{l.type}</span>
+                                                                        <span className="quota-text">{used} / {total}</span>
+                                                                    </div>
+                                                                    <div className="quota-progress-track">
+                                                                        <div
+                                                                            className={`quota-progress-fill ${percentage >= 90 ? 'critical' : percentage >= 75 ? 'warning' : 'healthy'}`}
+                                                                            style={{ width: `${percentage}%` }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        data.map((row) => (
+                                            <tr key={row.id}>
+                                                <td className="date-cell">{row.start_date}</td>
+                                                <td className="emp-primary-info">{row.employee_name}</td>
+                                                <td><span className="type-tag">{row.leave_type}</span></td>
+                                                <td className="duration-cell">{row.days} Days</td>
+                                                <td>
+                                                    <div className={`status-badge-modern status-${row.status?.toLowerCase() || 'pending'}`}>
+                                                        {getStatusIcon(row.status)}
+                                                        {row.status}
+                                                    </div>
+                                                </td>
+                                                <td className="reason-cell">{row.reason || '-'}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </div>
         </div>

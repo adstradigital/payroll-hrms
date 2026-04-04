@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Filter, LayoutGrid, Trash2, Plus, GripVertical, ChevronDown, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
+import { getAttendanceLogs } from '@/api/api_clientadmin';
 import './AttendanceLogs.css';
 
 export default function AttendanceLogs() {
@@ -16,6 +17,8 @@ export default function AttendanceLogs() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
+            const response = await getAttendanceLogs({ date: viewDate });
+            setLogs(response.data.results || []);
             const token = localStorage.getItem('accessToken');
 
             // Corrected endpoint from /attendance/logs/ to /attendance/ with pagination
@@ -40,6 +43,7 @@ export default function AttendanceLogs() {
             }
         } catch (error) {
             console.error('Error fetching logs:', error);
+            setLogs([]);
         } finally {
             setLoading(false);
         }
@@ -146,6 +150,8 @@ export default function AttendanceLogs() {
                             <th><div className="aa-th-content"><GripVertical size={14} /> Date</div></th>
                             <th>Check In</th>
                             <th>Check Out</th>
+                            <th>Shift (Assigned)</th>
+                            <th>OT</th>
                             <th>Late (Min)</th>
                             <th>Early (Min)</th>
                             <th>Shift</th>
@@ -155,8 +161,10 @@ export default function AttendanceLogs() {
                     </thead>
                     <tbody>
                         {loading ? (
+                            <tr><td colSpan={9} className="text-center p-4">Loading logs...</td></tr>
                             <tr><td colSpan={10} className="text-center p-4">Loading logs...</td></tr>
                         ) : logs.length === 0 ? (
+                            <tr><td colSpan={9} className="text-center p-4">No attendance logs found for this date</td></tr>
                             <tr><td colSpan={10} className="text-center p-4">No attendance logs found for this date</td></tr>
                         ) : (
                             logs.map(row => (
@@ -189,6 +197,11 @@ export default function AttendanceLogs() {
                                     </td>
                                     <td>{row.shift_name || '-'}</td>
                                     <td>
+                                        {row.overtime_hours > 0 ? (
+                                            <span className="ot-tag">+{row.overtime_hours}h</span>
+                                        ) : '-'}
+                                    </td>
+                                    <td>
                                         <span className={`status-badge-log ${row.status}`}>
                                             {row.status}
                                         </span>
@@ -210,16 +223,16 @@ export default function AttendanceLogs() {
                         Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} records
                     </div>
                     <div className="aa-pagination-btns">
-                        <button 
-                            className="aa-page-btn" 
+                        <button
+                            className="aa-page-btn"
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage(prev => prev - 1)}
                         >
                             Previous
                         </button>
                         <span className="aa-page-num">Page {currentPage}</span>
-                        <button 
-                            className="aa-page-btn" 
+                        <button
+                            className="aa-page-btn"
                             disabled={currentPage * pageSize >= totalCount}
                             onClick={() => setCurrentPage(prev => prev + 1)}
                         >

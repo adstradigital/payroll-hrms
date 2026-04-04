@@ -3,7 +3,7 @@ from .views import (
     policy_list, policy_detail,
     shift_list, shift_detail,
     assignment_list, assignment_detail,
-    attendance_list, attendance_detail,
+    attendance_list, attendance_logs, attendance_detail,
     check_in, check_out,
     regularize,
     start_break, end_break,
@@ -25,11 +25,12 @@ from .views import (
     holiday_import,
     summary_list,
     generate_monthly_summary,
-    regularization_request_list,
-    regularization_request_detail,
-    regularization_pending,
-    regularization_approve,
-    regularization_reject
+    regularization_reject,
+    overtime_request_list,
+    overtime_request_detail,
+    overtime_approve,
+    overtime_reject,
+    overtime_stats
 )
 
 urlpatterns = [
@@ -47,6 +48,7 @@ urlpatterns = [
 
     # Attendance
     path('', attendance_list, name='attendance_list'),
+    path('logs/', attendance_logs, name='attendance_logs'),
     path('<uuid:pk>/', attendance_detail, name='attendance_detail'),
     path('check-in/', check_in, name='attendance_check_in'),
     path('check-out/', check_out, name='attendance_check_out'),
@@ -75,12 +77,15 @@ urlpatterns = [
     path('holidays/<uuid:pk>/restore/', holiday_restore, name='holiday_restore'),
     path('holidays/delete_all/', holiday_delete_all, name='holiday_delete_all'),
 
-    # Regularization Requests
-    path('regularization/', regularization_request_list, name='regularization_list'),
-    path('regularization/<uuid:pk>/', regularization_request_detail, name='regularization_detail'),
-    path('regularization/pending/', regularization_pending, name='regularization_pending'),
-    path('regularization/<uuid:pk>/approve/', regularization_approve, name='regularization_approve'),
     path('regularization/<uuid:pk>/reject/', regularization_reject, name='regularization_reject'),
+
+    # Overtime Requests
+    path('overtime/', overtime_request_list, name='overtime_list'),
+    path('overtime/<uuid:pk>/', overtime_request_detail, name='overtime_detail'),
+    path('overtime/pending/', overtime_pending, name='overtime_pending'),
+    path('overtime/<uuid:pk>/approve/', overtime_approve, name='overtime_approve'),
+    path('overtime/<uuid:pk>/reject/', overtime_reject, name='overtime_reject'),
+    path('overtime/stats/', overtime_stats, name='overtime_stats'),
 
     # Attendance Summary
     path('summary/', generate_monthly_summary, name='generate_monthly_summary'),

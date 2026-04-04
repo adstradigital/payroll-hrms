@@ -47,6 +47,7 @@ export const getOrganization = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ORG
 export const updateOrganization = (data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.ORGANIZATION, data);
 export const updateOrganizationSettings = (settings) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.ORGANIZATION, { settings });
 
+
 // Employees
 export const getAllEmployees = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEES, { params });
 export const getEmployeeById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DETAIL(id));
@@ -76,6 +77,7 @@ export const getScopes = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.SCOPES);
 
 // Attendance
 export const getAllAttendance = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE, { params });
+export const getAttendanceLogs = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE_LOGS, { params });
 export const createAttendance = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ATTENDANCE, data);
 export const updateAttendance = (id, data) => axiosInstance.put(`${CLIENTADMIN_ENDPOINTS.ATTENDANCE}${id}/`, data);
 export const bulkMarkAttendance = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.ATTENDANCE}bulk-mark/`, data);
@@ -111,6 +113,16 @@ export const allocateLeaves = (data) => axiosInstance.post(`${CLIENTADMIN_ENDPOI
 export const runLeaveAccrual = (companyId) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.LEAVE_BALANCE}run_accrual/`, { company: companyId });
 export const getAllLeaveBalances = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_BALANCE, { params });
 
+// Leave Encashment
+export const getLeaveEncashments = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_ENCASHMENTS, { params });
+export const requestLeaveEncashment = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LEAVE_ENCASHMENTS, data);
+export const getLeaveEncashmentById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_ENCASHMENT_DETAIL(id));
+export const processLeaveEncashment = (id, data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.LEAVE_ENCASHMENT_PROCESS(id), data);
+export const getEncashmentEligibility = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_ENCASHMENT_ELIGIBILITY, { params });
+export const getLeaveSettings = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.LEAVE_SETTINGS);
+export const updateLeaveSettings = (data) => axiosInstance.patch(CLIENTADMIN_ENDPOINTS.LEAVE_SETTINGS, data);
+
+
 // Payroll
 export const getAllPayroll = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.PAYROLL, { params });
 export const runPayroll = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.PAYROLL_RUN, data);
@@ -130,6 +142,7 @@ export const getTaxSlabs = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.T
 export const createTaxSlab = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.TAX_SLABS, data);
 export const updateTaxSlab = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.TAX_SLAB_DETAIL(id), data);
 export const deleteTaxSlab = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.TAX_SLAB_DETAIL(id));
+
 
 export const getTaxDeclarations = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.TAX_DECLARATIONS, { params });
 export const updateTaxDeclaration = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.TAX_DECLARATION_DETAIL(id), data);

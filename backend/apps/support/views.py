@@ -236,6 +236,8 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             queryset = SupportTicket.objects.all()
         elif hasattr(user, 'employee_profile'):
             queryset = SupportTicket.objects.filter(employee=user.employee_profile)
+        elif user.is_staff:
+            queryset = SupportTicket.objects.all()
         else:
             return Response({'error': 'Employee profile not found'}, status=status.HTTP_404_NOT_FOUND)
         

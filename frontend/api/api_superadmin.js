@@ -28,3 +28,4 @@ export const deleteUser = (id) => axiosInstance.delete(SUPERADMIN_ENDPOINTS.USER
 // Analytics
 export const getAnalytics = (params) => axiosInstance.get(SUPERADMIN_ENDPOINTS.ANALYTICS, { params });
 export const getDashboardStats = () => axiosInstance.get(SUPERADMIN_ENDPOINTS.DASHBOARD_STATS);
+export const getSuperAdminStats = () => axiosInstance.get(SUPERADMIN_ENDPOINTS.SUPER_ADMIN_STATS);

@@ -199,6 +199,99 @@ export const attendanceApi = {
    */
   triggerSummaryGeneration: (data) =>
     axiosInstance.post(`${API_BASE}/summary/`, data),
+
+  // ============ OVERTIME REQUESTS ============
+
+  /**
+   * Get all overtime requests
+   * @param {Object} params - Query parameters
+   * @returns {Promise}
+   */
+  getOvertimeRequests: (params = {}) =>
+    axiosInstance.get(`${API_BASE}/overtime/`, { params }),
+
+  /**
+   * Get pending overtime requests
+   * @returns {Promise}
+   */
+  getPendingOvertime: () =>
+    axiosInstance.get(`${API_BASE}/overtime/pending/`),
+
+  /**
+   * Create new overtime request
+   * @param {Object} data - Request data
+   * @returns {Promise}
+   */
+  createOvertimeRequest: (data) =>
+    axiosInstance.post(`${API_BASE}/overtime/`, data),
+
+  /**
+   * Approve overtime request
+   * @param {string} id - Request ID
+   * @param {Object} data - Comments
+   * @returns {Promise}
+   */
+  approveOvertime: (id, data = {}) =>
+    axiosInstance.post(`${API_BASE}/overtime/${id}/approve/`, data),
+
+  /**
+   * Reject overtime request
+   * @param {string} id - Request ID
+   * @param {Object} data - Comments
+   * @returns {Promise}
+   */
+  rejectOvertime: (id, data = {}) =>
+    axiosInstance.post(`${API_BASE}/overtime/${id}/reject/`, data),
+
+  /**
+   * Get overtime summary statistics
+   * @param {Object} params - month, year
+   * @returns {Promise}
+   */
+  getOvertimeStats: (params = {}) =>
+    axiosInstance.get(`${API_BASE}/overtime/stats/`, { params }),
+
+  /**
+   * Delete overtime request
+   * @param {string} id - Request ID
+   * @returns {Promise}
+   */
+  deleteOvertimeRequest: (id) =>
+    axiosInstance.delete(`${API_BASE}/overtime/${id}/`),
+
+  // ============ SHIFTS ============
+
+  /**
+   * Get all shifts
+   * @returns {Promise}
+   */
+  getShifts: () =>
+    axiosInstance.get(`${API_BASE}/shifts/`),
+
+  /**
+   * Create new shift
+   * @param {Object} data - Shift data
+   * @returns {Promise}
+   */
+  createShift: (data) =>
+    axiosInstance.post(`${API_BASE}/shifts/`, data),
+
+  /**
+   * Update shift
+   * @param {string} id - Shift ID
+   * @param {Object} data - Updated data
+   * @returns {Promise}
+   */
+  updateShift: (id, data) =>
+    axiosInstance.put(`${API_BASE}/shifts/${id}/`, data),
+
+  /**
+   * Delete shift
+   * @param {string} id - Shift ID
+   * @returns {Promise}
+   */
+  deleteShift: (id) =>
+    axiosInstance.delete(`${API_BASE}/shifts/${id}/`),
 };
 
 export default attendanceApi;

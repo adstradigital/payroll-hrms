@@ -78,7 +78,9 @@ export const translations = {
             interview: "Interview",
             openJobs: "Open Jobs",
             stages: "Stages",
-            skillZone: "Skill Zone"
+            skillZone: "Skill Zone",
+            ats: "ATS",
+            leaveEncashment: "Leave Encashment"
         },
         auth: {
             login: "Login",
@@ -200,7 +202,9 @@ export const translations = {
             interview: "അഭിമുഖം",
             openJobs: "ഓപ്പൺ ജോലികൾ",
             stages: "ഘട്ടങ്ങൾ",
-            skillZone: "സ്കിൽ സോൺ"
+            skillZone: "സ്കിൽ സോൺ",
+            ats: "ATS",
+            leaveEncashment: "അവധി എൻകാഷ്‌മെന്റ്"
         },
         auth: {
             login: "ലോഗിൻ",
@@ -322,7 +326,9 @@ export const translations = {
             interview: "مقابلة",
             openJobs: "وظائف مفتوحة",
             stages: "مراحل",
-            skillZone: "منطقة المهارات"
+            skillZone: "منطقة المهارات",
+            ats: "ATS",
+            leaveEncashment: "صرف الإجازات"
         },
         auth: {
             login: "تسجيل الدخول",

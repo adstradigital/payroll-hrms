@@ -7,10 +7,10 @@ import recruitmentApi from '@/api/recruitmentApi';
 import './QuickActions.css';
 
 const actions = [
-    { key: 'post', title: 'Post Job', icon: Briefcase, href: '/recruitment/open-jobs' },
+    { key: 'post', title: 'Post Job', icon: Briefcase, href: '/dashboard/recruitment/job-openings' },
     { key: 'candidate', title: 'Add Candidate', icon: UserPlus, href: '' },
     { key: 'interview', title: 'Schedule Interview', icon: Calendar, href: '' },
-    { key: 'reports', title: 'Reports', icon: BarChart2, href: '/recruitment/reports' },
+    { key: 'reports', title: 'Reports', icon: BarChart2, href: '/dashboard/recruitment/reports' },
 ];
 
 const EMPTY_CANDIDATE_FORM = {
@@ -28,7 +28,7 @@ const EMPTY_INTERVIEW_FORM = {
     job: '',
     interview_type: 'HR',
     interviewer_name: '',
-    interview_date: '',
+    scheduled_date: '',
     interview_mode: 'ONLINE',
     location_or_link: '',
     notes: '',
@@ -227,8 +227,8 @@ export default function QuickActions({ onSuccess }: { onSuccess?: () => void }) 
         if (!interviewForm.candidate) return 'Candidate is required.';
         if (!interviewForm.job) return 'Job is required.';
         if (!interviewForm.interviewer_name.trim()) return 'Interviewer name is required.';
-        if (!interviewForm.interview_date) return 'Interview date & time is required.';
-        const scheduled = new Date(interviewForm.interview_date);
+        if (!interviewForm.scheduled_date) return 'Interview date & time is required.';
+        const scheduled = new Date(interviewForm.scheduled_date);
         if (Number.isNaN(scheduled.getTime())) return 'Invalid interview date.';
         if (scheduled <= new Date()) return 'Interview date must be in the future.';
         return '';
@@ -249,7 +249,7 @@ export default function QuickActions({ onSuccess }: { onSuccess?: () => void }) 
                 job: interviewForm.job ? Number(interviewForm.job) : undefined,
                 interview_type: interviewForm.interview_type,
                 interviewer_name: interviewForm.interviewer_name.trim(),
-                interview_date: interviewForm.interview_date,
+                scheduled_date: interviewForm.scheduled_date,
                 interview_mode: interviewForm.interview_mode,
                 location_or_link: interviewForm.location_or_link || '',
                 status: 'SCHEDULED',
@@ -488,8 +488,8 @@ export default function QuickActions({ onSuccess }: { onSuccess?: () => void }) 
                                 <span>Interview Date</span>
                                 <input
                                     type="datetime-local"
-                                    value={interviewForm.interview_date}
-                                    onChange={(event) => setInterviewForm((c) => ({ ...c, interview_date: event.target.value }))}
+                                    value={interviewForm.scheduled_date}
+                                    onChange={(event) => setInterviewForm((c) => ({ ...c, scheduled_date: event.target.value }))}
                                 />
                             </label>
 
