@@ -3,12 +3,13 @@
 import { createPortal } from 'react-dom';
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Plus, Star, Calendar, TrendingUp, Filter, 
+import {
+    Search, Plus, Star, Calendar, TrendingUp, Filter,
     Download, MoreVertical, ChevronDown, Eye, Edit, Trash2, Clock,
     CheckCircle, AlertCircle, XCircle
 } from 'lucide-react';
-import { 
-    getPerformanceReviews, 
+import {
+    getPerformanceReviews,
     getPerformanceReview,
     updatePerformanceReview,
     deletePerformanceReview
@@ -92,7 +93,7 @@ export default function Reviews() {
         try {
             const response = await getPerformanceReviews();
             const data = response?.results || response || [];
-            
+
             const mappedReviews = data.map(r => ({
                 id: r.id,
                 employee: r.employee?.full_name || r.employee_name || 'Unknown',
@@ -119,8 +120,8 @@ export default function Reviews() {
         const pending = reviews.filter(r => r.status === 'pending').length;
         const inProgress = reviews.filter(r => r.status === 'in_progress').length;
         const ratedReviews = reviews.filter(r => r.rating);
-        const avgRating = ratedReviews.length > 0 
-            ? ratedReviews.reduce((acc, r) => acc + r.rating, 0) / ratedReviews.length 
+        const avgRating = ratedReviews.length > 0
+            ? ratedReviews.reduce((acc, r) => acc + r.rating, 0) / ratedReviews.length
             : 0;
 
         return { completed, pending, inProgress, avgRating: avgRating.toFixed(1) };
@@ -466,8 +467,8 @@ export default function Reviews() {
                 </div>
             )}
 
-            <CreateReviewModal 
-                isOpen={activeDropdown === 'create_modal'} 
+            <CreateReviewModal
+                isOpen={activeDropdown === 'create_modal'}
                 onClose={handleCloseCreateModal}
                 onSuccess={() => { handleCloseCreateModal(); fetchReviews(); }}
             />
@@ -617,7 +618,7 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
         console.log("Loading details for Review ID:", review.id);
         setLoading(true);
         setError(null);
-        
+
         try {
             // Fetch employees first
             let empList = [];
@@ -642,17 +643,17 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
             if (reviewDetail) {
                 // Fix: added null check because typeof null is 'object'
                 let reviewerId = (reviewDetail.reviewer && typeof reviewDetail.reviewer === 'object') ? reviewDetail.reviewer.id : reviewDetail.reviewer;
-                
+
                 let managerUserId = null;
 
                 // Find reporting manager's USER ID
                 if (reviewDetail.employee) {
                     // Fix: added null check
                     const subjectUserId = (reviewDetail.employee && typeof reviewDetail.employee === 'object') ? reviewDetail.employee.id : reviewDetail.employee;
-                    
+
                     // Find employee record by User ID
-                    const subjectEmployee = empList.find(e => e.user === subjectUserId); 
-                    
+                    const subjectEmployee = empList.find(e => e.user === subjectUserId);
+
                     if (subjectEmployee?.reporting_manager) {
                         // subjectEmployee.reporting_manager is an Employee UUID
                         const managerEmployee = empList.find(e => (e.id === subjectEmployee.reporting_manager || e.uuid === subjectEmployee.reporting_manager));
@@ -675,9 +676,9 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                     }
                 }
 
-                setFormData({ 
-                    reviewer_id: effectiveReviewerId || '', 
-                    status: reviewDetail.status 
+                setFormData({
+                    reviewer_id: effectiveReviewerId || '',
+                    status: reviewDetail.status
                 });
                 setIsAutoReviewer(auto);
             }
@@ -695,7 +696,7 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
         if (checked && reportingManagerId) {
             setFormData(prev => ({ ...prev, reviewer_id: reportingManagerId }));
         } else if (!checked) {
-             // When switching to manual, keep current ID but allow edit
+            // When switching to manual, keep current ID but allow edit
         }
     };
 
@@ -705,7 +706,7 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
         setError(null);
         try {
             await updatePerformanceReview(review.id, {
-                reviewer_id: formData.reviewer_id || null, 
+                reviewer_id: formData.reviewer_id || null,
                 status: formData.status
             });
             onSuccess();
@@ -744,10 +745,10 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                                         <label style={{ margin: 0 }}>Reviewer</label>
                                         {reportingManagerId && (
                                             <div className="form-check" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    id="manualOverride" 
-                                                    checked={!isAutoReviewer} 
+                                                <input
+                                                    type="checkbox"
+                                                    id="manualOverride"
+                                                    checked={!isAutoReviewer}
                                                     onChange={(e) => {
                                                         const isManual = e.target.checked;
                                                         setIsAutoReviewer(!isManual);
@@ -765,12 +766,12 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     {isAutoReviewer && reportingManagerId ? (
-                                        <div style={{ 
-                                            padding: '0.75rem', 
-                                            background: 'rgba(255, 255, 255, 0.05)', 
-                                            borderRadius: '6px', 
+                                        <div style={{
+                                            padding: '0.75rem',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            borderRadius: '6px',
                                             border: '1px solid rgba(255, 255, 255, 0.1)',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -779,13 +780,13 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                                         }}>
                                             <CheckCircle size={16} color="var(--rv-color-success)" />
                                             <span>
-                                                Reviewer: <strong>{employees.find(e => e.user === reportingManagerId)?.first_name} {employees.find(e => e.user === reportingManagerId)?.last_name}</strong> <span style={{opacity: 0.7, fontSize: '0.9em'}}>(Auto from reporting manager)</span>
+                                                Reviewer: <strong>{employees.find(e => e.user === reportingManagerId)?.first_name} {employees.find(e => e.user === reportingManagerId)?.last_name}</strong> <span style={{ opacity: 0.7, fontSize: '0.9em' }}>(Auto from reporting manager)</span>
                                             </span>
                                         </div>
                                     ) : (
-                                        <select 
-                                            value={formData.reviewer_id} 
-                                            onChange={e => setFormData({...formData, reviewer_id: e.target.value})}
+                                        <select
+                                            value={formData.reviewer_id}
+                                            onChange={e => setFormData({ ...formData, reviewer_id: e.target.value })}
                                             className="form-select"
                                         >
                                             <option value="">-- No Reviewer --</option>
@@ -799,7 +800,7 @@ function EditReviewModal({ review, isOpen, onClose, onSuccess }) {
                                 </div>
                                 <div className="form-group">
                                     <label>Status</label>
-                                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="form-select">
+                                    <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="form-select">
                                         <option value="pending">Pending</option>
                                         <option value="self_submitted">Self Assessment Submitted</option>
                                         <option value="under_review">Under Manager Review</option>
@@ -842,10 +843,10 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
         try {
             const { getReviewPeriods } = require('../services/performanceService');
             const { getAllEmployees } = require('../../../../../api/api_clientadmin');
-            
+
             const [periodsRes, employeesRes] = await Promise.all([
                 getReviewPeriods(),
-                getAllEmployees({ page_size: 1000 }) 
+                getAllEmployees({ page_size: 1000 })
             ]);
 
             const periodList = periodsRes?.results || periodsRes || [];
@@ -857,7 +858,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
             });
 
             setPeriods(prioritizedPeriods);
-            
+
             if (prioritizedPeriods.length > 0) {
                 setFormData(prev => ({ ...prev, review_period: prioritizedPeriods[0].id }));
             }
@@ -875,7 +876,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
         e.preventDefault();
         console.log("Submitting:", formData);
         console.log("Review Period:", formData.review_period);
-    console.log("Employee IDs:", formData.employee_ids);
+        console.log("Employee IDs:", formData.employee_ids);
         if (!formData.review_period || formData.employee_ids.length === 0) {
             setError('Please select a review period and at least one employee.');
             return;
@@ -924,15 +925,15 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                     <h2>Start New Review</h2>
                     <button className="modal-close" onClick={onClose}><XCircle size={24} /></button>
                 </div>
-                
+
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
                         {error && (
-                            <div style={{ 
-                                background: 'rgba(239, 68, 68, 0.1)', 
-                                border: '1px solid rgba(239, 68, 68, 0.2)', 
-                                color: 'var(--rv-color-danger)', 
-                                padding: '0.75rem', 
+                            <div style={{
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                color: 'var(--rv-color-danger)',
+                                padding: '0.75rem',
                                 borderRadius: '0.5rem',
                                 marginBottom: '1.5rem',
                                 display: 'flex',
@@ -946,10 +947,10 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
 
                         <div className="form-group">
                             <label className="form-label">Review Period</label>
-                            <select 
+                            <select
                                 className="form-select"
                                 value={formData.review_period}
-                                onChange={e => setFormData({...formData, review_period: e.target.value})}
+                                onChange={e => setFormData({ ...formData, review_period: e.target.value })}
                                 required
                             >
                                 <option value="" disabled>Select a period</option>
@@ -981,7 +982,7 @@ function CreateReviewModal({ isOpen, onClose, onSuccess }) {
                                         <label key={emp.id} className="multi-select-option">
                                             <input type="checkbox" checked={formData.employee_ids.includes(emp.id)} onChange={() => toggleEmployee(emp.id)} />
                                             <span style={{ color: 'white' }}>
-                                                {emp.full_name || 'Unknown'} 
+                                                {emp.full_name || 'Unknown'}
                                                 <span style={{ color: 'var(--rv-color-mist)', marginLeft: '0.5rem' }}>({emp.employee_id})</span>
                                             </span>
                                             <span style={{ color: 'var(--rv-color-mist)', fontSize: '0.75rem', marginLeft: 'auto' }}>{emp.department?.name}</span>
@@ -1015,11 +1016,11 @@ function DropdownPortal({ anchor, onClose, children }) {
                 const rect = anchor.getBoundingClientRect();
                 const menuWidth = 200; // Increased width for the new download option
                 const estimatedHeight = 220; // Approximate height for the menu items
-                
+
                 // Check if there is enough space below
                 const spaceBelow = window.innerHeight - rect.bottom;
                 const shouldShowAbove = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
-                
+
                 setStyle({
                     position: 'fixed',
                     top: shouldShowAbove ? `${rect.top - 5}px` : `${rect.bottom + 5}px`,
