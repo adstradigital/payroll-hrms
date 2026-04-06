@@ -1,70 +1,104 @@
+/* Organizations Premium Wrapper */
 .orgs-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
+    position: relative;
+    padding: 1rem;
+    min-height: calc(100vh - var(--header-height));
+    transition: var(--transition-normal);
 }
 
-.orgs-header {
+/* Premium Header Area */
+.orgs-header-premium {
+    position: relative;
+    background: linear-gradient(135deg, rgba(10, 10, 11, 0.4) 0%, rgba(23, 23, 25, 0.4) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 2.5rem;
+    margin-bottom: 2.5rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+[data-theme="light"] .orgs-header-premium {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(241, 245, 249, 0.6) 100%);
+}
+
+.header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-tertiary);
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.25rem;
+}
+
+.header-info-flex {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 20px;
+    align-items: center;
+    gap: 2rem;
 }
 
-.orgs-title {
-    font-size: 1.875rem;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 8px;
+.orgs-title-premium {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
 }
 
-.orgs-subtitle {
-    font-size: 0.875rem;
-    color: #71717a;
-    max-width: 600px;
+.orgs-subtitle-premium {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    max-width: 500px;
+    line-height: 1.6;
 }
 
-.btn-primary-nexus {
-    background-color: white;
-    color: black;
-    font-weight: 700;
-    padding: 10px 20px;
-    border-radius: 12px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-primary-nexus:hover {
-    background-color: #e4e4e7;
-    transform: translateY(-2px);
-}
-
-/* Orgs Grid */
-.orgs-grid {
+/* Premium Grid */
+.orgs-grid-premium {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 24px;
+    gap: 1.5rem;
 }
 
-.org-card-premium {
-    background-color: rgba(24, 24, 27, 0.5);
-    border: 1px solid #18181b;
-    border-radius: 24px;
-    padding: 24px;
+/* Nexus Card Styling */
+.org-card-nexus {
+    position: relative;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 1.75rem;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
+    gap: 1.5rem;
     overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.org-card-premium:hover {
-    border-color: #27272a;
-    background-color: rgba(39, 39, 42, 0.3);
-    transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+.org-card-nexus:hover {
+    transform: translateY(-8px);
+    border-color: var(--brand-primary);
+    box-shadow: var(--shadow-xl);
+}
+
+.card-glass-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.03), transparent);
+    transform: skewX(-25deg);
+    transition: 0.75s;
+}
+
+.org-card-nexus:hover .card-glass-shine {
+    left: 150%;
 }
 
 .card-top-flex {
@@ -73,129 +107,133 @@
     align-items: flex-start;
 }
 
-.org-avatar-large {
+.org-avatar-nexus {
     width: 56px;
     height: 56px;
-    background: linear-gradient(135deg, #27272a 0%, #18181b 100%);
-    border: 1px solid #3f3f46;
-    border-radius: 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
     font-weight: 700;
-    color: white;
-    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05);
+    color: var(--brand-primary);
 }
 
+/* Status Badges Nexus */
 .org-status-badge {
-    padding: 4px 12px;
-    border-radius: 100px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-full);
 }
 
-.org-status-active {
-    background-color: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
+.org-status-badge.active {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
 }
 
-.org-status-pending {
-    background-color: rgba(245, 158, 11, 0.15);
+.org-status-badge.pending {
+    background: rgba(245, 158, 11, 0.1);
     color: #f59e0b;
 }
 
+.org-status-badge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* Info Middle */
 .org-info-middle {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0.25rem;
 }
 
-.org-name-heading {
+.org-name-nexus {
     font-size: 1.25rem;
     font-weight: 700;
-    color: white;
-    transition: color 0.2s ease;
+    color: var(--text-primary);
 }
 
-.org-card-premium:hover .org-name-heading {
-    color: #f59e0b;
-}
-
-.plan-badge-row {
+.org-domain {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     font-size: 0.8125rem;
-    color: #71717a;
+    color: var(--text-secondary);
 }
 
-.org-metrics-row {
-    display: flex;
-    gap: 12px;
-    padding: 16px 0;
-    border-top: 1px solid #18181b;
+/* Metrics Nexus */
+.org-metrics-nexus {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
 }
 
-.metric-box {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.text-right-align {
-    text-align: right;
-}
-
-.justify-end {
-    justify-content: flex-end;
-}
-
-.metric-box-label {
-    font-size: 0.65rem;
-    font-weight: 600;
-    color: #52525b;
+.metric-label {
+    font-size: 0.6875rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 0.25rem;
 }
 
-.metric-box-flex {
+.metric-value-flex {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
-.metric-box-value {
-    font-size: 0.9375rem;
+/* Footer Nexus */
+.card-footer-nexus {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.plan-tag {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(79, 70, 229, 0.1);
+    color: #818cf8;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-sm);
+}
+
+.nexus-view-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
     font-weight: 600;
-    color: #d4d4d8;
+    transition: 0.2s;
 }
 
-.card-footer-action {
-    padding-top: 12px;
+.org-card-nexus:hover .nexus-view-btn {
+    color: var(--brand-primary);
 }
 
-.btn-view-details {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px;
-    background-color: #18181b;
-    border: 1px solid #27272a;
-    border-radius: 12px;
-    color: #a1a1aa;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-view-details:hover {
-    background-color: #27272a;
-    color: white;
+@media (max-width: 768px) {
+    .header-info-flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }

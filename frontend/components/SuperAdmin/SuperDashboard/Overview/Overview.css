@@ -1,367 +1,230 @@
-.overview-wrapper {
-    padding-bottom: 40px;
-}
+/* 
+   Modern Carbon Overview 
+   Aesthetics: Clean, Premium, High Contrast 
+*/
 
-/* Welcome Banner */
-.welcome-banner {
-    background: linear-gradient(to right, rgba(245, 158, 11, 0.1), rgba(234, 88, 12, 0.1));
-    border: 1px solid rgba(245, 158, 11, 0.15);
-    border-radius: 24px;
-    padding: 32px;
-    margin-bottom: 32px;
-    position: relative;
-    overflow: hidden;
+.overview-wrapper-nexus {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 32px;
+    padding: 2rem;
+    width: 100%;
+    min-height: 100vh;
 }
 
-.banner-content {
-    position: relative;
-    z-index: 1;
-    max-width: 600px;
-}
-
-.banner-title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: white;
+.nexus-welcome {
     margin-bottom: 8px;
+}
+
+.system-label {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    color: var(--nexus-neon-blue);
+    letter-spacing: 0.25em;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.nexus-welcome h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-primary, #fff); /* Use variable for light theme support */
+    margin: 0;
     letter-spacing: -0.02em;
 }
 
-.banner-subtitle {
-    font-size: 1rem;
-    color: #d4d4d8;
-    margin-bottom: 24px;
-    line-height: 1.6;
+.nexus-welcome p {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.45));
+    margin-top: 8px;
+    font-size: 0.9375rem;
 }
 
-.banner-btn {
-    background-color: #f59e0b;
-    color: black;
-    font-weight: 700;
-    padding: 10px 24px;
-    border-radius: 12px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-}
-
-.banner-btn:hover {
-    background-color: #fbbf24;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
-}
-
-.banner-visual {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 30%;
-    background: linear-gradient(to left, rgba(245, 158, 11, 0.1), transparent);
-    pointer-events: none;
-}
-
-/* Grid Layout */
-.overview-main-grid {
+/* Cards Grid */
+.nexus-cards-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 24px;
-}
-
-/* Analytics Card */
-.analytics-card {
-    background-color: rgba(24, 24, 27, 0.5);
-    border: 1px solid #27272a;
-    border-radius: 24px;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-}
-
-.card-header-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-}
-
-.card-heading {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 4px;
-}
-
-.card-subheading {
-    font-size: 0.875rem;
-    color: #71717a;
-}
-
-.select-premium {
-    background-color: #18181b;
-    border: 1px solid #27272a;
-    color: #d4d4d8;
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 0.75rem;
-    outline: none;
-}
-
-.chart-area-visual {
-    flex: 1;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 8px;
-    height: 300px;
-    padding-bottom: 8px;
-}
-
-.chart-bar-group {
-    flex: 1;
-    position: relative;
-    height: 100%;
-    display: flex;
-    align-items: flex-end;
-}
-
-.chart-bar {
     width: 100%;
-    background-color: #27272a;
-    border-radius: 4px 4px 0 0;
-    transition: all 0.3s ease;
 }
 
-.chart-bar-group:hover .chart-bar {
-    background-color: rgba(245, 158, 11, 0.8);
-}
-
-.bar-hover-info {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #27272a;
-    color: white;
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    border-radius: 6px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-    z-index: 10;
-}
-
-.chart-bar-group:hover .bar-hover-info {
-    opacity: 1;
-}
-
-.chart-labels {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 12px;
-    font-size: 0.75rem;
-    color: #52525b;
-}
-
-/* Side Cards Stack */
-.side-cards-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-.quick-actions-card {
-    background-color: rgba(24, 24, 27, 0.5);
-    border: 1px solid #27272a;
-    border-radius: 24px;
-    padding: 24px;
-}
-
-.actions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 24px;
-}
-
-.action-row {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-    background-color: rgba(39, 39, 42, 0.3);
-    border: 1px solid #27272a;
-    border-radius: 12px;
-    color: #d4d4d8;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.action-row:hover {
-    background-color: #27272a;
-    color: white;
-    border-color: #3f3f46;
-}
-
-.action-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.action-chevron {
-    color: #52525b;
-    transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.action-row:hover .action-chevron {
-    color: #f59e0b;
-    transform: translateX(2px);
-}
-
-/* System Status Card */
-.system-status-card {
-    background-color: rgba(24, 24, 27, 0.5);
-    border: 1px solid #27272a;
-    border-radius: 24px;
-    padding: 24px;
-}
-
-.status-heading {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #52525b;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 20px;
-}
-
-.status-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.status-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.status-label {
-    font-size: 0.875rem;
-    color: #a1a1aa;
-}
-
-.status-value {
-    font-size: 0.875rem;
-    font-weight: 600;
-}
-
-@media (max-width: 1024px) {
-    .overview-main-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Stats Header Grid */
-.stats-header-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
-}
-
-.stat-mini-card {
-    background: rgba(24, 24, 27, 0.5);
-    border: 1px solid #27272a;
+.nexus-card {
+    background: var(--bg-secondary, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
     border-radius: 20px;
-    padding: 20px;
+    padding: 24px;
     display: flex;
-    align-items: center;
-    gap: 16px;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    flex-direction: column;
+    gap: 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.stat-mini-card:hover {
+.nexus-card:hover {
+    background: var(--bg-tertiary, rgba(255, 255, 255, 0.05));
+    border-color: var(--brand-primary, rgba(255, 255, 255, 0.1));
     transform: translateY(-4px);
-    border-color: #3f3f46;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
 }
 
-.mini-icon {
-    width: 48px;
-    height: 48px;
+.card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.icon-box-cyan, .icon-box-indigo, .icon-box-emerald, .icon-box-amber {
+    width: 52px;
+    height: 52px;
     border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.mini-icon.org { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.mini-icon.user { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.mini-icon.payroll { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-.mini-icon.sub { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.icon-box-cyan { background: rgba(0, 242, 255, 0.1); color: var(--nexus-neon-blue); }
+.icon-box-indigo { background: rgba(79, 70, 229, 0.1); color: var(--nexus-neon-indigo); }
+.icon-box-emerald { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.icon-box-amber { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
 
-.mini-content {
+.card-info {
     display: flex;
     flex-direction: column;
+    gap: 4px;
 }
 
-.mini-label {
-    font-size: 0.75rem;
-    color: #71717a;
-    font-weight: 500;
-}
-
-.mini-value {
-    font-size: 1.25rem;
+.card-label {
+    font-size: 0.8125rem;
     font-weight: 700;
-    color: white;
+    color: var(--text-muted, rgba(255, 255, 255, 0.4));
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-/* Loading & Error States */
-.overview-loading, .overview-error {
-    min-height: 400px;
+.card-value {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: var(--text-primary, #fff);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.card-percent {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #10b981;
+}
+
+/* Secondary Actions Grid */
+.nexus-secondary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+    margin-top: 8px;
+}
+
+.nexus-activity-card, .nexus-quick-link-card {
+    background: var(--bg-secondary, rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
+    border-radius: 20px;
+    padding: 28px;
+}
+
+.card-header-flex {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.card-header-flex h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary, #fff);
+    margin: 0;
+}
+
+.status-badge-live {
+    margin-left: auto;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+}
+
+.health-stats-list {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
     gap: 16px;
-    color: #a1a1aa;
 }
 
-.banner-btn-secondary {
-    background-color: transparent;
-    color: white;
-    font-weight: 600;
-    padding: 10px 24px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    cursor: pointer;
-    transition: all 0.2s ease;
+.health-item {
     display: flex;
+    justify-content: space-between;
     align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.03));
 }
 
-.banner-btn-secondary:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
+.health-item:last-child {
+    border-bottom: none;
 }
 
-.status-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+.health-item span {
+    font-size: 0.875rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.6));
 }
 
-.visual-icon {
-    position: absolute;
-    right: 20px;
-    bottom: -20px;
-    color: #f59e0b;
+.status-text-online {
+    color: #10b981;
+    font-weight: 700;
+    font-size: 0.8125rem;
+}
+
+.no-actions {
+    font-size: 0.875rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.3));
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* Light Theme Overrides - Premium Refinement */
+[data-theme="light"] .nexus-card,
+[data-theme="light"] .nexus-activity-card,
+[data-theme="light"] .nexus-quick-link-card {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.02),
+        0 2px 4px rgba(0, 0, 0, 0.01);
+}
+
+[data-theme="light"] .nexus-card:hover {
+    border-color: var(--nexus-neon-blue);
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.04),
+        0 4px 6px rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .nexus-welcome h1,
+[data-theme="light"] .card-value,
+[data-theme="light"] .card-header-flex h3 {
+    color: #1e293b;
+}
+
+[data-theme="light"] .card-label,
+[data-theme="light"] .nexus-welcome p,
+[data-theme="light"] .health-item span {
+    color: #64748b;
+}
+
+@media (max-width: 1200px) {
+    .nexus-secondary-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+    .overview-wrapper-nexus { padding: 1.5rem; }
+    .nexus-welcome h1 { font-size: 2rem; }
 }
