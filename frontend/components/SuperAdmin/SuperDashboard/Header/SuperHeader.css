@@ -1,175 +1,79 @@
-.super-header {
-    height: 64px;
-    background-color: rgba(9, 9, 11, 0.8);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid #18181b;
-    display: flex;
+/* 
+   'The Midnight-Ice Sentinel' Header - DOUBLE ANCHOR
+   Layout: Flex Equilibrium | Aesthetic: Theme-Aware Glass 
+*/
+
+.super-header-nexus {
+    height: 80px; 
+    background: var(--sentinel-glass);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--sentinel-silk);
+    padding: 0 40px;
+    display: flex !important; /* Force Flex */
     align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
+    justify-content: space-between !important; /* Force Spacing */
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: 1001;
+    transition: var(--transition-sentinel);
+    width: 100%;
 }
 
-.header-left {
+.header-left, .header-right {
     display: flex;
     align-items: center;
-    gap: 16px;
-}
-
-.breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.breadcrumb-root {
-    color: #71717a;
-    cursor: pointer;
-    transition: color 0.2s ease;
-}
-
-.breadcrumb-root:hover {
-    color: #a1a1aa;
-}
-
-.breadcrumb-sep {
-    color: #3f3f46;
-}
-
-.breadcrumb-current {
-    color: #f59e0b;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
-
-.search-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.search-icon {
-    position: absolute;
-    left: 12px;
-    color: #52525b;
-}
-
-.search-input {
-    background-color: #18181b;
-    border: 1px solid #27272a;
-    border-radius: 100px;
-    padding: 8px 16px 8px 36px;
-    color: white;
-    font-size: 0.875rem;
-    width: 280px;
-    outline: none;
-    transition: all 0.2s ease;
-}
-
-.search-input:focus {
-    border-color: rgba(245, 158, 11, 0.5);
-    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
-    width: 320px;
+    gap: 1.5rem;
 }
 
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 16px;
+    flex: 1;
+    justify-content: flex-end;
 }
 
-.icon-btn {
-    background: none;
+.search-minimal {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--sentinel-silk);
+    border: 1px solid var(--sentinel-silk);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 320px;
+}
+
+.search-cmd {
+    background: transparent;
     border: none;
-    color: #a1a1aa;
-    padding: 8px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
+    color: var(--sentinel-text);
+    font-size: 14px;
+    width: 100%;
+    outline: none;
 }
 
-.icon-btn:hover {
-    background-color: #18181b;
-    color: white;
-}
-
-.notification-dot {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 8px;
-    height: 8px;
-    background-color: #ef4444;
-    border-radius: 50%;
-    border: 2px solid #09090b;
-}
-
-.header-divider {
-    width: 1px;
-    height: 24px;
-    background-color: #18181b;
-}
-
-.user-profile {
+.user-nexus-profile {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.user-text {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+.user-name-nexus {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--sentinel-text);
 }
 
-.user-fullname {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: white;
-}
-
-.user-title {
-    font-size: 0.75rem;
-    color: #71717a;
-}
-
-.user-avatar-premium {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(to top right, #3f3f46, #52525b);
-    border: 1px solid #71717a;
-    border-radius: 50%;
+.user-avatar-nexus {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--sentinel-cyan) 0%, var(--sentinel-neon) 100%);
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.mobile-toggle {
-    background: none;
-    border: none;
-    color: #a1a1aa;
-    cursor: pointer;
-}
-
-@media (max-width: 1024px) {
-    .super-header {
-        padding: 0 16px;
-    }
-
-    .hidden-md {
-        display: none !important;
-    }
+    color: #fff;
+    font-weight: 950;
 }

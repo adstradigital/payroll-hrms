@@ -1,0 +1,191 @@
+/* 'The Sentinel' Elite Command Center Styles - THEME AWARE */
+.super-support-nexus {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    padding: 30px 40px; 
+    min-height: calc(100vh - 80px); 
+    position: relative;
+    overflow: hidden;
+    background: var(--sentinel-bg);
+    color: var(--sentinel-text);
+    perspective: 2000px;
+}
+
+/* Command Header */
+.support-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+}
+
+.header-info h1 {
+    font-size: 32px;
+    font-weight: 950;
+    color: var(--sentinel-text);
+}
+
+.header-info p {
+    color: var(--sentinel-sub);
+    font-size: 14px;
+}
+
+/* Stats */
+.stats-grid { display: flex; gap: 20px; }
+.stat-card {
+    background: var(--sentinel-card-bg);
+    border: 1px solid var(--sentinel-silk);
+    padding: 16px 24px;
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+}
+
+.stat-value { font-size: 24px; font-weight: 950; color: var(--sentinel-text); }
+.stat-label { font-size: 10px; font-weight: 900; color: var(--sentinel-sub); text-transform: uppercase; }
+
+/* Registry Table */
+.support-content {
+    background: var(--sentinel-card-bg);
+    border: 1px solid var(--sentinel-silk);
+    border-radius: 20px;
+    z-index: 100;
+}
+
+.list-header, .ticket-row {
+    display: grid !important;
+    grid-template-columns: 2.5fr 1.8fr 1.2fr 1fr 1.5fr 60px !important;
+    align-items: center;
+    gap: 20px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--sentinel-silk);
+}
+
+.ticket-row { cursor: pointer; transition: 0.3s; }
+.ticket-row:hover { background: rgba(255, 255, 255, 0.02); transform: translateX(10px); }
+
+/* Deep Dive Overlay (MODAL) */
+.deep-dive-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(40px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.deep-dive-container {
+    background: #030614;
+    border: 1px solid var(--sentinel-silk);
+    border-radius: 32px;
+    width: 100%;
+    max-width: 1200px;
+    height: 100%;
+    max-height: 800px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 50px 150px rgba(0, 0, 0, 0.8);
+}
+
+.deep-dive-header {
+    padding: 24px 40px;
+    border-bottom: 1px solid var(--sentinel-silk);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-label {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 11px; font-weight: 950; letter-spacing: 2px;
+}
+
+.close-dive {
+    background: transparent; border: none; color: #fff; cursor: pointer; 
+    transition: 0.3s;
+}
+
+.close-dive:hover { color: var(--sentinel-cyan); transform: rotate(90deg); }
+
+.deep-dive-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    overflow: hidden;
+}
+
+.ticket-intel {
+    padding: 60px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+}
+
+.intel-core h2 { font-size: 32px; font-weight: 950; margin: 12px 0; letter-spacing: -1.5px; }
+.intel-num { color: var(--sentinel-cyan); font-weight: 950; font-family: monospace; letter-spacing: 4px; }
+
+.intel-meta { display: flex; gap: 24px; color: var(--sentinel-sub); font-size: 13px; font-weight: 700; }
+.meta-item { display: flex; align-items: center; gap: 8px; }
+
+.section-label { font-size: 11px; font-weight: 950; letter-spacing: 2px; color: var(--sentinel-sub); margin-bottom: 16px; }
+
+.intel-description p { font-size: 18px; line-height: 1.6; color: rgba(255, 255, 255, 0.7); }
+
+.solution-box {
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid var(--sentinel-success);
+    padding: 32px;
+    border-radius: 20px;
+    color: var(--sentinel-success);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Solution Console */
+.solution-console {
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 1px solid var(--sentinel-silk);
+    display: flex;
+    flex-direction: column;
+    padding: 40px;
+    gap: 24px;
+}
+
+.console-header { display: flex; align-items: center; gap: 12px; font-size: 11px; font-weight: 950; letter-spacing: 2px; }
+
+.console-input {
+    flex: 1;
+    background: #030614;
+    border: 1px solid var(--sentinel-silk);
+    border-radius: 20px;
+    padding: 24px;
+    color: #fff;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.6;
+    resize: none;
+    transition: 0.3s;
+}
+
+.console-input:focus { border-color: var(--sentinel-cyan); box-shadow: 0 0 30px rgba(6, 182, 212, 0.1); }
+
+.finalize-btn {
+    background: linear-gradient(135deg, var(--sentinel-cyan) 0%, var(--sentinel-neon) 100%);
+    color: #030614;
+    padding: 20px;
+    border-radius: 16px;
+    font-weight: 950;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    border: none; cursor: pointer; transition: 0.3s;
+}
+
+.finalize-btn:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.4); }
+.finalize-btn:disabled { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }

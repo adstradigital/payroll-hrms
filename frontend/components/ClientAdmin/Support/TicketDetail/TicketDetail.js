@@ -1,18 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, User, Calendar, Tag, MessageSquare, Paperclip, Send, X, CheckCircle } from 'lucide-react';
 import * as supportApi from '@/api/supportApi';
 import './TicketDetail.css';
 
 export default function TicketDetail({ ticketId }) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [ticket, setTicket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [comment, setComment] = useState('');
     const [submittingComment, setSubmittingComment] = useState(false);
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+    useEffect(() => {
+        // Show success toast if redirected from ticket creation
+        if (searchParams?.get('created') === 'true') {
+            setShowSuccessToast(true);
+            const timer = setTimeout(() => setShowSuccessToast(false), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         if (ticketId) {
@@ -125,6 +136,17 @@ export default function TicketDetail({ ticketId }) {
 
     return (
         <div className="ticket-detail">
+            {/* Success Toast */}
+            {showSuccessToast && (
+                <div className="ticket-success-toast">
+                    <CheckCircle size={18} />
+                    <span>Ticket created successfully! Our team will respond shortly.</span>
+                    <button onClick={() => setShowSuccessToast(false)} className="ticket-success-toast__close">
+                        <X size={15} />
+                    </button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="ticket-detail__header">
                 <button
@@ -180,6 +202,19 @@ export default function TicketDetail({ ticketId }) {
                             </div>
                         </div>
                     </div>
+
+                    {/* Resolution Section */}
+                    {ticket.solution && (
+                        <div className="ticket-detail__section ticket-detail__section--resolved">
+                            <div className="ticket-detail__section-header">
+                                <CheckCircle size={20} color="var(--sentinel-success, #00ff9d)" />
+                                <h3>Official Resolution</h3>
+                            </div>
+                            <div className="ticket-detail__solution-box">
+                                <p>{ticket.solution}</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Description */}
                     <div className="ticket-detail__section">
