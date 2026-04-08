@@ -50,11 +50,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 def get_client_company(user):
-    if hasattr(user, 'employee_profile') and user.employee_profile:
-        return user.employee_profile.company
-    elif hasattr(user, 'organization') and user.organization:
-        return user.organization
-    return None
+    from apps.accounts.utils import get_employee_org
+    return get_employee_org(user)
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])

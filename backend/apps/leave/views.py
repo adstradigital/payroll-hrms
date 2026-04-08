@@ -20,22 +20,8 @@ from apps.audit.utils import log_activity
 logger = logging.getLogger(__name__)
 
 def get_client_company(user):
-    """
-    Safely retrieve the organization/company context for the current user.
-    """
-    try:
-        if user.is_superuser:
-            from apps.accounts.models import Organization
-            return Organization.objects.first()
-        
-        if hasattr(user, 'employee_profile') and user.employee_profile:
-            return user.employee_profile.company
-        elif hasattr(user, 'organization') and user.organization:
-            return user.organization
-    except Exception as e:
-        logger.error(f"Error retrieving company context for user {user.username}: {str(e)}")
-    
-    return None
+    from apps.accounts.utils import get_employee_org
+    return get_employee_org(user)
 
 
 @api_view(['GET', 'POST'])

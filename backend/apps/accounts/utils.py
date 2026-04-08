@@ -34,6 +34,12 @@ def get_employee_org_id(user):
         if org:
             return org.id
             
+        # Fallback for superusers testing the system
+        if user.is_superuser:
+            org = Organization.objects.filter(is_active=True).first()
+            if org:
+                return org.id
+            
     return None
 
 def get_employee_org(user):
@@ -46,6 +52,12 @@ def get_employee_org(user):
     if user and user.is_authenticated:
         # Avoid circular import
         from .models import Organization
-        return Organization.objects.filter(created_by=user).first()
+        org = Organization.objects.filter(created_by=user).first()
+        if org:
+            return org
+            
+        # Fallback for superusers testing the system
+        if user.is_superuser:
+            return Organization.objects.filter(is_active=True).first()
             
     return None

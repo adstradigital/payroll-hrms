@@ -333,15 +333,15 @@ export const submitInterviewFeedback = (id, data) => axiosInstance.post(`${CLIEN
 export const cancelInterview = (id) => axiosInstance.post(`${CLIENTADMIN_ENDPOINTS.INTERVIEW_DETAIL(id)}cancel/`);
 
 // Settings - Employee Custom Fields
-export const getEmployeeFieldDefinitions = () => axiosInstance.get('/settings/employee-fields/');
+export const getEmployeeFieldDefinitions = () => axiosInstance.get('settings/employee-fields/');
 
 // Settings - Document Types
-export const getDocumentTypes = (params) => axiosInstance.get('/settings/document-types/', { params });
+export const getDocumentTypes = (params) => axiosInstance.get('settings/document-types/', { params });
 
 // Onboarding
-export const getOnboardingTemplates = () => axiosInstance.get('/settings/onboarding-templates/');
-export const getEmployeeOnboardingProgress = (employeeId) => axiosInstance.get(`/settings/employee-onboarding/${employeeId}/`);
-export const updateEmployeeOnboardingStep = (stepId, data) => axiosInstance.patch(`/settings/employee-onboarding-step/${stepId}/`, data);
+export const getOnboardingTemplates = () => axiosInstance.get('settings/onboarding-templates/');
+export const getEmployeeOnboardingProgress = (employeeId) => axiosInstance.get(`settings/employee-onboarding/${employeeId}/`);
+export const updateEmployeeOnboardingStep = (stepId, data) => axiosInstance.patch(`settings/employee-onboarding-step/${stepId}/`, data);
 // Attendance
 export const getAttendancePolicies = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICIES, { params });
 export const createAttendancePolicy = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.ATTENDANCE_POLICIES, data);

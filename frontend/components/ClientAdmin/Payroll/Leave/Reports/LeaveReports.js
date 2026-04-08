@@ -40,16 +40,23 @@ export default function LeaveReports() {
                 getMyProfile(),
                 getAllEmployees()
             ]);
-            const user = profRes.data.employee || profRes.data;
-            setCurrentUser(user);
+            
+            const userData = profRes.data.employee || profRes.data;
+            setCurrentUser(userData);
             setEmployees(empRes.data.results || empRes.data || []);
 
-            // Set company filter from the user profile correctly
-            const companyId = user.company?.id || profRes.data.company_id || user.company_id;
-            if (companyId) {
+            // Resolve company ID: User Profile -> localStorage -> profRes
+            let companyId = userData.company?.id || userData.company_id || profRes.data.company_id;
+            
+            // Check localStorage if current profile gives 'system' or is empty (typical for superusers)
+            if (!companyId || companyId === 'system') {
+                const savedId = localStorage.getItem('selectedCompanyId');
+                if (savedId && savedId !== 'system') companyId = savedId;
+            }
+            
+            if (companyId && companyId !== 'system') {
                 setFilters(prev => ({ ...prev, company: companyId }));
             }
-            setFilters(prev => ({ ...prev, company: profRes.data.company_id || profRes.data.company?.id }));
         } catch (err) {
             console.error('Error fetching initial data:', err);
         }
@@ -60,8 +67,13 @@ export default function LeaveReports() {
             setLoading(true);
             const params = {
                 ...filters,
-                company: filters.company || currentUser?.company_id || currentUser?.company?.id
+                company: filters.company || currentUser?.company_id || currentUser?.company?.id || localStorage.getItem('selectedCompanyId')
             };
+
+            // Safety: Ensure we don't send 'system' as a company UUID to the backend
+            if (params.company === 'system' || !params.company) {
+                delete params.company;
+            }
 
             // Remove empty keys
             Object.keys(params).forEach(key => (params[key] === null || params[key] === undefined || params[key] === '') && delete params[key]);
@@ -277,7 +289,7 @@ export default function LeaveReports() {
                             Try Again
                         </button>
                     </div>
-                ) : data.length === 0 ? (
+                                ) : data.length === 0 ? (
                     <div className="reports-empty-state">
                         <div className="empty-icon-wrapper">
                             <AlertCircle size={48} />
@@ -287,16 +299,75 @@ export default function LeaveReports() {
                     </div>
                 ) : (
                     <>
-                        <div className="table-responsive">
-                            <table className="modern-data-table">
-                                <thead>
-                                    {activeTab === 'summary' ? (
+                        {activeTab === 'summary' ? (
+                            <div className="reports-table-container">
+                                <table className="report-table-modern">
+                                    <thead>
                                         <tr>
-                                            <th>Employee Details</th>
-                                            <th>Department</th>
-                                            <th>Leave Balance Overview</th>
+                                            <th rowSpan="2">Employee</th>
+                                            <th rowSpan="2">Department</th>
+                                            {(() => {
+                                                const types = new Set();
+                                                data.forEach(emp => emp.leaves?.forEach(l => types.add(l.type)));
+                                                return Array.from(types).sort().map(type => (
+                                                    <th key={type} colSpan="2" className="text-center">{type}</th>
+                                                ));
+                                            })()}
                                         </tr>
-                                    ) : (
+                                        <tr>
+                                            {(() => {
+                                                const types = new Set();
+                                                data.forEach(emp => emp.leaves?.forEach(l => types.add(l.type)));
+                                                return Array.from(types).sort().map(type => (
+                                                    <React.Fragment key={`${type}-sub`}>
+                                                        <th className="text-center sub-head">Used / Total</th>
+                                                        <th className="text-center sub-head">Available</th>
+                                                    </React.Fragment>
+                                                ));
+                                            })()}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.map(emp => (
+                                            <tr key={emp.employee_id}>
+                                                <td>
+                                                    <div className="emp-name-cell">
+                                                        <span className="emp-name">{emp.employee_name || emp.name}</span>
+                                                        <span className="emp-id">{emp.employee_id}</span>
+                                                    </div>
+                                                </td>
+                                                <td><span className="dept-tag">{emp.department || 'N/A'}</span></td>
+                                                {(() => {
+                                                    const types = new Set();
+                                                    data.forEach(e => e.leaves?.forEach(l => types.add(l.type)));
+                                                    return Array.from(types).sort().map(type => {
+                                                        const leaf = emp.leaves?.find(l => l.type === type) || { total: 0, used: 0, available: 0, pending: 0 };
+                                                        return (
+                                                            <React.Fragment key={`${emp.employee_id}-${type}`}>
+                                                                <td className="text-center">
+                                                                    <div className="balance-cell">
+                                                                        <span>{leaf.used} / {leaf.total}</span>
+                                                                        {leaf.pending > 0 && <span className="pending-hint">+{leaf.pending} pnd</span>}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="text-center">
+                                                                    <span className={`avail-badge ${leaf.available > 0 ? 'positive' : 'empty'}`}>
+                                                                        {leaf.available}
+                                                                    </span>
+                                                                </td>
+                                                            </React.Fragment>
+                                                        );
+                                                    });
+                                                })()}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="modern-data-table">
+                                    <thead>
                                         <tr>
                                             <th>Request Date</th>
                                             <th>Employee</th>
@@ -305,47 +376,9 @@ export default function LeaveReports() {
                                             <th>Status</th>
                                             <th>Reason/Notes</th>
                                         </tr>
-                                    )}
-                                </thead>
-                                <tbody>
-                                    {activeTab === 'summary' ? (
-                                        data.map((row, idx) => (
-                                            <tr key={idx}>
-                                                <td>
-                                                    <div className="emp-primary-info">{row.name}</div>
-                                                    <div className="emp-secondary-info">{row.employee_id}</div>
-                                                </td>
-                                                <td>
-                                                    <span className="dept-tag">{row.department || 'Unassigned'}</span>
-                                                </td>
-                                                <td>
-                                                    <div className="leave-quota-grid">
-                                                        {(row.leaves || []).map((l, i) => {
-                                                            const used = parseFloat(l.used || 0);
-                                                            const total = parseFloat(l.total || 0);
-                                                            const percentage = total > 0 ? Math.min((used / total) * 100, 100) : 0;
-
-                                                            return (
-                                                                <div key={i} className="quota-card">
-                                                                    <div className="quota-header">
-                                                                        <span className="quota-type">{l.type}</span>
-                                                                        <span className="quota-text">{used} / {total}</span>
-                                                                    </div>
-                                                                    <div className="quota-progress-track">
-                                                                        <div
-                                                                            className={`quota-progress-fill ${percentage >= 90 ? 'critical' : percentage >= 75 ? 'warning' : 'healthy'}`}
-                                                                            style={{ width: `${percentage}%` }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        data.map((row) => (
+                                    </thead>
+                                    <tbody>
+                                        {data.map((row) => (
                                             <tr key={row.id}>
                                                 <td className="date-cell">{row.start_date}</td>
                                                 <td className="emp-primary-info">{row.employee_name}</td>
@@ -359,17 +392,19 @@ export default function LeaveReports() {
                                                 </td>
                                                 <td className="reason-cell">{row.reason || '-'}</td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
         </div>
     );
 }
+
+import React from 'react';
 
 function RefreshCw({ size, className }) {
     return (

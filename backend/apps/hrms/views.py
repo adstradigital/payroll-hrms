@@ -36,16 +36,8 @@ from .serializers import (
 
 
 def get_client_company(user):
-    employee = get_employee_or_none(user)
-    if employee and getattr(employee, 'company', None):
-        return employee.company
-
-    if user and user.is_authenticated:
-        org = Organization.objects.filter(created_by=user).first()
-        if org:
-            return org
-
-    return None
+    from apps.accounts.utils import get_employee_org
+    return get_employee_org(user)
 
 
 @api_view(['GET', 'POST'])

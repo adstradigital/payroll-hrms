@@ -1,116 +1,222 @@
-/* Leave Report Styles */
 .leave-report {
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
+    gap: 1.5rem;
 }
 
+/* Header & Filters */
 .report-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
-.report-month-picker {
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-secondary);
+.report-header__filters {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.report-select {
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border-radius: 0.5rem;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
+    background-color: var(--bg-card);
+    font-size: 0.875rem;
+    cursor: pointer;
+    min-width: 120px;
 }
 
+.search-box {
+    position: relative;
+    min-width: 300px;
+}
+
+.search-box__icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.report-search-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    font-size: 0.875rem;
+}
+
+/* Summary Cards */
 .report-summary {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-md);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
 }
 
 .report-card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
+    background: var(--bg-card);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .report-card__icon {
-    color: var(--brand-primary);
-}
-
-.report-card__icon--info {
-    color: var(--color-info);
+    padding: 0.75rem;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary-color);
+    border-radius: 0.75rem;
 }
 
 .report-card__icon--warning {
-    color: var(--color-warning);
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
 }
 
-.report-card__info {
-    display: flex;
-    flex-direction: column;
+.report-card__icon--info {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
 }
 
 .report-card__value {
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-bold);
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
 }
 
 .report-card__label {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
+    font-size: 0.875rem;
+    color: var(--text-muted);
 }
 
+/* Table Section */
 .report-section {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
+    background: var(--bg-card);
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
 }
 
 .report-section__title {
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: var(--spacing-md);
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    color: var(--text-color);
 }
 
-.leave-breakdown {
+.report-table-container {
+    overflow-x: auto;
+    min-height: 200px;
+    position: relative;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.report-table th {
+    background: var(--bg-muted);
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.report-table th.sub-head {
+    font-size: 0.75rem;
+    padding: 0.5rem;
+}
+
+.report-table td {
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.emp-name-cell {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
 }
 
-.leave-type-row {
+.emp-name {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.emp-id {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.used-total {
+    font-variant-numeric: tabular-nums;
+}
+
+.pending-badge {
+    font-size: 0.7rem;
+    color: var(--info-color);
+    margin-top: 0.25rem;
+}
+
+.avail-count {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* States */
+.report-loading, .report-empty, .report-error {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: var(--spacing-md);
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    gap: 1rem;
 }
 
-.leave-type-name {
-    width: 180px;
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
+.report-error {
+    color: var(--danger-color);
 }
 
-.leave-type-bar {
-    flex: 1;
-    height: 8px;
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-full);
-    overflow: hidden;
+.animate-spin {
+    animation: spin 1s linear infinite;
 }
 
-.leave-type-bar__fill {
-    height: 100%;
-    background: var(--brand-primary);
-    border-radius: var(--radius-full);
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
-.leave-type-count {
-    width: 80px;
-    text-align: right;
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-}
+.mt-3 { margin-top: 0.75rem; }
+
+.text-center { text-align: center !important; }
+.text-success { color: var(--success-color) !important; }
+.text-warning { color: var(--warning-color) !important; }
+.text-danger { color: var(--danger-color) !important; }

@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied, ValidationError
-from ..models import PerformanceReview, ReviewPeriod, Goal
+from ..models import PerformanceReview, ReviewPeriod, Goal, CriteriaRating
 from ..validators import (
     validate_review_can_be_submitted,
     validate_self_assessment_complete,
@@ -115,8 +115,12 @@ class ReviewWorkflowService:
         
         # Update review with manager feedback
         review.manager_feedback = manager_review_data.get('manager_feedback', '')
-        # Only use manual overall_rating if weighted calculation not possible
-        manual_rating = manager_review_data.get('overall_rating')
+        # Support both 'overall_rating' (standard) and 'manager_rating' (frontend alias)
+        manual_rating = manager_review_data.get('overall_rating') or manager_review_data.get('manager_rating')
+        # Explicitly update manager_rating field
+        if manual_rating:
+            review.manager_rating = manual_rating
+            
         review.strengths = manager_review_data.get('strengths', '')
         review.areas_for_improvement = manager_review_data.get('areas_for_improvement', '')
         

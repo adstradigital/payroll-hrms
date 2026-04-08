@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
+from .permissions import get_user_role
 
 
 def validate_review_period_dates(start_date, end_date, submission_deadline=None):
@@ -87,13 +88,12 @@ def validate_review_can_be_submitted(performance_review):
 
 def validate_self_assessment_complete(performance_review):
     """
-    Validate that self-assessment is complete before manager can review
+    Validate that self-assessment is complete before manager can review.
+    Note: Allowing 'pending' status specifically to support manager overrides
+    when employees have not yet started their self-assessment.
     """
-    if performance_review.status not in ['self_submitted', 'under_review']:
-        raise ValidationError("Employee must submit self-assessment first")
-    
-    if not performance_review.self_assessment:
-        raise ValidationError("Self-assessment cannot be empty")
+    if performance_review.status not in ['pending', 'self_submitted', 'under_review']:
+        raise ValidationError("Performance review must be in an active state for manager review")
     
     return True
 
@@ -148,7 +148,8 @@ def validate_user_can_review(reviewer, employee):
         return True
     
     # Check if reviewer is Admin/HR
-    if reviewer.role in ['admin', 'hr']:
+    role = get_user_role(reviewer)
+    if role in ['admin', 'hr']:
         return True
     
     raise ValidationError("You are not authorized to review this employee")

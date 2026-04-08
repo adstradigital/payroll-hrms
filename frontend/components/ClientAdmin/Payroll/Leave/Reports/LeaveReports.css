@@ -524,3 +524,91 @@
     transform: none !important;
     box-shadow: none !important;
 }
+
+/* Modern Summary Table Styles */
+.report-table-modern {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.report-table-modern th {
+    background: var(--bg-body, #f8fafc);
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.report-table-modern th.sub-head {
+    font-size: 0.7rem;
+    padding: 0.5rem;
+    background: rgba(var(--brand-primary-rgb), 0.02);
+}
+
+.report-table-modern td {
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.emp-name-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.emp-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.emp-id {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.balance-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.pending-hint {
+    font-size: 0.65rem;
+    color: var(--brand-primary);
+    background: rgba(var(--brand-primary-rgb), 0.1);
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.avail-badge {
+    display: inline-flex;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.8125rem;
+}
+
+.avail-badge.positive {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.avail-badge.empty {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+[data-theme="dark"] .report-table-modern th {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .avail-badge.positive {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+}
+
+.text-center { text-align: center !important; }
+

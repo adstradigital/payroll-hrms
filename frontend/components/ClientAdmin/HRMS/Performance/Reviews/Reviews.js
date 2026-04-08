@@ -6,13 +6,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Search, Plus, Star, Calendar, TrendingUp, Filter,
     Download, MoreVertical, ChevronDown, Eye, Edit, Trash2, Clock,
-    CheckCircle, AlertCircle, XCircle
+    CheckCircle, AlertCircle, XCircle, Send, Award, Target, MessageSquare, 
+    Sparkles
 } from 'lucide-react';
 import {
     getPerformanceReviews,
     getPerformanceReview,
     updatePerformanceReview,
-    deletePerformanceReview
+    deletePerformanceReview,
+    submitManagerReview,
+    getReviewGoals
 } from '../services/performanceService';
 import { getAllEmployees } from '../../../../../api/api_clientadmin';
 import './Reviews.css';
@@ -77,6 +80,7 @@ export default function Reviews() {
     const [dropdownAnchor, setDropdownAnchor] = useState(null);
     const [editingReview, setEditingReview] = useState(null);
     const [detailsReview, setDetailsReview] = useState(null);
+    const [managerReview, setManagerReview] = useState(null);
 
     useEffect(() => {
         fetchReviews();
@@ -118,13 +122,19 @@ export default function Reviews() {
     const stats = useMemo(() => {
         const completed = reviews.filter(r => r.status === 'completed').length;
         const pending = reviews.filter(r => r.status === 'pending').length;
-        const inProgress = reviews.filter(r => r.status === 'in_progress').length;
-        const ratedReviews = reviews.filter(r => r.rating);
+        const inProgress = reviews.filter(r => ['in_progress', 'under_review', 'self_submitted'].includes(r.status)).length;
+        
+        const ratedReviews = reviews.filter(r => r.rating !== null && r.rating !== undefined && !isNaN(Number(r.rating)));
         const avgRating = ratedReviews.length > 0
-            ? ratedReviews.reduce((acc, r) => acc + r.rating, 0) / ratedReviews.length
+            ? ratedReviews.reduce((acc, r) => acc + Number(r.rating), 0) / ratedReviews.length
             : 0;
 
-        return { completed, pending, inProgress, avgRating: avgRating.toFixed(1) };
+        return { 
+            completed, 
+            pending, 
+            inProgress, 
+            avgRating: avgRating > 0 ? avgRating.toFixed(1) : '0.0' 
+        };
     }, [reviews]);
 
     const filteredReviews = useMemo(() => {
@@ -271,6 +281,20 @@ export default function Reviews() {
     const handleViewDetails = (review) => {
         setDetailsReview(review);
         closeDropdown();
+    };
+
+    const handleManagerReviewClick = async (review) => {
+        try {
+            setLoading(true);
+            const detailedReview = await getPerformanceReview(review.id);
+            setManagerReview(detailedReview);
+            closeDropdown();
+        } catch (error) {
+            console.error('Failed to load review for manager assessment:', error);
+            window.alert('Failed to load review details.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -484,6 +508,11 @@ export default function Reviews() {
                         return (
                             <>
                                 <button className="dropdown-item" onClick={() => handleViewDetails(review)}><Eye size={16} /> View Details</button>
+                                {['pending', 'self_submitted', 'under_review'].includes(review.status) && (
+                                    <button className="dropdown-item dropdown-item--highlight" onClick={() => handleManagerReviewClick(review)}>
+                                        <Award size={16} /> Manager Review
+                                    </button>
+                                )}
                                 <button className="dropdown-item" onClick={() => handleEditClick(review)}><Edit size={16} /> Edit</button>
                                 <button className="dropdown-item" onClick={() => {
                                     downloadCsv(
@@ -519,6 +548,15 @@ export default function Reviews() {
                     isOpen={!!editingReview}
                     onClose={closeEditModal}
                     onSuccess={() => { closeEditModal(); fetchReviews(); }}
+                />
+            )}
+
+            {managerReview && (
+                <ManagerReviewModal
+                    review={managerReview}
+                    isOpen={!!managerReview}
+                    onClose={() => setManagerReview(null)}
+                    onSuccess={() => { setManagerReview(null); fetchReviews(); }}
                 />
             )}
         </div>
@@ -1064,5 +1102,175 @@ function DropdownPortal({ anchor, onClose, children }) {
             {children}
         </div>,
         document.body
+    );
+}
+
+function ManagerReviewModal({ review, isOpen, onClose, onSuccess }) {
+    const [rating, setRating] = useState(review?.manager_rating || 0);
+    const [feedback, setFeedback] = useState(review?.manager_feedback || '');
+    const [strengths, setStrengths] = useState(review?.strengths || '');
+    const [improvements, setImprovements] = useState(review?.areas_for_improvement || '');
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+
+    if (!isOpen || !review) return null;
+
+    const employeeName = review.employee?.full_name || review.employee_name || 'Employee';
+
+    const handleSubmit = async (isFinal) => {
+        setSubmitting(true);
+        setError(null);
+        try {
+            const data = {
+                manager_rating: Number(rating),
+                overall_rating: Number(rating),
+                manager_feedback: feedback,
+                strengths: strengths,
+                areas_for_improvement: improvements,
+                status: isFinal ? 'completed' : 'under_review'
+            };
+            await submitManagerReview(review.id, data);
+            onSuccess();
+        } catch (err) {
+            console.error('Failed to submit manager review:', err);
+            setError(err.message || 'Failed to submit review.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal modal--assessment fade-in-up" onClick={e => e.stopPropagation()}>
+                <div className="assessment-header">
+                    <div className="assessment-header__info">
+                        <div className="employee-avatar employee-avatar--large">
+                            {employeeName.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                            <h3 className="assessment-header__title">Reviewing {employeeName}</h3>
+                            <p className="assessment-header__subtitle">{review.review_period?.name || 'Annual Review Cycle'}</p>
+                        </div>
+                    </div>
+                    <button className="modal-close" onClick={onClose}><XCircle size={24} /></button>
+                </div>
+
+                <div className="modal-body" style={{ padding: 0 }}>
+                    <div className="assessment-layout">
+                        {/* Left Panel: Self Assessment */}
+                        <div className="assessment-panel">
+                            <div className="assessment-panel__title">
+                                <MessageSquare size={14} /> Employee Voice
+                            </div>
+                            <div className="assessment-card">
+                                <div className="detail-label" style={{ marginBottom: '0.75rem' }}>Self Assessment</div>
+                                <div className="feedback-bubble">
+                                    {review.self_assessment || "No self-assessment provided by employee."}
+                                </div>
+                                <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span className="detail-label">Self Rating</span>
+                                    <div className="rating-pill">
+                                        <Star size={14} fill="var(--rv-color-gold)" />
+                                        <span style={{ fontSize: '1.25rem' }}>{review.self_rating || '--'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="assessment-card--highlight assessment-card">
+                                <div className="detail-label" style={{ marginBottom: '1rem' }}>Employee Progress</div>
+                                <div className="progress-mini">
+                                    <div className="progress-bar-mini" style={{ height: '8px' }}>
+                                        <div className="progress-fill-mini" style={{ width: `${review.goal_completion_score || 0}%` }}></div>
+                                    </div>
+                                    <span className="progress-val-mini" style={{ fontSize: '0.9rem', width: '40px' }}>{review.goal_completion_score || 0}%</span>
+                                </div>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--rv-color-mist)', marginTop: '0.5rem' }}>Goal completion score based on OKRs</p>
+                            </div>
+                        </div>
+
+                        {/* Right Panel: Manager Evaluation */}
+                        <div className="assessment-panel">
+                            <div className="assessment-panel__title">
+                                <Award size={14} /> Manager Insight
+                            </div>
+                            
+                            <div className="assessment-card--highlight assessment-card">
+                                <div className="detail-label" style={{ textAlign: 'center' }}>Overall Performance Rating</div>
+                                <div className="score-badge-large">{rating}</div>
+                                <div className="rating-slider-container">
+                                    <input 
+                                        type="range" 
+                                        min="1" 
+                                        max="5" 
+                                        step="0.1" 
+                                        className="rating-slider"
+                                        value={rating}
+                                        onChange={(e) => setRating(e.target.value)}
+                                    />
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.7rem', color: 'var(--rv-color-silver)', fontWeight: 600 }}>
+                                        <span>POOR</span>
+                                        <span>AVERAGE</span>
+                                        <span>EXCEPTIONAL</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                                <label className="assessment-panel__title" style={{ padding: 0 }}>
+                                    <Target size={14} /> Performance Feedback
+                                </label>
+                                <textarea 
+                                    className="assessment-textarea"
+                                    placeholder="Provide detailed feedback on performance, achievements, and behavioral traits..."
+                                    value={feedback}
+                                    onChange={(e) => setFeedback(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="assessment-grid-2">
+                                <div className="form-group">
+                                    <label className="assessment-panel__title" style={{ padding: 0, fontSize: '0.65rem' }}>
+                                        <Sparkles size={12} /> Key Strengths
+                                    </label>
+                                    <textarea 
+                                        className="assessment-textarea assessment-textarea--small"
+                                        placeholder="Top 3 strengths..."
+                                        value={strengths}
+                                        onChange={(e) => setStrengths(e.target.value)}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="assessment-panel__title" style={{ padding: 0, fontSize: '0.65rem' }}>
+                                        <TrendingUp size={12} /> Improvement Areas
+                                    </label>
+                                    <textarea 
+                                        className="assessment-textarea assessment-textarea--small"
+                                        placeholder="Growth opportunities..."
+                                        value={improvements}
+                                        onChange={(e) => setImprovements(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {error && (
+                        <div style={{ margin: '0 2rem 1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '0.75rem', color: '#fecaca', fontSize: '0.875rem' }}>
+                            {error}
+                        </div>
+                    )}
+                </div>
+
+                <div className="modal-footer">
+                    <button className="draft-btn" onClick={() => handleSubmit(false)} disabled={submitting}>
+                        {submitting ? 'Saving...' : 'Save as Draft'}
+                    </button>
+                    <button className="finalize-btn" onClick={() => handleSubmit(true)} disabled={submitting}>
+                        <Send size={18} />
+                        {submitting ? 'Finalizing...' : 'Finalize Assessment'}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }

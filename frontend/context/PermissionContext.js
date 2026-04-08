@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import axiosInstance from '@/api/axiosInstance';
+import { CLIENTADMIN_ENDPOINTS } from '@/api/config';
 
 const PermissionContext = createContext();
 
@@ -28,7 +29,7 @@ export function PermissionProvider({ children }) {
 
         try {
             console.log('[PermissionContext] 📥 Fetching user permissions for:', user.email);
-            const response = await axiosInstance.get('/account/employees/me/permissions/');
+            const response = await axiosInstance.get(CLIENTADMIN_ENDPOINTS.GET_MY_PERMISSIONS);
             const data = response.data;
 
             console.log('[PermissionContext] ✅ Permissions loaded:');

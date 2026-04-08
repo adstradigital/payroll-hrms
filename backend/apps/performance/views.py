@@ -3,7 +3,8 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from django.http import Http404
+from django.core.exceptions import ValidationError
+from django.http import Http404, HttpResponse
 from django.db.models import Q
 import logging
 
@@ -39,6 +40,14 @@ def safe_api(fn):
         return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         logger.exception(e)
+        
+        # Handle Django's built-in ValidationError
+        if isinstance(e, ValidationError):
+            return Response(
+                {'error': e.message if hasattr(e, 'message') else str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
         if hasattr(e, 'detail'):
             return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
         return Response(

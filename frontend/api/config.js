@@ -14,7 +14,7 @@
 // =============================================================================
 // LOCAL DEVELOPMENT SETTINGS
 // =============================================================================
-const BASE_URL = 'http://127.0.0.1:8000/api';
+const BASE_URL = 'http://localhost:8000/api';
 export const MEDIA_URL = 'http://127.0.0.1:8000/media';
 export const UPLOADS_URL = 'http://127.0.0.1:8000/media/uploads';
 
@@ -61,6 +61,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     EMPLOYEES: `${BASE_URL}/account/employees/`,
     EMPLOYEE_DETAIL: (id) => `${BASE_URL}/account/employees/${id}/`,
     GET_MY_PROFILE: `${BASE_URL}/account/employees/me/`,
+    GET_MY_PERMISSIONS: `${BASE_URL}/account/employees/me/permissions/`,
     CANDIDATE_BULK_UPLOAD: `${BASE_URL}/recruitment/candidates/bulk-upload/`,
     DEPARTMENTS: `${BASE_URL}/account/departments/`,
     DEPARTMENT_DETAIL: (id) => `${BASE_URL}/account/departments/${id}/`,

@@ -51,6 +51,7 @@ const reportCategories = [
         name: 'Leave Reports',
         icon: Calendar,
         reports: [
+            { id: 'leave-summary', name: 'Leave Summary Report', description: 'Comprehensive view of leave balances for the entire year', canView: true, canDownload: true },
             { id: 'leave-balance', name: 'Leave Balance Statement', description: 'Current leave balances for all active employees', canView: true, canDownload: true },
             { id: 'leave-utilization', name: 'Leave Utilization Rate', description: 'Department-wise leave trends and patterns', canView: false, canDownload: false },
             { id: 'holiday-calendar', name: 'Annual Holiday List', description: 'Company-wide holidays for the current calendar year', canView: false, canDownload: false }
@@ -267,17 +268,28 @@ export default function Reports() {
                 downloadCSV(res.data, `${reportName}_${selectedMonth}_${selectedYear}.csv`);
                 setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
                 return;
-            } else if (reportId === 'leave-balance') {
-                const res = await getLeaveReports({ type: 'summary', ...params });
-                const flatData = res.data.map(emp => ({
+            } else if (reportId === 'leave-summary') {
+                const res = await getLeaveReports({ type: 'summary', year: selectedYear });
+                const flatData = (res.data || []).map(emp => ({
                     Employee: emp.employee_name,
                     ID: emp.employee_id,
                     Department: emp.department,
-                    ...emp.leaves.reduce((acc, l) => ({ ...acc, [l.type]: `${l.used}/${l.total}` }), {})
+                    ...emp.leaves.reduce((acc, l) => ({ ...acc, [l.type]: `${l.used}/${l.total}` }), {}),
+                    Available: emp.leaves.reduce((acc, l) => ({ ...acc, [`${l.type} Avail`]: l.available }), {})
                 }));
-                downloadCSV(flatData, `${reportName}_${selectedMonth}_${selectedYear}.csv`);
+                // Simplify for CSV
+                const csvData = (res.data || []).map(emp => {
+                    const row = { Employee: emp.employee_name, ID: emp.employee_id, Department: emp.department };
+                    emp.leaves.forEach(l => {
+                        row[`${l.type} (Used/Total)`] = `${l.used}/${l.total}`;
+                        row[`${l.type} Avail`] = l.available;
+                    });
+                    return row;
+                });
+                downloadCSV(csvData, `${reportName}_${selectedYear}.csv`);
                 setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
                 return;
+            } else if (reportId === 'leave-balance') {
             } else {
                 setNotification({ show: true, message: 'Export coming soon for this specific format.', type: 'info' });
                 return;
@@ -385,15 +397,21 @@ export default function Reports() {
                 } else {
                     setNotification({ show: true, message: 'No bonus/incentive data found.', type: 'info' });
                 }
-            } else if (reportId === 'leave-balance') {
+            } else if (reportId === 'leave-summary' || reportId === 'leave-balance') {
                 const res = await getLeaveReports({ type: 'summary', month: selectedMonth, year: selectedYear });
                 if (res.data && res.data.length > 0) {
-                    const flatData = res.data.map(emp => ({
-                        Employee: emp.employee_name,
-                        ID: emp.employee_id,
-                        Department: emp.department,
-                        ...emp.leaves.reduce((acc, l) => ({ ...acc, [l.type]: `${l.used}/${l.total}` }), {})
-                    }));
+                    const flatData = res.data.map(emp => {
+                        const row = {
+                            Employee: emp.employee_name,
+                            ID: emp.employee_id,
+                            Department: emp.department,
+                        };
+                        emp.leaves.forEach(l => {
+                            row[`${l.type}`] = `${l.used}/${l.total}`;
+                            row[`${l.type} Avail`] = l.available;
+                        });
+                        return row;
+                    });
                     setPreviewData(flatData);
                     setPreviewReportName(reportName);
                     setPreviewReportId(reportId);

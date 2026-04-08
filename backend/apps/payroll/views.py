@@ -16,27 +16,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 def get_client_company(user):
-    """Helper to get company from user context with robust fallbacks"""
-    # 1. Primary: Linked Employee Profile
-    if hasattr(user, 'employee_profile') and user.employee_profile:
-        return user.employee_profile.company
-        
-    # 2. Secondary: Direct organization link if exists
-    if hasattr(user, 'organization') and user.organization:
-        return user.organization
-        
-    # 3. Tertiary: Fallback for owners/admins if data was wiped
-    from apps.accounts.models import Organization
-    # Try to find an organization created by this user
-    owned_org = Organization.objects.filter(created_by=user).first()
-    if owned_org:
-        return owned_org
-        
-    # 4. Quaternary: Any organization for superusers ONLY when no other options exist
-    if user.is_superuser:
-        return Organization.objects.first()
-        
-    return None
+    from apps.accounts.utils import get_employee_org
+    return get_employee_org(user)
 
 from apps.accounts.models import Employee
 from apps.attendance.models import Attendance, AttendanceSummary
