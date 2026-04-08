@@ -123,6 +123,7 @@ class SupportTicket(BaseModel):
         blank=True,
         related_name='assigned_tickets'
     )
+    solution = models.TextField(blank=True, null=True)
     closed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

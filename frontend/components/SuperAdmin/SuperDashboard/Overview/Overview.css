@@ -1,230 +1,97 @@
-/* 
-   Modern Carbon Overview 
-   Aesthetics: Clean, Premium, High Contrast 
-*/
-
+/* 'The Midnight-Ice Sentinel' Overview Sync - THEME AWARE */
 .overview-wrapper-nexus {
     display: flex;
     flex-direction: column;
-    gap: 32px;
-    padding: 2rem;
+    gap: 48px;
+    padding: 60px 80px;
     width: 100%;
     min-height: 100vh;
-}
-
-.nexus-welcome {
-    margin-bottom: 8px;
+    background: var(--sentinel-bg);
 }
 
 .system-label {
-    font-size: 0.6875rem;
-    font-weight: 800;
-    color: var(--nexus-neon-blue);
+    font-size: 11px;
+    font-weight: 900;
+    color: var(--sentinel-cyan);
     letter-spacing: 0.25em;
-    margin-bottom: 8px;
-    display: block;
+    text-transform: uppercase;
 }
 
 .nexus-welcome h1 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: var(--text-primary, #fff); /* Use variable for light theme support */
-    margin: 0;
-    letter-spacing: -0.02em;
+    font-size: 48px;
+    font-weight: 950;
+    color: var(--sentinel-text);
+    letter-spacing: -2.5px;
+    margin-top: 10px;
 }
 
 .nexus-welcome p {
-    color: var(--text-secondary, rgba(255, 255, 255, 0.45));
-    margin-top: 8px;
-    font-size: 0.9375rem;
+    color: var(--sentinel-sub);
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 10px;
 }
 
-/* Cards Grid */
+/* Cards Grid Sync */
 .nexus-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 24px;
-    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
 }
 
 .nexus-card {
-    background: var(--bg-secondary, rgba(255, 255, 255, 0.03));
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-    border-radius: 20px;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--sentinel-card-bg);
+    border: 1px solid var(--sentinel-silk);
+    border-radius: 28px;
+    padding: 32px;
+    backdrop-filter: blur(40px);
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.1);
 }
 
 .nexus-card:hover {
-    background: var(--bg-tertiary, rgba(255, 255, 255, 0.05));
-    border-color: var(--brand-primary, rgba(255, 255, 255, 0.1));
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
-}
-
-.card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.icon-box-cyan, .icon-box-indigo, .icon-box-emerald, .icon-box-amber {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.icon-box-cyan { background: rgba(0, 242, 255, 0.1); color: var(--nexus-neon-blue); }
-.icon-box-indigo { background: rgba(79, 70, 229, 0.1); color: var(--nexus-neon-indigo); }
-.icon-box-emerald { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.icon-box-amber { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-
-.card-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    transform: translateY(-10px) scale(1.02);
+    border-color: var(--sentinel-cyan);
+    box-shadow: 0 60px 150px rgba(0, 0, 0, 0.2);
 }
 
 .card-label {
-    font-size: 0.8125rem;
-    font-weight: 700;
-    color: var(--text-muted, rgba(255, 255, 255, 0.4));
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--sentinel-sub);
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
 }
 
 .card-value {
-    font-size: 1.875rem;
-    font-weight: 800;
-    color: var(--text-primary, #fff);
-    margin: 0;
-    letter-spacing: -0.01em;
+    font-size: 36px;
+    font-weight: 950;
+    color: var(--sentinel-text);
+    letter-spacing: -1.5px;
 }
 
-.card-percent {
-    font-size: 0.8125rem;
-    font-weight: 700;
-    color: #10b981;
-}
-
-/* Secondary Actions Grid */
-.nexus-secondary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 24px;
-    margin-top: 8px;
-}
-
+/* Health Stats List Sync */
 .nexus-activity-card, .nexus-quick-link-card {
-    background: var(--bg-secondary, rgba(255, 255, 255, 0.02));
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-    border-radius: 20px;
-    padding: 28px;
-}
-
-.card-header-flex {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
+    background: var(--sentinel-card-bg);
+    border: 1px solid var(--sentinel-silk);
+    border-radius: 32px;
+    padding: 40px;
+    backdrop-filter: blur(40px);
 }
 
 .card-header-flex h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-primary, #fff);
-    margin: 0;
-}
-
-.status-badge-live {
-    margin-left: auto;
-    font-size: 0.6875rem;
+    font-size: 18px;
     font-weight: 800;
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-    padding: 4px 10px;
-    border-radius: 6px;
-    letter-spacing: 0.05em;
-}
-
-.health-stats-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.health-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.03));
-}
-
-.health-item:last-child {
-    border-bottom: none;
+    color: var(--sentinel-text);
 }
 
 .health-item span {
-    font-size: 0.875rem;
-    color: var(--text-muted, rgba(255, 255, 255, 0.6));
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--sentinel-sub);
 }
 
 .status-text-online {
-    color: #10b981;
-    font-weight: 700;
-    font-size: 0.8125rem;
-}
-
-.no-actions {
-    font-size: 0.875rem;
-    color: var(--text-muted, rgba(255, 255, 255, 0.3));
-    text-align: center;
-    padding: 20px 0;
-}
-
-/* Light Theme Overrides - Premium Refinement */
-[data-theme="light"] .nexus-card,
-[data-theme="light"] .nexus-activity-card,
-[data-theme="light"] .nexus-quick-link-card {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.03);
-    box-shadow: 
-        0 4px 20px rgba(0, 0, 0, 0.02),
-        0 2px 4px rgba(0, 0, 0, 0.01);
-}
-
-[data-theme="light"] .nexus-card:hover {
-    border-color: var(--nexus-neon-blue);
-    box-shadow: 
-        0 10px 30px rgba(0, 0, 0, 0.04),
-        0 4px 6px rgba(0, 0, 0, 0.02);
-}
-
-[data-theme="light"] .nexus-welcome h1,
-[data-theme="light"] .card-value,
-[data-theme="light"] .card-header-flex h3 {
-    color: #1e293b;
-}
-
-[data-theme="light"] .card-label,
-[data-theme="light"] .nexus-welcome p,
-[data-theme="light"] .health-item span {
-    color: #64748b;
-}
-
-@media (max-width: 1200px) {
-    .nexus-secondary-grid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 640px) {
-    .overview-wrapper-nexus { padding: 1.5rem; }
-    .nexus-welcome h1 { font-size: 2rem; }
+    color: var(--sentinel-success);
+    font-weight: 800;
 }

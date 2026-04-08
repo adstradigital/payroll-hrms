@@ -107,9 +107,13 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         
-        # Admin can see all tickets, regular users only their own
-        if hasattr(user, 'employee_profile') and user.employee_profile.is_admin:
+        # Superuser and staff can see all tickets
+        if user.is_superuser or user.is_staff:
             queryset = SupportTicket.objects.all()
+        # Admin can see all tickets for their company
+        elif hasattr(user, 'employee_profile') and user.employee_profile.is_admin:
+            queryset = SupportTicket.objects.all()
+        # Regular users only their own
         elif hasattr(user, 'employee_profile'):
             queryset = SupportTicket.objects.filter(employee=user.employee_profile)
         else:
@@ -192,8 +196,31 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
+    def resolve_ticket(self, request, pk=None):
+        """Resolve a support ticket with a solution"""
+        ticket = self.get_object()
+        
+        # Only admins or superusers can resolve with a solution in this context
+        if not (request.user.is_superuser or request.user.is_staff):
+            return Response(
+                {'error': 'You do not have permission to resolve this ticket'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        solution_text = request.data.get('solution', '')
+        if not solution_text:
+            return Response({'error': 'Solution text is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        ticket.status = 'resolved'
+        ticket.solution = solution_text
+        ticket.closed_at = timezone.now()
+        ticket.save()
+        
+        serializer = SupportTicketDetailSerializer(ticket)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
     def close_ticket(self, request, pk=None):
-        """Close a support ticket"""
         ticket = self.get_object()
         
         if not ticket.can_be_closed_by(request.user):
@@ -232,14 +259,14 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         """Get ticket statistics"""
         user = request.user
         
-        if hasattr(user, 'employee_profile') and user.employee_profile.is_admin:
+        if user.is_superuser or user.is_staff:
+            queryset = SupportTicket.objects.all()
+        elif hasattr(user, 'employee_profile') and user.employee_profile.is_admin:
             queryset = SupportTicket.objects.all()
         elif hasattr(user, 'employee_profile'):
             queryset = SupportTicket.objects.filter(employee=user.employee_profile)
-        elif user.is_staff:
-            queryset = SupportTicket.objects.all()
         else:
-            return Response({'error': 'Employee profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            queryset = SupportTicket.objects.none()
         
         stats = {
             'total': queryset.count(),

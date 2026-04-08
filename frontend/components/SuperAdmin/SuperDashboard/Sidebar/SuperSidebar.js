@@ -15,7 +15,8 @@ import {
     Globe,
     Zap,
     X,
-    Menu
+    Menu,
+    LifeBuoy
 } from 'lucide-react';
 import './SuperSidebar.css';
 
@@ -35,6 +36,7 @@ const SuperSidebar = ({ activeTab, setActiveTab, sidebarOpen, setSidebarOpen, ha
             label: 'Management',
             items: [
                 { id: 'organizations', icon: Building2, label: 'Organizations' },
+                { id: 'support', icon: LifeBuoy, label: 'Support Center' },
                 { id: 'users', icon: UserPlus, label: 'User Roles' },
                 { id: 'login-management', icon: Key, label: 'Login Control' }
             ]

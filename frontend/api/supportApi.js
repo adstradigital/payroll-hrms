@@ -1,9 +1,16 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const SUPER_ADMIN_API_URL = 'http://localhost:8001/api/v1';
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem('accessToken');
     return {
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+    };
+};
+
+const getNoAuthHeaders = () => {
+    return {
         'Content-Type': 'application/json',
     };
 };
@@ -18,8 +25,8 @@ const getAuthHeadersMultipart = () => {
 // ==================== HELP ARTICLES ====================
 
 export const getCategories = async () => {
-    const response = await fetch(`${API_URL}/support/categories/`, {
-        headers: getAuthHeaders(),
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/categories/`, {
+        headers: getNoAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch categories');
     return response.json();
@@ -73,9 +80,10 @@ export const getMyTickets = async (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.status) params.append('status', filters.status);
     if (filters.search) params.append('search', filters.search);
+    params.append('client_origin', 'Payroll HRMS');
 
-    const response = await fetch(`${API_URL}/support/tickets/?${params.toString()}`, {
-        headers: getAuthHeaders(),
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/?${params.toString()}`, {
+        headers: getNoAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch tickets');
     return response.json();
@@ -85,36 +93,40 @@ export const getAllTickets = async (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.status) params.append('status', filters.status);
     if (filters.search) params.append('search', filters.search);
+    params.append('client_origin', 'Payroll HRMS');
 
-    const response = await fetch(`${API_URL}/support/tickets/?${params.toString()}`, {
-        headers: getAuthHeaders(),
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/?${params.toString()}`, {
+        headers: getNoAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch tickets');
     return response.json();
 };
 
 export const getTicketById = async (id) => {
-    const response = await fetch(`${API_URL}/support/tickets/${id}/`, {
-        headers: getAuthHeaders(),
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/${id}/`, {
+        headers: getNoAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch ticket');
     return response.json();
 };
 
 export const createTicket = async (data) => {
-    const response = await fetch(`${API_URL}/support/tickets/`, {
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(data),
+        headers: getNoAuthHeaders(),
+        body: JSON.stringify({
+            ...data,
+            client_origin: 'Payroll HRMS'
+        }),
     });
     if (!response.ok) throw new Error('Failed to create ticket');
     return response.json();
 };
 
 export const addComment = async (ticketId, comment, isInternal = false) => {
-    const response = await fetch(`${API_URL}/support/tickets/${ticketId}/add_comment/`, {
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/${ticketId}/add_comment/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getNoAuthHeaders(),
         body: JSON.stringify({ comment, is_internal: isInternal }),
     });
     if (!response.ok) throw new Error('Failed to add comment');
@@ -125,36 +137,48 @@ export const uploadAttachment = async (ticketId, file) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_URL}/support/tickets/${ticketId}/upload_attachment/`, {
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/${ticketId}/upload_attachment/`, {
         method: 'POST',
-        headers: getAuthHeadersMultipart(),
         body: formData,
     });
     if (!response.ok) throw new Error('Failed to upload attachment');
     return response.json();
 };
 
-export const closeTicket = async (ticketId) => {
-    const response = await fetch(`${API_URL}/support/tickets/${ticketId}/close_ticket/`, {
+export const resolveTicket = async (ticketId, solution) => {
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/${ticketId}/resolve/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getNoAuthHeaders(),
+        body: JSON.stringify({ solution }),
+    });
+    if (!response.ok) throw new Error('Failed to resolve ticket');
+    return response.json();
+};
+
+export const closeTicket = async (ticketId) => {
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/${ticketId}/close_ticket/`, {
+        method: 'POST',
+        headers: getNoAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to close ticket');
     return response.json();
 };
 
 export const reopenTicket = async (ticketId) => {
-    const response = await fetch(`${API_URL}/support/tickets/${ticketId}/reopen_ticket/`, {
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/${ticketId}/reopen/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getNoAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to reopen ticket');
     return response.json();
 };
 
 export const getTicketStats = async () => {
-    const response = await fetch(`${API_URL}/support/tickets/stats/`, {
-        headers: getAuthHeaders(),
+    const params = new URLSearchParams();
+    params.append('client_origin', 'Payroll HRMS');
+
+    const response = await fetch(`${SUPER_ADMIN_API_URL}/support/tickets/stats/?${params.toString()}`, {
+        headers: getNoAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch ticket stats');
     return response.json();

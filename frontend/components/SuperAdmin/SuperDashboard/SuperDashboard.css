@@ -1,29 +1,63 @@
 /* 
-   Simple Carbon Layout 
-   Super Admin Dashboard Theme 
+   'The Midnight-Ice Sentinel' Unified Foundation
+   Theme-Aware Super Admin Dashboard 
 */
+
+:root {
+    /* Baseline Dimensions & Transitions */
+    --transition-sentinel: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    
+    /* Midnight Sentinel (Dark Theme - Default) */
+    --sentinel-bg: #030614;
+    --sentinel-text: #ffffff;
+    --sentinel-sub: rgba(255, 255, 255, 0.4);
+    --sentinel-glass: rgba(15, 23, 42, 0.4);
+    --sentinel-silk: rgba(255, 255, 255, 0.05);
+    --sentinel-card-bg: rgba(15, 23, 42, 0.4);
+    --sentinel-scan: rgba(6, 182, 212, 0.04);
+    
+    /* Sentinel Elite Palette */
+    --sentinel-cyan: #06b6d4;
+    --sentinel-neon: #3b82f6;
+    --sentinel-alert: #f59e0b;
+    --sentinel-danger: #ef4444;
+    --sentinel-success: #10b981;
+}
+
+/* Light Theme Restoration (Ice-Sentinel) */
+[data-theme="light"] {
+    --sentinel-bg: #f8fafc; /* Slate 50 */
+    --sentinel-text: #0f172a; /* Slate 900 */
+    --sentinel-sub: #64748b; /* Slate 500 */
+    --sentinel-glass: rgba(255, 255, 255, 0.7);
+    --sentinel-silk: rgba(0, 0, 0, 0.05);
+    --sentinel-card-bg: #ffffff;
+    --sentinel-scan: rgba(148, 163, 184, 0.06);
+}
 
 .super-dashboard-layout {
     display: flex;
     height: 100vh;
     width: 100vw;
-    background-color: var(--nexus-carbon, #0a0a0c);
-    color: var(--text-primary, #fff);
+    background-color: var(--sentinel-bg);
+    color: var(--sentinel-text);
     overflow: hidden;
     position: relative;
     font-family: 'Space Grotesk', 'Inter', sans-serif;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* Background Grids */
 .bg-gradients {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0; width: 100%; height: 100%;
     z-index: 0;
     pointer-events: none;
-    opacity: 0.5;
+    opacity: 0.4;
+}
+
+[data-theme="light"] .bg-gradients {
+    opacity: 0.7;
 }
 
 .gradient-1, .gradient-2 {
@@ -33,18 +67,14 @@
 }
 
 .gradient-1 {
-    width: 600px;
-    height: 600px;
-    top: -200px;
-    right: -100px;
+    width: 600px; height: 600px;
+    top: -200px; right: -100px;
     background: rgba(0, 242, 255, 0.05);
 }
 
 .gradient-2 {
-    width: 400px;
-    height: 400px;
-    bottom: -100px;
-    left: -100px;
+    width: 400px; height: 400px;
+    bottom: -100px; left: -100px;
     background: rgba(79, 70, 229, 0.08);
 }
 
@@ -66,46 +96,20 @@
     overflow-x: hidden;
     padding: 0;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    scrollbar-color: var(--sentinel-silk) transparent;
 }
 
 .content-container {
-    max-width: 1600px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
     width: 100%;
     position: relative;
-    padding: 24px;
-}
-
-/* Light Mode Overrides - Premium Refinement */
-[data-theme="light"] .super-dashboard-layout {
-    background-color: #fcfdfe;
-    color: #0f172a;
-}
-
-[data-theme="light"] .bg-gradients {
-    opacity: 0.7;
-}
-
-[data-theme="light"] .gradient-1 {
-    background: rgba(0, 242, 255, 0.08);
-}
-
-[data-theme="light"] .gradient-2 {
-    background: rgba(79, 70, 229, 0.05);
-}
-
-[data-theme="light"] .content-area {
-    background-color: transparent;
+    padding: 0;
 }
 
 /* Utilities */
-.lg-hidden {
-    display: none;
-}
+.lg-hidden { display: none; }
 
 @media (max-width: 1024px) {
-    .lg-hidden {
-        display: flex;
-    }
+    .lg-hidden { display: flex; }
 }

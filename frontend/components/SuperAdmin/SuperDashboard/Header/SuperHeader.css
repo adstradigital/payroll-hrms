@@ -1,20 +1,21 @@
 /* 
-   Simple Carbon Header 
-   Aesthetics: Professional, Clean, Standard 
+   'The Midnight-Ice Sentinel' Header - DOUBLE ANCHOR
+   Layout: Flex Equilibrium | Aesthetic: Theme-Aware Glass 
 */
 
 .super-header-nexus {
-    height: 64px;
-    background: var(--nexus-carbon, #0a0a0c);
-    border-bottom: 1px solid var(--nexus-border, rgba(255, 255, 255, 0.05));
-    padding: 0 24px;
-    display: flex;
+    height: 80px; 
+    background: var(--sentinel-glass);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--sentinel-silk);
+    padding: 0 40px;
+    display: flex !important; /* Force Flex */
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-between !important; /* Force Spacing */
     position: sticky;
     top: 0;
     z-index: 1001;
-    transition: all 0.2s;
+    transition: var(--transition-sentinel);
     width: 100%;
 }
 
@@ -24,267 +25,55 @@
     gap: 1.5rem;
 }
 
-/* Breadcrumb */
-.nexus-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 0.8125rem;
-    font-weight: 700;
-}
-
-.breadcrumb-prefix { color: var(--nexus-neon-blue); }
-.breadcrumb-label { color: var(--text-primary, #fff); }
-
-/* Actions */
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    flex: 1;
+    justify-content: flex-end;
 }
 
 .search-minimal {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: var(--bg-tertiary, rgba(255, 255, 255, 0.03));
-    border: 1px solid var(--nexus-border, rgba(255, 255, 255, 0.05));
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--sentinel-silk);
+    border: 1px solid var(--sentinel-silk);
     border-radius: 12px;
-    width: 240px;
-    transition: all 0.2s;
-}
-
-.search-minimal:focus-within {
-    border-color: var(--nexus-neon-blue);
-    background: rgba(255, 255, 255, 0.05);
+    width: 100%;
+    max-width: 320px;
 }
 
 .search-cmd {
     background: transparent;
     border: none;
-    color: var(--text-primary, #fff);
-    font-size: 0.8125rem;
+    color: var(--sentinel-text);
+    font-size: 14px;
     width: 100%;
     outline: none;
-}
-
-.nexus-icon-btn {
-    width: 38px;
-    height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 1px solid var(--nexus-border, rgba(255, 255, 255, 0.05));
-    border-radius: 10px;
-    color: var(--text-secondary, rgba(255, 255, 255, 0.4));
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.nexus-icon-btn:hover {
-    background: var(--bg-tertiary, rgba(255, 255, 255, 0.05));
-    color: var(--text-primary, #fff);
-    transform: translateY(-1px);
-}
-
-.header-divider-nexus {
-    width: 1px;
-    height: 24px;
-    background: var(--nexus-border, rgba(255, 255, 255, 0.05));
 }
 
 .user-nexus-profile {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 6px;
-    border-radius: 12px;
-    transition: all 0.2s;
-}
-
-.user-nexus-profile:hover {
-    background: var(--bg-tertiary, rgba(255, 255, 255, 0.03));
-}
-
-.user-info-nexus {
-    display: flex;
-    flex-direction: column;
-    text-align: right;
+    gap: 12px;
 }
 
 .user-name-nexus {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--text-primary, #fff);
-    line-height: 1.2;
-}
-
-.user-role-nexus {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--text-muted, #71717a);
-    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--sentinel-text);
 }
 
 .user-avatar-nexus {
     width: 40px;
     height: 40px;
-    background: var(--nexus-gradient);
+    background: linear-gradient(135deg, var(--sentinel-cyan) 0%, var(--sentinel-neon) 100%);
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-weight: 800;
-    font-size: 0.875rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Profile Dropdown */
-.profile-dropdown-nexus {
-    position: absolute;
-    top: calc(100% + 12px);
-    right: 0;
-    width: 240px;
-    background: #111114; /* Solid dark carbon for dropdown */
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    padding: 8px;
-    animation: slideDown 0.2s ease-out;
-    z-index: 2000;
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.dropdown-header {
-    padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.dropdown-name {
-    display: block;
-    font-size: 0.9375rem;
-    font-weight: 700;
-    color: #fff;
-}
-
-.dropdown-email {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--text-muted, #71717a);
-}
-
-.dropdown-divider {
-    height: 1px;
-    background: rgba(255, 255, 255, 0.05);
-    margin: 8px;
-}
-
-.dropdown-item {
-    width: 100%;
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: transparent;
-    border: none;
-    border-radius: 10px;
-    color: var(--text-secondary, rgba(255, 255, 255, 0.6));
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-}
-
-.dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary, #fff);
-}
-
-.logout-item {
-    color: #ef4444; /* Emerald red for logout */
-}
-
-.logout-item:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #f87171;
-}
-
-/* Light Theme Overrides */
-[data-theme="light"] .super-header-nexus {
-    background: #ffffff;
-    border-bottom: 1px solid #e2e8f0;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
-}
-
-[data-theme="light"] .search-minimal {
-    background: #f1f5f9;
-    border-color: #e2e8f0;
-}
-
-[data-theme="light"] .search-minimal:focus-within {
-    background: #ffffff;
-}
-
-[data-theme="light"] .search-cmd,
-[data-theme="light"] .breadcrumb-label,
-[data-theme="light"] .user-name-nexus {
-    color: #1e293b;
-}
-
-[data-theme="light"] .nexus-icon-btn {
-    border-color: #e2e8f0;
-    color: #64748b;
-}
-
-[data-theme="light"] .nexus-icon-btn:hover {
-    background: #f1f5f9;
-    color: #0f172a;
-}
-
-[data-theme="light"] .user-avatar-nexus {
-    box-shadow: 0 4px 12px rgba(23, 37, 84, 0.1);
-}
-
-[data-theme="light"] .profile-dropdown-nexus {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme="light"] .dropdown-name {
-    color: #0f172a;
-}
-
-[data-theme="light"] .dropdown-divider {
-    background: #e2e8f0;
-}
-
-[data-theme="light"] .dropdown-item {
-    color: #475569;
-}
-
-[data-theme="light"] .dropdown-item:hover {
-    background: #f1f5f9;
-    color: #0f172a;
-}
-
-@media (max-width: 1024px) {
-    .super-header-nexus { padding: 0 16px; }
-    .search-minimal { width: 160px; }
-}
-
-@media (max-width: 768px) {
-    .hidden-md { display: none; }
-    .search-minimal { display: none; }
+    font-weight: 950;
 }

@@ -1,19 +1,30 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, Search, MessageSquare } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Plus, Search, MessageSquare, CheckCircle, X } from 'lucide-react';
 import * as supportApi from '@/api/supportApi';
 import './SupportTickets.css';
 
 export default function SupportTickets() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [tickets, setTickets] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+    // Show success toast when redirected from ticket creation
+    useEffect(() => {
+        if (searchParams?.get('created') === 'true') {
+            setShowSuccessToast(true);
+            const timer = setTimeout(() => setShowSuccessToast(false), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         fetchData();
@@ -80,6 +91,17 @@ export default function SupportTickets() {
 
     return (
         <div className="support-tickets">
+            {/* Success Toast */}
+            {showSuccessToast && (
+                <div className="ticket-success-toast">
+                    <CheckCircle size={18} />
+                    <span>Ticket created successfully! Our team will respond shortly.</span>
+                    <button onClick={() => setShowSuccessToast(false)} className="ticket-success-toast__close">
+                        <X size={15} />
+                    </button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="support-tickets__header">
                 <div>
@@ -95,41 +117,27 @@ export default function SupportTickets() {
                 </button>
             </div>
 
-            {/* Tabs */}
-            {stats && (
-                <div className="support-tickets__tabs">
+            {/* Tabs — always rendered, counts default to 0 before stats load */}
+            <div className="support-tickets__tabs">
+                {[
+                    { key: 'all', label: 'All', count: stats?.total ?? '…' },
+                    { key: 'open', label: 'Open', count: stats?.open ?? '…' },
+                    { key: 'in_progress', label: 'In Progress', count: stats?.in_progress ?? '…' },
+                    { key: 'resolved', label: 'Resolved', count: stats?.resolved ?? '…' },
+                    { key: 'closed', label: 'Closed', count: stats?.closed ?? '…' },
+                ].map(({ key, label, count }) => (
                     <button
-                        className={`support-tickets__tab ${activeTab === 'all' ? 'support-tickets__tab--active' : ''}`}
-                        onClick={() => setActiveTab('all')}
+                        key={key}
+                        className={`support-tickets__tab ${activeTab === key ? 'support-tickets__tab--active' : ''}`}
+                        onClick={() => setActiveTab(key)}
                     >
-                        All <span className="support-tickets__tab-count">{stats.total}</span>
+                        {label}
+                        <span className={`support-tickets__tab-count ${activeTab === key ? 'support-tickets__tab-count--active' : ''}`}>
+                            {count}
+                        </span>
                     </button>
-                    <button
-                        className={`support-tickets__tab ${activeTab === 'open' ? 'support-tickets__tab--active' : ''}`}
-                        onClick={() => setActiveTab('open')}
-                    >
-                        Open <span className="support-tickets__tab-count">{stats.open}</span>
-                    </button>
-                    <button
-                        className={`support-tickets__tab ${activeTab === 'in_progress' ? 'support-tickets__tab--active' : ''}`}
-                        onClick={() => setActiveTab('in_progress')}
-                    >
-                        In Progress <span className="support-tickets__tab-count">{stats.in_progress}</span>
-                    </button>
-                    <button
-                        className={`support-tickets__tab ${activeTab === 'resolved' ? 'support-tickets__tab--active' : ''}`}
-                        onClick={() => setActiveTab('resolved')}
-                    >
-                        Resolved <span className="support-tickets__tab-count">{stats.resolved}</span>
-                    </button>
-                    <button
-                        className={`support-tickets__tab ${activeTab === 'closed' ? 'support-tickets__tab--active' : ''}`}
-                        onClick={() => setActiveTab('closed')}
-                    >
-                        Closed <span className="support-tickets__tab-count">{stats.closed}</span>
-                    </button>
-                </div>
-            )}
+                ))}
+            </div>
 
             {/* Search */}
             <div className="support-tickets__search">

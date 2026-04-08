@@ -103,7 +103,7 @@ class SupportTicketListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'ticket_number', 'employee', 'employee_name', 'employee_id',
             'subject', 'category', 'category_name', 'priority', 'status',
-            'assigned_to', 'assigned_to_name', 'comments_count',
+            'assigned_to', 'assigned_to_name', 'comments_count', 'solution',
             'created_at', 'updated_at'
         ]
 
@@ -125,7 +125,7 @@ class SupportTicketDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'ticket_number', 'employee', 'employee_name', 'employee_id',
             'subject', 'category', 'category_name', 'priority', 'status',
-            'description', 'assigned_to', 'assigned_to_name',
+            'description', 'assigned_to', 'assigned_to_name', 'solution',
             'comments', 'attachments', 'created_at', 'updated_at', 'closed_at'
         ]
 
@@ -135,7 +135,8 @@ class CreateTicketSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = SupportTicket
-        fields = ['subject', 'category', 'priority', 'description']
+        fields = ['id', 'ticket_number', 'subject', 'category', 'priority', 'description']
+        read_only_fields = ['id', 'ticket_number']
 
     def create(self, validated_data):
         # Get employee from request user

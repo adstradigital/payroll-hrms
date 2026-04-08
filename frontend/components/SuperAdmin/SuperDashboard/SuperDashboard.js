@@ -8,6 +8,7 @@ import Approvals from './ClientAccountManagement/Approvals/Approvals';
 import CreateUser from './ClientAccountManagement/CreateUser/CreateUser';
 import CreateOrganization from './ClientAccountManagement/CreateOrganization/CreateOrganization';
 import Overview from './Overview/Overview';
+import SuperSupport from './Support/SuperSupport';
 import SuperQuickActions from './QuickActions/SuperQuickActions';
 import './SuperDashboard.css';
 
@@ -22,6 +23,7 @@ const VALID_SUPER_TABS = new Set([
     'users',
     'user-roles',
     'user-audit',
+    'support',
 ]);
 
 const SuperDashboard = () => {
@@ -72,6 +74,8 @@ const SuperDashboard = () => {
                 return <CreateOrganization />;
             case 'approvals':
                 return <Approvals />;
+            case 'support':
+                return <SuperSupport />;
             case 'users':
             case 'user-roles':
             case 'user-audit':
