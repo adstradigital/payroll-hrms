@@ -48,15 +48,22 @@ def get_employee_org(user):
     if employee:
         return employee.company
     
-    # Fallback for organization creators
+    # Fallback for organization creators and managers
     if user and user.is_authenticated:
         # Avoid circular import
-        from .models import Organization
+        from .models import Organization, Employee
+        
+        # 1. Organization created by user
         org = Organization.objects.filter(created_by=user).first()
         if org:
             return org
             
-        # Fallback for superusers testing the system
+        # 2. Check if user is an admin in any organization via an employee profile
+        admin_employee = Employee.objects.filter(user=user, is_admin=True).first()
+        if admin_employee:
+            return admin_employee.company
+            
+        # 3. Last resort: Any active organization if superuser
         if user.is_superuser:
             return Organization.objects.filter(is_active=True).first()
             

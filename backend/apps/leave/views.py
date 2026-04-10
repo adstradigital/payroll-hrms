@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from datetime import date
 import logging
+import uuid
 from .models import LeaveType, LeaveBalance, LeaveRequest, LeaveEncashment, LeaveSettings, GlobalLeaveSettings
 from .serializers import (
     LeaveTypeSerializer, LeaveBalanceSerializer,
@@ -29,9 +30,16 @@ def get_client_company(user):
 def leave_type_list_create(request):
     try:
         company = get_client_company(request.user)
+        logger.info(f"[leave_type_list_create] User: {request.user}, Company: {company}")
+        
         if request.method == 'GET':
-            queryset = LeaveType.objects.filter(company=company)
-            # Add simple filters if needed
+            if company:
+                queryset = LeaveType.objects.filter(company=company)
+            elif request.user.is_superuser:
+                queryset = LeaveType.objects.filter(is_active=True)
+            else:
+                queryset = LeaveType.objects.none()
+                
             serializer = LeaveTypeSerializer(queryset, many=True)
             return Response(serializer.data)
         elif request.method == 'POST':
@@ -185,7 +193,13 @@ def leave_request_list_create(request):
             queryset = LeaveRequest.objects.filter(employee__company=company).select_related('employee', 'leave_type', 'approved_by')
             employee_id = request.query_params.get('employee')
             status_filter = request.query_params.get('status')
-            if employee_id: queryset = queryset.filter(employee_id=employee_id)
+            if employee_id: 
+                try:
+                    uuid.UUID(str(employee_id))
+                    queryset = queryset.filter(employee_id=employee_id)
+                except ValueError:
+                    # If invalid UUID (e.g. 'admin-2'), return empty queryset for safety
+                    queryset = queryset.none()
             if status_filter: queryset = queryset.filter(status=status_filter)
             return Response(LeaveRequestSerializer(queryset.order_by('-created_at'), many=True).data)
         elif request.method == 'POST':

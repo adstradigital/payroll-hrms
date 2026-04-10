@@ -239,6 +239,8 @@ export const getAttendanceReports = ({ type, ...params }) => axiosInstance.get(`
 export const getPayrollReports = ({ type, ...params }) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_PAYROLL}${type}/`, { params });
 export const getLeaveReports = ({ type, ...params }) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_LEAVE}${type}/`, { params });
 export const getEmployeeReports = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.REPORTS_EMPLOYEE, { params });
+export const getAttritionReportSummary = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_ATTRITION}summary/`, { params });
+export const getAttritionReportDetails = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.REPORTS_ATTRITION}details/`, { params });
 
 export const exportEPFECR = (params) => axiosInstance.get(`${CLIENTADMIN_ENDPOINTS.PAYROLL}reports/epf-ecr/`, {
     params,

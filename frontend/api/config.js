@@ -161,6 +161,7 @@ export const CLIENTADMIN_ENDPOINTS = {
     REPORTS_PAYROLL: `${BASE_URL}/reports/payroll/`,
     REPORTS_LEAVE: `${BASE_URL}/reports/leave/`,
     REPORTS_EMPLOYEE: `${BASE_URL}/reports/employee/`,
+    REPORTS_ATTRITION: `${BASE_URL}/reports/attrition/`,
 
     // HRMS
     ANNOUNCEMENTS: `${BASE_URL}/hrms/announcements/`,

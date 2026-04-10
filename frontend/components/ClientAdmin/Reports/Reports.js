@@ -16,10 +16,12 @@ import {
     getAttendanceReports, getPayrollReports, getLeaveReports,
     exportEPFECR, exportESIChallan,
     exportSalaryRegister, exportPayrollSummary,
-    getSalaryRegisterData, getPayrollSummaryData
+    getSalaryRegisterData, getPayrollSummaryData,
+    getAttritionReportSummary, getAttritionReportDetails
 } from '@/api/api_clientadmin';
 import StatutoryReportPreview from './StatutoryReportPreview';
 import PayrollReportPreview from './PayrollReportPreview';
+import AttritionReportPreview from './AttritionReportPreview';
 import './Reports.css';
 
 const reportCategories = [
@@ -63,6 +65,7 @@ const reportCategories = [
         icon: Users,
         reports: [
             { id: 'employee-master', name: 'Employee Master List', description: 'Detailed demographic and professional info of employees', canView: false, canDownload: false },
+            { id: 'attrition-report', name: 'Attrition Report', description: 'Annual & monthly employee turnover analysis with exit trends', canView: true, canDownload: true },
             { id: 'joining-attrition', name: 'Joining & Attrition', description: 'Monthly analysis of new hires and exits', canView: false, canDownload: false },
             { id: 'anniversaries', name: 'Birthdays & Work Anniversaries', description: 'Upcoming employee events for the month', canView: false, canDownload: false }
         ]
@@ -87,6 +90,9 @@ export default function Reports() {
     const [payrollDistData, setPayrollDistData] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [attritionSummary, setAttritionSummary] = useState(null);
+    const [attritionDetails, setAttritionDetails] = useState(null);
+    const [showAttritionPreview, setShowAttritionPreview] = useState(false);
 
     const formatINR = (value) => {
         try {
@@ -290,6 +296,19 @@ export default function Reports() {
                 setNotification({ show: true, message: 'Report downloaded successfully', type: 'success' });
                 return;
             } else if (reportId === 'leave-balance') {
+            } else if (reportId === 'attrition-report') {
+                const [summaryRes, detailsRes] = await Promise.all([
+                    getAttritionReportSummary({ year: selectedYear }),
+                    getAttritionReportDetails({ year: selectedYear })
+                ]);
+                const detailRows = detailsRes.data || [];
+                if (detailRows.length === 0) {
+                    setNotification({ show: true, message: 'No attrition data found for this period. Add employee exit records to generate the report.', type: 'info' });
+                    return;
+                }
+                downloadCSV(detailRows, `Attrition_Report_${selectedYear}.csv`);
+                setNotification({ show: true, message: 'Attrition report downloaded successfully', type: 'success' });
+                return;
             } else {
                 setNotification({ show: true, message: 'Export coming soon for this specific format.', type: 'info' });
                 return;
@@ -418,6 +437,14 @@ export default function Reports() {
                 } else {
                     setNotification({ show: true, message: 'No leave data found.', type: 'info' });
                 }
+            } else if (reportId === 'attrition-report') {
+                const [summaryRes, detailsRes] = await Promise.all([
+                    getAttritionReportSummary({ year: selectedYear }),
+                    getAttritionReportDetails({ year: selectedYear })
+                ]);
+                setAttritionSummary(summaryRes.data);
+                setAttritionDetails(detailsRes.data || []);
+                setShowAttritionPreview(true);
             } else {
                 setNotification({ show: true, message: 'Preview not available for this report yet.', type: 'info' });
             }
@@ -740,6 +767,21 @@ export default function Reports() {
                         setPreviewReportId('');
                     }}
                     onExport={() => handleGenerate(previewReportId || 'salary-register', previewReportName)}
+                />
+            )}
+
+            {/* Attrition Report Preview Modal */}
+            {showAttritionPreview && attritionSummary && (
+                <AttritionReportPreview
+                    summaryData={attritionSummary}
+                    detailsData={attritionDetails}
+                    year={selectedYear}
+                    onClose={() => {
+                        setShowAttritionPreview(false);
+                        setAttritionSummary(null);
+                        setAttritionDetails(null);
+                    }}
+                    onExport={() => handleGenerate('attrition-report', 'Attrition Report')}
                 />
             )}
         </div>

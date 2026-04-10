@@ -31,8 +31,26 @@ export default function MyLeaveRequests({ currentUser }) {
     const fetchData = async () => {
         try {
             setLoading(true);
+            
+            // Extract the correct Employee UUID. 
+            // In DRF, the current user data might expose the employee UUID under employee_profile.id or employee_id.
+            // Using a standard integer User ID here will cause a UUID validation 500 error in the backend.
+            const employeeUUID = currentUser?.employee_profile?.id || currentUser?.employee_id || currentUser?.id;
+            
+            // Validate if it's a valid UUID (v4) to prevent backend 500 crashes
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeUUID);
+
+            if (!isUUID) {
+                console.warn('Current user does not have a valid Employee UUID. Personal leave requests will be empty.');
+                const typesRes = await getLeaveTypes();
+                setLeaveTypes(typesRes.data.results || (Array.isArray(typesRes.data) ? typesRes.data : []));
+                setLeaveRequests([]);
+                setLoading(false);
+                return;
+            }
+
             const [leavesRes, typesRes] = await Promise.all([
-                getAllLeaves({ employee: currentUser.id }),
+                getAllLeaves({ employee: employeeUUID }),
                 getLeaveTypes()
             ]);
 
