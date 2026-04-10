@@ -4,7 +4,8 @@ import Dashboard from '@/components/ClientAdmin/Dashboard/Dashboard';
 import {
     StatCard, AttendanceChart, MiniCalendar,
     HolidayBanner, RecentActivityTable,
-    ActionsWidget, MyTeamWidget, NextRunWidget
+    ActionsWidget, MyTeamWidget, NextRunWidget,
+    QuickDocumentsWidget
 } from '@/components/ClientAdmin/Dashboard/Widgets/Widgets';
 import {
     Users, Clock, Calendar, Wallet,
@@ -20,7 +21,12 @@ export default function DashboardPage() {
     ];
 
     return (
-        <Dashboard breadcrumbs={['Home', 'Dashboard']} showGreeting={true}>
+        <Dashboard 
+            title="Dashboard" 
+            subtitle="Here's what's happening today"
+            breadcrumbs={['Home', 'Dashboard']} 
+            showGreeting={true}
+        >
             {/* Stats Grid */}
             <div className="stats-grid">
                 {stats.map((stat, index) => (
@@ -110,6 +116,7 @@ export default function DashboardPage() {
                         <MiniCalendar />
                     </div>
                     <HolidayBanner />
+                    <QuickDocumentsWidget />
                 </div>
             </div>
         </Dashboard>

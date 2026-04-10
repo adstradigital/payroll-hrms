@@ -28,7 +28,7 @@ from .serializers import (
     MyTokenObtainPairSerializer, ModuleSerializer, PermissionSerializer,
     DataScopeSerializer, RoleSerializer, RolePermissionSerializer,
     DesignationListSerializer, DesignationDetailSerializer, DepartmentListSerializer,
-    DepartmentDetailSerializer, EmployeeListSerializer,
+    DepartmentDetailSerializer, EmployeeListSerializer, EmployeeDocumentSerializer,
     SecurityProfileSerializer, SetPinSerializer, VerifyPinSerializer
 )
 from .permissions import is_client_admin, require_admin, require_permission, PermissionChecker
@@ -1175,6 +1175,32 @@ def get_my_permissions(request):
         logger.error(f"[get_my_permissions] Error: {str(e)}")
         logger.error(traceback.format_exc())
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_my_documents(request):
+    """
+    ESS View: Get documents for the currently logged-in employee.
+    """
+    try:
+        from .utils import get_employee_or_none
+        employee = get_employee_or_none(request.user)
+        if not employee:
+            return Response({
+                'success': False, 
+                'error_code': 'NO_EMPLOYEE_PROFILE',
+                'error': 'No employee profile found for this user account.'
+            }, status=200)
+        
+        # Get documents linked to this employee
+        documents = EmployeeDocument.objects.filter(employee=employee).order_by('-created_at')
+        serializer = EmployeeDocumentSerializer(documents, many=True)
+        return Response({'success': True, 'documents': serializer.data})
+    except Exception as e:
+        logger.error(f"Error in get_my_documents: {str(e)}")
+        return Response({'success': False, 'error': str(e)}, status=500)
+
 
 
 @api_view(['GET', 'POST'])

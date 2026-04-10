@@ -52,6 +52,7 @@ export const updateOrganizationSettings = (settings) => axiosInstance.patch(CLIE
 export const getAllEmployees = (params) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEES, { params });
 export const getEmployeeById = (id) => axiosInstance.get(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DETAIL(id));
 export const getMyProfile = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.GET_MY_PROFILE);
+export const getMyDocuments = () => axiosInstance.get(CLIENTADMIN_ENDPOINTS.GET_MY_DOCUMENTS);
 export const createEmployee = (data) => axiosInstance.post(CLIENTADMIN_ENDPOINTS.EMPLOYEES, data);
 export const updateEmployee = (id, data) => axiosInstance.put(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DETAIL(id), data);
 export const deleteEmployee = (id) => axiosInstance.delete(CLIENTADMIN_ENDPOINTS.EMPLOYEE_DETAIL(id));

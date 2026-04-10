@@ -251,3 +251,73 @@ export const NextRunWidget = () => {
         </div>
     );
 };
+// Quick Documents Widget - Shows 3 most recent documents
+export const QuickDocumentsWidget = () => {
+    const [docs, setDocs] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchDocs = async () => {
+        try {
+            const { getMyDocuments } = await import('@/api/api_clientadmin');
+            const response = await getMyDocuments();
+            if (response.data.success) {
+                setDocs(response.data.documents?.slice(0, 3) || []);
+            }
+        } catch (err) {
+            console.error('Error in QuickDocumentsWidget:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useState(() => {
+        fetchDocs();
+    }, []);
+
+    const handleDownload = (doc) => {
+        const link = document.createElement('a');
+        link.href = doc.document_file;
+        link.setAttribute('download', doc.title);
+        link.setAttribute('target', '_blank');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <div className="card">
+            <div className="card__header">
+                <div>
+                    <h3 className="card__title">Quick Downloads</h3>
+                    <p className="card__subtitle">Recent documents & letters</p>
+                </div>
+                <a href="/dashboard/documents" className="text-link" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--brand-primary)' }}>View All</a>
+            </div>
+            
+            <div className="quick-docs-list">
+                {loading ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</div>
+                ) : docs.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        No documents available.
+                    </div>
+                ) : (
+                    docs.map((doc, i) => (
+                        <div key={doc.id} className="quick-doc-item">
+                            <div className="quick-doc-icon">
+                                <Download size={14} />
+                            </div>
+                            <div className="quick-doc-info">
+                                <span className="quick-doc-name" title={doc.title}>{doc.title}</span>
+                                <span className="quick-doc-date">{doc.issue_date || 'Recent'}</span>
+                            </div>
+                            <button className="quick-doc-btn" onClick={() => handleDownload(doc)}>
+                                <Download size={16} />
+                            </button>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};

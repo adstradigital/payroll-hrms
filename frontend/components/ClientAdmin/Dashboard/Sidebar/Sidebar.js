@@ -35,6 +35,12 @@ const menuItems = [
         path: '/dashboard/profile',
     },
     {
+        id: 'my-documents',
+        label: 'My Documents',
+        icon: FileText,
+        path: '/dashboard/documents',
+    },
+    {
         id: 'recruitment',
         label: 'Recruitment',
         translationKey: 'common.recruitment',
